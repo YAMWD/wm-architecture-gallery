@@ -271,7 +271,10 @@ class Layout:
             h = 24 + 7
             self._core_rows = []
             rs = self.SUB + 0.5 if not self.compact else self.MAIN - 1
-            for kind, txt in core.get("rows", []):
+            for row in core.get("rows", []):
+                kind, txt = row[0], row[1]
+                if self.compact and len(row) > 2 and row[2]:
+                    txt = row[2]          # optional short text for compact mode
                 if kind == "note":
                     if self.compact:
                         continue

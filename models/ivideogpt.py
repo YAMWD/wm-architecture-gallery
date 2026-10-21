@@ -1,0 +1,49 @@
+MODEL = {
+    "slug": "ivideogpt",
+    "name": "iVideoGPT",
+    "year": 2024, "month": 5,
+    "org": "Tsinghua University",
+    "family": "token",
+    "role": "Discrete-token model",
+    "status": "NeurIPS 2024",
+    "params": "138M (436M scaled)",
+    "params_num": 138e6,
+    "open": "code + weights",
+    "links": {"arXiv": "https://arxiv.org/abs/2405.15223", "code": "https://github.com/thuml/iVideoGPT", "page": "https://thuml.github.io/iVideoGPT"},
+    "summary": "A GPT world model for robot manipulation with a compressive tokenizer: context frames are encoded on their "
+               "own into 16x16 = 256 VQ tokens, but every future frame is encoded, conditioned on the context frames "
+               "through cross-attention, into only 4x4 = 16 tokens. A LLaMA-style transformer (12 layers, d 768, 138M) "
+               "predicts the sequence token by token, so a future frame costs 17 passes instead of 257, and actions enter "
+               "by addition to the slot token that precedes each frame. On an RTX 4090 generation takes 1.11 s against "
+               "22.5 s with a plain 16x16 tokenizer.",
+    "facts": [
+        ("Representation", "Compressive conditional VQGAN (114M at 64x64): 256 tokens per context frame, 16 tokens per future frame, codebooks of 8,192 each; transformer vocabulary 16,386 incl. 2 slot tokens"),
+        ("Core", "LLaMA-style GPT (RMSNorm, SwiGLU, RoPE): 12 layers, d 768, 12 heads, FFN 3072, 138M; scaling run 24 layers, d 1024, 16 heads, 436M"),
+        ("Attention", "Dense causal over the interleaved clip: L = (N+1) T0 + (n+1)(T - T0) - 1 = 751 tokens for 16 frames with 2 context frames [D]"),
+        ("Actions", "Action linearly projected and added to the slot-token embedding before each future frame; optional reward head on the last token of each frame (MSE)"),
+        ("Prediction", "Next-token softmax: 17 passes per future frame (slot + 16 tokens) against 257 with a per-frame 16x16 tokenizer [D]"),
+        ("Decoder", "Conditional VQGAN decoder with cross-attention to the context-frame features → 64x64 (a 256x256 variant uses a 310M VQGAN)"),
+        ("Memory", "KV policy not disclosed; the whole 12-16-frame clip stays in context"),
+        ("Speed", "RTX 4090, batch 1: tokenize 0.29 s, generation 1.11 s, detokenize 0.06 s, 2.33 GB; 22.5 s generation with a 16x16-per-frame tokenizer (authors, Table 8; rollout length not stated in the caption)"),
+        ("Key detail", "Tokens per predicted frame, 16 against 256, is the lever: 20x faster generation [D] at 138M, where the number of passes, not FLOPs, sets the latency"),
+    ],
+    "evidence": "read",
+    "sources": ["arXiv 2405.15223 Sec. 3.1-3.3 (tokenizer, transformer, action conditioning), Sec. 4.5 (scaling), App. Table 2 (architecture), Table 3 (sequence lengths), Table 8 (RTX 4090 timings)"],
+    "diagram": {
+        "encoder": {"text": "Frames 64x64 → compressive VQGAN (114M)", "sub": "256 tokens per context frame, 16 per future frame (cross-attention to context)",
+                    "tag": "frozen", "short": "Compressive VQGAN: 256 / 16 tokens"},
+        "tokens": {"groups": [("frame", 16, "context: 256"), ("register", 1, "slot + action"), ("frame", 4, "future: 16")],
+                   "note": "per frame; 16 frames with 2 context frames = 751 tokens"},
+        "core": {"title": "LLaMA-style GPT ×12 · d 768 · 12 heads",
+                 "rows": [("attn", "Causal self-attention, RoPE"),
+                          ("action", "Action added to the slot token"),
+                          ("mlp", "SwiGLU MLP (3072)")],
+                 "notes": ["clip of 12-16 frames in context", "436M variant: 24 layers, d 1024, 16 heads"]},
+        "sampling": {"kind": "ar", "text": "Next-token softmax, 8,192 codes", "sub": "17 passes per future frame (slot + 16 tokens)",
+                     "short": "Next token, 17 passes per frame"},
+        "heads": ["reward"],
+        "decoder": {"text": "Conditional VQGAN decoder → 64x64 frame", "sub": "cross-attention to the context-frame features", "tag": "frozen",
+                    "short": "VQGAN decoder → 64x64 frame"},
+        "loop": "AR rollout",
+    },
+}

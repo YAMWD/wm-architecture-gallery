@@ -72,7 +72,8 @@ The card is read from the bottom up. Each row is optional except `core`.
   group; add an `action` row inside `core` instead.
 - `core.title`: `<name> ×<layers> · d <width> · <heads> heads` when known; otherwise the shortest honest
   description (`Transformer, size not disclosed`). It must fit one line.
-- `core.rows`: 2-5 rows, each `(kind, text)`. Kinds: `attn` self-attention (say the mask: causal over tokens,
+- `core.rows`: 2-5 rows, each `(kind, text)` or `(kind, text, short)`, where `short` replaces `text` in
+  compact mode (keep it under ~34 characters so the row stays on one line). Kinds: `attn` self-attention (say the mask: causal over tokens,
   block-causal over frames, spatial / temporal factorized, bidirectional), `xattn` cross-attention (say to what),
   `mlp`, `action` (how actions enter: AdaLN, action modules, mixer, channel concat), `ssm` (Mamba, GDN,
   retention), `moe` (experts or a second stream), `note` (grey text, no box).

@@ -1,0 +1,47 @@
+MODEL = {
+    "slug": "gaia1",
+    "name": "GAIA-1",
+    "year": 2023, "month": 9,
+    "org": "Wayve",
+    "family": "token",
+    "role": "Discrete-token model",
+    "status": "company technical report",
+    "params": "6.5B (+2.6B video decoder)",
+    "params_num": 6.5e9,
+    "open": "closed",
+    "links": {"arXiv": "https://arxiv.org/abs/2309.17080"},
+    "summary": "A generative world model for driving: a 6.5B causal transformer predicts the next image token over an "
+               "interleaved sequence of text, image and action tokens, trained from scratch on 4,700 h of London "
+               "driving. Each 288x512 frame is 576 discrete tokens from a 0.3B DINO-distilled tokenizer, so one frame "
+               "costs 576 serial passes, and a separate 2.6B video diffusion U-Net, not a transformer, turns the tokens "
+               "into pixels with 50 DDIM steps. The report says the model does not yet run in real time.",
+    "facts": [
+        ("Representation", "576 discrete tokens per 288x512 frame (18x32, downsampling 16), vocabulary 8,192, from a 0.3B image tokenizer trained with a DINO distillation loss"),
+        ("Core", "6.5B decoder-only transformer trained from scratch; layer, width and head counts not disclosed"),
+        ("Attention", "Dense causal attention over 26 frames at 6.25 Hz (4 s): 26 x (32 text + 576 image + 2 action) = 15,860 tokens; FlashAttention v2; sliding window beyond the context"),
+        ("Actions", "2 action tokens and 32 T5-large text tokens per step in the interleaved sequence; conditioning tokens are dropped at random in training, giving unconditional, action- and text-conditioned generation"),
+        ("Prediction", "Next-token softmax with top-k = 50: 'n forward steps to generate one new image frame', so 576 serial passes per frame; optional classifier-free guidance doubles the evaluations [D]"),
+        ("Decoder", "2.6B video diffusion 3D U-Net with factorized space/time attention: 50 DDIM steps per window of 7 frames (2 overlapping context frames), then temporal upsampling 6.25 → 12.5 → 25 Hz"),
+        ("Memory", "KV-cache policy not disclosed; context capped at 26 frames with a sliding window for longer rollouts"),
+        ("Speed", "Not disclosed; generation 'does not yet run at real-time' (authors). Training: world model 15 days on 64 A100-80GB, tokenizer 4 days on 32, decoder 15 days on 32 = ~1,568 A100-days [D]"),
+        ("Key detail", "576 dependent decode steps per frame through 6.5B parameters, at least 13 GB of bf16 weights streamed per step [D], followed by a 50-step diffusion decoder: a bandwidth-bound workload"),
+    ],
+    "evidence": "read",
+    "sources": ["arXiv 2309.17080 Sec. 2.1-2.4 (tokens, world model, decoder), Sec. 4.1-4.3 (sizes, training), Sec. 5.1-5.2 (sampling, DDIM), Sec. 8 (not real time)",
+                "ar_token notes Group 1 (GAIA-1) for the [D] arithmetic"],
+    "diagram": {
+        "encoder": {"text": "Frame 288x512 → image tokenizer (0.3B)", "sub": "576 tokens per frame (18×32), vocab 8,192, DINO-distilled",
+                    "tag": "frozen", "short": "Image tokenizer, 576 tokens/frame"},
+        "tokens": {"groups": [("text", 4, "32 text"), ("frame", 24, "576 image tokens"), ("action", 2, "2 actions")],
+                   "note": "per frame at 6.25 Hz; 26 frames = 15,860 tokens"},
+        "core": {"title": "Transformer 6.5B · layers not disclosed",
+                 "rows": [("attn", "Causal self-attention over all tokens"),
+                          ("mlp", "MLP")],
+                 "notes": ["context 26 frames = 15,860 tokens; FlashAttention v2", "sliding window for longer rollouts"]},
+        "sampling": {"kind": "ar", "text": "Next-token softmax, top-k 50", "sub": "576 serial passes per frame",
+                     "short": "Next token, 576 passes per frame"},
+        "decoder": {"text": "Video diffusion U-Net (2.6B) → 288x512", "sub": "50 DDIM steps per 7-frame window; 6.25 → 25 Hz upsampling; not a transformer",
+                    "tag": "frozen", "short": "Diffusion U-Net, 50 DDIM steps"},
+        "loop": "AR rollout",
+    },
+}

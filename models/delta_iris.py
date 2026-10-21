@@ -1,0 +1,50 @@
+MODEL = {
+    "slug": "delta_iris",
+    "name": "Δ-IRIS",
+    "year": 2024, "month": 6,
+    "org": "University of Geneva",
+    "family": "rl",
+    "role": "Discrete-token model",
+    "status": "ICML 2024",
+    "params": "25M",
+    "params_num": 25e6,
+    "open": "code + weights",
+    "links": {"arXiv": "https://arxiv.org/abs/2406.19320", "code": "https://github.com/vmicheli/delta-iris"},
+    "summary": "IRIS with context-aware tokens. A CNN autoencoder conditioned on the previous frame and action encodes "
+               "only the stochastic change between steps as 4 delta tokens from a 1,024-entry vocabulary, and a 3-layer "
+               "GPT sees 6 tokens per step instead of IRIS's 17: one continuous I-token (a frame embedding from an "
+               "auxiliary CNN), one action token and the 4 delta tokens. At 25M parameters it collects 20 Crafter "
+               "frames per second of training on one A100, 10x IRIS-64, while still paying 4 dependent passes and a "
+               "decoder call per imagined frame.",
+    "facts": [
+        ("Representation", "4 delta tokens per 64x64 frame, vocabulary 1,024, from a CNN autoencoder conditioned on the previous frame and action; plus 1 continuous I-token per step from an auxiliary CNN"),
+        ("Core", "GPT-like causal transformer: 3 layers, d 512, 8 heads; 25M parameters for the whole agent (Table 1)"),
+        ("Attention", "Causal over 6 tokens per step (I-token, action, 4 deltas); context 21 timesteps = 126 tokens [D]"),
+        ("Actions", "One action token per step from a learned embedding table"),
+        ("Prediction", "Next delta token by softmax over 1,024 codes: 4 dependent passes per frame; reward and termination come from the action-token position"),
+        ("Decoder", "CNN decoder conditioned on the previous frame, action and delta tokens runs every imagined step: the CNN+LSTM policy sees decoded frames and the next I-token is computed from them"),
+        ("Memory", "Full causal context of 21 steps; cache handling not restated beyond IRIS"),
+        ("Speed", "20 environment frames per second of training on one A100 40GB in Crafter, vs 2 for IRIS-64, 6 for IRIS-16, 30-40 for DreamerV3 (authors); 12 FPS on an RTX 3090 (measured by EMERALD); Atari 100k in 26 h, 5x IRIS"),
+        ("Key detail", "6 tokens per step instead of 17, not fewer passes: 4 serial token decodes plus a decoder call per frame, because the I-token comes from the decoded frame"),
+    ],
+    "evidence": "verified",
+    "sources": ["verified_findings Finding 4 (arXiv 2406.19320 Tables 1, 3, 4; github.com/vmicheli/delta-iris tokens_per_block = 1 + 1 + 4)",
+                "arXiv 2406.19320 Sec. 2.2-2.4 (tokenizer, I-tokens, imagination), App. A Tables 2-4",
+                "EMERALD arXiv 2507.04075 Table 2 (12 FPS on RTX 3090)"],
+    "diagram": {
+        "encoder": {"text": "Frame 64x64 → Δ-autoencoder (CNN)", "sub": "4 Δ-codes per frame, vocab 1,024, given x_t-1 and a_t-1; + I-token CNN",
+                    "tag": "trained jointly", "short": "Δ-tokenizer: 4 codes + I-token"},
+        "tokens": {"groups": [("latent", 1, "I-token"), ("action", 1, "action"), ("frame", 4, "4 Δ-codes")],
+                   "note": "per step; context 21 steps = 126 tokens"},
+        "core": {"title": "GPT ×3 · d 512 · 8 heads",
+                 "rows": [("attn", "Causal self-attention over tokens"),
+                          ("mlp", "MLP")],
+                 "notes": ["I-token: continuous frame embedding, a soft Markov blanket"]},
+        "sampling": {"kind": "ar", "text": "Next Δ-token softmax, 1,024 codes", "sub": "4 serial passes per frame",
+                     "short": "Next Δ-token, 4 passes per frame"},
+        "heads": ["reward", "termination"],
+        "decoder": {"text": "Conditioned CNN decoder → 64x64 frame", "sub": "runs every step: frames feed the policy and the next I-token",
+                    "short": "CNN decoder → 64x64, every step"},
+        "loop": "AR rollout",
+    },
+}

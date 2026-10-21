@@ -1,0 +1,46 @@
+MODEL = {
+    "slug": "unizero",
+    "name": "UniZero",
+    "year": 2024, "month": 6,
+    "org": "Shanghai AI Laboratory",
+    "family": "rl",
+    "role": "Per-step latent model",
+    "status": "arXiv preprint",
+    "params": "size not disclosed",
+    "params_num": None,
+    "open": "code",
+    "links": {"arXiv": "https://arxiv.org/abs/2406.10667", "code": "https://github.com/opendilab/LightZero"},
+    "summary": "A MuZero-style planner whose dynamics network is a 2-layer transformer over two tokens per step, latent "
+               "and action. A conv encoder maps each observation to a 768-d SimNorm latent with no decoder, and the "
+               "transformer output feeds heads for the next latent, reward, policy and value. Every real action runs "
+               "50 MCTS simulations, each a single-step transformer call against a KV cache of the last 4 steps, so "
+               "inference is a small-batch, latency-bound loop rather than a FLOP-bound one.",
+    "facts": [
+        ("Representation", "Conv encoder → one 768-d latent per step with SimNorm (simplex groups of 8); 64x64 Atari frames; no reconstruction"),
+        ("Core", "2 transformer layers, d 768, 8 heads, GELU, dropout 0.1 (Atari, DMC); d 64 and 4 heads for the long-term memory tasks; FFN width and parameter count not listed"),
+        ("Attention", "Causal over interleaved (latent, action) tokens; training context H = 10 steps = 20 tokens; inference context H_infer = 4 steps (memory_length + 16 on long-term tasks)"),
+        ("Actions", "A learned action-embedding token per step (lookup table for discrete actions, 2-layer MLP for continuous ones)"),
+        ("Prediction", "One pass per imagined step: the dynamics head regresses the next latent (SimNorm) and reward, the decision head gives policy and value"),
+        ("Decoder", "None: no reconstruction loss; a decode-regularization ablation did not help"),
+        ("Memory", "KV cache over the last H_infer = 4 steps = 8 tokens [D], reused by every node of the search tree"),
+        ("Speed", "Atari 100k agent trained in ~4 h on one A100 80GB, 1M VisualMatch steps in ~30 h (authors); no inference latency reported"),
+        ("Key detail", "50 MCTS simulations per real step = 50 dependent single-step transformer calls on an 8-token cache: a latency-bound inner loop"),
+    ],
+    "evidence": "read",
+    "sources": ["arXiv 2406.10667 Sec. 3.2-3.3 (tokens, KV cache, MCTS), App. B Tables 6-8 (architecture, hyperparameters), App. B.5 (compute)"],
+    "diagram": {
+        "encoder": {"text": "Frame 64x64 → conv encoder + SimNorm", "sub": "one 768-d latent per step", "tag": "trained jointly",
+                    "short": "Conv encoder, 768-d latent"},
+        "tokens": {"groups": [("latent", 1, "latent z_t"), ("action", 1, "action")],
+                   "note": "per step; train 10 steps = 20 tokens, infer on the last 4"},
+        "core": {"title": "Transformer ×2 · d 768 · 8 heads",
+                 "rows": [("attn", "Causal self-attention over (z, a) tokens"),
+                          ("mlp", "MLP (GELU)")],
+                 "notes": ["KV cache: last 4 steps, shared by all MCTS nodes"]},
+        "sampling": {"kind": "search", "text": "MCTS, 50 simulations per real step", "sub": "1 transformer pass per simulated step",
+                     "short": "MCTS: 50 one-step calls"},
+        "heads": ["policy", "value", "reward"],
+        "decoder": {"none": "no reconstruction; planning in latent space"},
+        "loop": "MCTS",
+    },
+}

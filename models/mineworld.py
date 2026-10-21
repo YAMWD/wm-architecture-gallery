@@ -1,0 +1,46 @@
+MODEL = {
+    "slug": "mineworld",
+    "name": "MineWorld",
+    "year": 2025, "month": 4,
+    "org": "Microsoft Research",
+    "family": "token",
+    "role": "Discrete-token model",
+    "status": "arXiv preprint",
+    "params": "1.2B (also 300M, 700M)",
+    "params_num": 1.2e9,
+    "open": "code + weights",
+    "links": {"arXiv": "https://arxiv.org/abs/2504.08388", "code": "https://github.com/microsoft/MineWorld"},
+    "summary": "An open, real-time Minecraft world model: a LLaMA-style decoder trained from scratch on interleaved frame "
+               "and action tokens. A VQ-VAE with 16x compression turns each 224x384 frame into 336 tokens (14x24, "
+               "codebook 8,192) and each action into 11 tokens. Diagonal decoding releases tokens along anti-diagonals, "
+               "cutting the 336 dependent steps per frame to 37, and a fine-tune with a matching attention mask recovers "
+               "the quality; the 1.2B model goes from 0.89 to 3.01 FPS.",
+    "facts": [
+        ("Representation", "336 discrete tokens per 224x384 frame (14x24 from a VQ-VAE with 16x spatial compression, codebook 8,192); frames downscaled from 360x640 'to reduce the computation'"),
+        ("Core", "LLaMA architecture (RMSNorm, rotary embeddings): 1.2B = 20 layers, d 2048, MLP 8192, 32 heads; 700M = 20 layers, d 2048, MLP 4096; 300M = 20 layers, d 1024, 16 heads"),
+        ("Attention", "Dense causal over 16-frame clips: 16 x 347 = 5,552 tokens [D]; vocabulary 8,192 + 70 = 8,262"),
+        ("Actions", "11 action tokens per step ([aBOS], 9 action tokens incl. 2 camera tokens, [aEOS]) interleaved after each frame; the model predicts actions too, so it doubles as a policy"),
+        ("Prediction", "Next-token AR, or diagonal decoding: tokens (i, j+1) and (i+1, j) are released together, 37 passes per frame instead of 336 (theoretical 9.1x) [D]; fine-tuned with a matching parallel attention mask"),
+        ("Decoder", "VQ-VAE decoder → 224x384 frame"),
+        ("Memory", "KV policy not disclosed; 16-frame context"),
+        ("Speed", "1.2B: 0.89 FPS autoregressive, 3.01 FPS with diagonal decoding; 300M: 2.00 / 5.91 FPS (authors, Table 2; inference GPU not stated). Trained on 32 A100-40GB for 200k steps"),
+        ("Key detail", "9.1x fewer dependent passes buys 3.4x in FPS [D]: each diagonal step of up to 14 tokens is still latency-bound; the authors' real-time bar is 2 FPS for amateurs and 5 FPS for professionals"),
+    ],
+    "evidence": "read",
+    "sources": ["arXiv 2504.08388 Sec. 2.1-2.3 (tokenizer, decoder, diagonal decoding), Sec. 3.1-3.2 (data, training), Tables 1-2, App. B Table 6",
+                "verified_findings Finding 10 (MineWorld speed figures as cited by Dreamer 4)"],
+    "diagram": {
+        "encoder": {"text": "Frame 224x384 → VQ-VAE (16× compression)", "sub": "336 tokens per frame (14×24), codebook 8,192", "tag": "frozen",
+                    "short": "VQ-VAE, 336 tokens/frame"},
+        "tokens": {"groups": [("frame", 24, "336 frame tokens"), ("action", 8, "11 action tokens")],
+                   "note": "per step: 347 tokens; 16 frames = 5,552 tokens"},
+        "core": {"title": "LLaMA ×20 · d 2048 · 32 heads",
+                 "rows": [("attn", "Causal self-attention, RoPE"),
+                          ("mlp", "MLP (8192)")],
+                 "notes": ["context 16 frames", "parallel attention mask after fine-tuning for diagonal decoding"]},
+        "sampling": {"kind": "ar", "text": "Diagonal decoding: anti-diagonals in parallel", "sub": "37 passes per frame instead of 336",
+                     "short": "Diagonal decoding, 37 passes/frame"},
+        "decoder": {"text": "VQ-VAE decoder → 224x384 frame", "tag": "frozen"},
+        "loop": "AR rollout",
+    },
+}

@@ -1,0 +1,48 @@
+MODEL = {
+    "slug": "emerald",
+    "name": "EMERALD",
+    "year": 2025, "month": 7,
+    "org": "University of Würzburg",
+    "family": "rl",
+    "role": "Discrete-token model",
+    "status": "ICML 2025",
+    "params": "30M",
+    "params_num": 30e6,
+    "open": "code",
+    "links": {"arXiv": "https://arxiv.org/abs/2507.04075", "code": "https://github.com/burchim/EMERALD"},
+    "summary": "A Dreamer-style agent with a spatial latent state. A CNN VAE encodes each 64x64 frame as a 4x4 grid of "
+               "32-way categoricals in 32 groups, a temporal transformer with one token per step carries the history, "
+               "and a small spatial MaskGIT transformer predicts the next 4x4 grid in S = 3 parallel refinement passes "
+               "instead of 16 serial token decodes. The agent learns in latent space, and EMERALD collects 27 Crafter "
+               "frames per second of training on an RTX 3090, against 12 for Delta-IRIS and 38 for DreamerV3-M.",
+    "facts": [
+        ("Representation", "4x4 spatial grid x 32 groups x 32 classes per 64x64 frame from a CNN categorical VAE; 16 spatial tokens per step"),
+        ("Core", "Temporal transformer: 4 blocks, d 512; spatial MaskGIT predictor: 2 blocks, d 256 over 16 tokens; 8 heads, dropout 0.1; 30M parameters in total"),
+        ("Attention", "Temporal: causal masked self-attention with relative positions, context 64 steps; spatial: bidirectional over the 4x4 grid"),
+        ("Actions", "Action mixer MLP (as in STORM) concatenates the one-hot action with the 512-d latent features before the temporal transformer"),
+        ("Prediction", "Next 4x4 grid by MaskGIT with a cosine mask schedule: S = 3 passes per imagined step; S = 1 or a plain MLP head runs at 33 FPS but scores lower"),
+        ("Decoder", "CNN decoder from z_t and h_t for training; the actor-critic learns in latent space, so nothing is decoded in imagination"),
+        ("Memory", "Cached keys and values over the 64-step context, carried from one batch to the next (TBTT)"),
+        ("Speed", "27 collected frames/s of training on one RTX 3090 (authors); Delta-IRIS 12, DreamerV3-M 38, DreamerV3-XL 23 on the same GPU"),
+        ("Key detail", "16 spatial tokens per step predicted in 3 parallel passes instead of 16 serial ones; two small transformers, one over time and one over space"),
+    ],
+    "evidence": "read",
+    "sources": ["arXiv 2507.04075 Sec. 3 (architecture, MaskGIT schedule), Sec. 4.2 Table 2, Sec. 4.4 Table 4, App. Tables 6-10"],
+    "diagram": {
+        "encoder": {"text": "Frame 64x64 → CNN categorical VAE", "sub": "4×4 grid × 32 groups × 32 classes",
+                    "tag": "trained jointly", "short": "CNN VAE, 4×4×32 categoricals"},
+        "tokens": {"groups": [("latent", 1, "1 fused token: grid + a_t")],
+                   "note": "per step (4×4 grid → 512-d); context 64 steps"},
+        "core": {"title": "Temporal ×4 · d 512 + MaskGIT ×2 · d 256",
+                 "rows": [("action", "Action mixer: z_t and a_t → one token"),
+                          ("attn", "Causal temporal self-attention"),
+                          ("mlp", "MLP"),
+                          ("moe", "Spatial MaskGIT ×2: 16 tokens, d 256")],
+                 "notes": ["cached K, V over 64 steps; relative positions; 8 heads"]},
+        "sampling": {"kind": "parallel", "text": "MaskGIT, 4×4 grid, S = 3 passes", "sub": "per imagined step; cosine mask schedule",
+                     "short": "MaskGIT, 3 passes per step"},
+        "heads": ["reward", "continue"],
+        "decoder": {"none": "actor-critic in latent space; the CNN decoder only trains the VAE"},
+        "loop": "AR rollout",
+    },
+}

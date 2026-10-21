@@ -1,0 +1,50 @@
+MODEL = {
+    "slug": "dreamer4",
+    "name": "Dreamer 4",
+    "year": 2025, "month": 9,
+    "org": "Google DeepMind",
+    "family": "dit",
+    "role": "Diffusion transformer",
+    "status": "arXiv preprint",
+    "params": "1.6B + 400M tokenizer",
+    "params_num": 1.6e9,
+    "open": "closed",
+    "links": {"arXiv": "https://arxiv.org/abs/2509.24527", "page": "https://danijar.com/project/dreamer4"},
+    "summary": "A scalable world model that trains a Minecraft agent entirely offline inside its own imagination. A 400M "
+               "block-causal transformer tokenizer (masked autoencoding, continuous tanh bottleneck) turns each 360x640 "
+               "frame into 256 spatial tokens of 32 channels, and a 1.6B block-causal dynamics transformer, factorized "
+               "over space and time with temporal attention in every 4th layer and GQA, denoises the next frame's tokens "
+               "with a shortcut-forcing objective in K = 4 passes. The context is 192 frames (9.6 s), the model runs at "
+               "21 FPS on one H100, and policy, reward and value heads read agent tokens inside the same transformer.",
+    "facts": [
+        ("Representation", "256 spatial tokens x 32 channels per frame (a 512x16 bottleneck reshaped) from a 400M block-causal MAE tokenizer with a continuous tanh bottleneck; 384x640 padded input = 960 patches of 16x16"),
+        ("Core", "1.6B dynamics transformer: pre-RMSNorm, RoPE, SwiGLU, QKNorm, attention logit soft-capping; layer, head and width counts not disclosed in the paper"),
+        ("Attention", "Block-causal: all tokens of a frame attend to each other and to the past; space-only and time-only layers, temporal attention every 4th layer, GQA; context 192 frames = 49,152 spatial tokens [D]"),
+        ("Actions", "Interleaved tokens: each action component (mouse, keyboard) is encoded into S_a tokens and summed with a learned embedding; each frame block also carries S_r registers and one shortcut signal-level/step-size token"),
+        ("Prediction", "Shortcut forcing (diffusion forcing + shortcut models, x-prediction, ramp loss weight): K = 4 passes per frame instead of 64, no separate distillation; context frames re-noised at tau_ctx = 0.1"),
+        ("Decoder", "The tokenizer's block-causal transformer decoder, frame by frame, to 360x640"),
+        ("Memory", "KV cache over 192 frames (9.6 s); size not computable from the disclosed numbers; the authors name MLP FLOPs and KV-cache bandwidth as the inference limits"),
+        ("Speed", "21 FPS at 640x360 on one H100 (authors, Table 1); the design cascade runs 0.8 → 9.1 (4-step shortcut) → 18.9 (temporal attention every 4 layers) → 23.2 (GQA) → 21.4 FPS at 256 tokens (Table 2)"),
+        ("Key detail", "Agent tokens attend to everything but nothing attends back to them, so policy, reward and value heads share the world model's trunk; the transformer stays frozen during imagination training"),
+    ],
+    "evidence": "verified",
+    "sources": ["verified_findings Findings 7-10 (arXiv 2509.24527 Sec. 3.2-3.4, Sec. 4, App. A, Tables 1-2)",
+                "arXiv 2509.24527 Sec. 3.1 (tokenizer), 3.3 (agent tokens, heads), 3.4 (efficient transformer)",
+                "arxiv.org/html/2509.24527 fetched for layer and head counts: none given"],
+    "diagram": {
+        "encoder": {"text": "Frame 360x640 → block-causal tokenizer (400M)", "sub": "256 spatial tokens × 32 channels per frame; MAE-trained, tanh bottleneck",
+                    "tag": "frozen", "short": "Causal tokenizer, 256 tokens/frame"},
+        "tokens": {"groups": [("latent", 24, "256 spatial tokens"), ("register", 2, "registers"), ("action", 2, "actions")],
+                   "note": "per frame, + 1 shortcut token; context 192 frames (9.6 s)"},
+        "core": {"title": "1.6B transformer · layers not disclosed",
+                 "rows": [("attn", "Space attention within each frame"),
+                          ("attn", "Time attention every 4th layer, GQA"),
+                          ("mlp", "SwiGLU MLP")],
+                 "notes": ["block-causal: bidirectional in a frame, causal over 192 frames", "RMSNorm, RoPE, QKNorm, logit soft-capping"]},
+        "sampling": {"kind": "diffusion", "text": "Shortcut forcing, K = 4 passes", "sub": "per frame; x-prediction flow matching, context re-noised at τ 0.1",
+                     "short": "Shortcut forcing, 4 passes per frame"},
+        "heads": ["policy", "reward", "value"],
+        "decoder": {"text": "Tokenizer decoder → 360x640 frame", "sub": "block-causal transformer, frame by frame", "tag": "frozen"},
+        "loop": "AR rollout",
+    },
+}

@@ -1,0 +1,47 @@
+MODEL = {
+    "slug": "cosmos_predict1_ar",
+    "name": "Cosmos-Predict1 (autoregressive)",
+    "year": 2025, "month": 1,
+    "org": "NVIDIA",
+    "family": "token",
+    "role": "Discrete-token model",
+    "status": "company technical report",
+    "params": "4B and 12B (5B/13B with text)",
+    "params_num": 4e9,
+    "open": "code + weights",
+    "links": {"arXiv": "https://arxiv.org/abs/2501.03575", "code": "https://github.com/nvidia-cosmos/cosmos-predict1"},
+    "summary": "NVIDIA's autoregressive world foundation models: Llama3-style GPTs trained from scratch to predict the "
+               "next video token, with no language pretraining. A discrete video tokenizer (8x16x16, FSQ, vocabulary "
+               "64,000) gives 2,560 tokens per latent frame at 640x1024, and the 4B and 12B models attend causally over "
+               "12,800 tokens (33 video frames) with 3D RoPE. The Video2World 5B/13B variants add T5 cross-attention, and "
+               "Medusa heads cut the number of forward passes 4.6x. Generating 32 frames takes 31 s on one H100 for the 4B.",
+    "facts": [
+        ("Representation", "Cosmos-Tokenize1-DV8x16x16 discrete tokens, FSQ levels (8,8,8,5,5,5) = vocabulary 64,000; at 640x1024 one latent frame (8 video frames) is 40x64 = 2,560 tokens [D]"),
+        ("Core", "Llama3-style decoder with SwiGLU and QK-norm: 4B = 16 layers, d 4096, FFN 14,336, 32 heads, 8 KV heads; 12B = 40 layers, d 5120; the 5B/13B Video2World models add cross-attention layers"),
+        ("Attention", "Dense causal over 12,800 tokens = 5 latent frames = 33 video frames, the maximum the AR variants support [D]; 3D RoPE (theta 500,000) plus a 3D absolute positional embedding in every block; the text says no MQA/GQA although the table lists 8 KV heads"),
+        ("Actions", "The base models take only video; the Bridge robot post-train (5B ActionCond) projects the 7-D gripper action with an MLP and injects it by cross-attention; text enters by T5-XXL cross-attention in Video2World"),
+        ("Prediction", "Next-token softmax, 2,560 passes per latent frame; Medusa speculative decoding (9 single-layer FFN heads, no tree attention) gives up to 2.0x token throughput and 4.6x fewer passes for 4B, 3.2x and 6.1x for 5B"),
+        ("Decoder", "Tokenizer decoder, or an optional 7B diffusion decoder that roughly doubles end-to-end time (31.04 → 61.49 s for 4B)"),
+        ("Memory", "KV cache not described in the report; 12,800-token context"),
+        ("Speed", "4B on one H100 at 640x1024, 32 frames from 1: 31.04 s (23.52 s with Medusa), 29 GB; 12B 84.78 s; 4B at 320x512 with Medusa on 8 H100: 806.61 tokens/s = 10.08 frames/s (NVIDIA, Tables 16-17)"),
+        ("Key detail", "~330 tokens/s for 4B at batch 1 [D], a weight-bandwidth-bound decode: 4 → 8 GPUs gains 3% (18.20 → 17.62 s), so the 10 FPS result needed 4x fewer tokens per frame, Medusa and 8 GPUs"),
+    ],
+    "evidence": "read",
+    "sources": ["Cosmos technical report arXiv 2501.03575 Sec. 4 (tokenizer), Sec. 5.2.2-5.2.4 (architecture table, Medusa, Tables 15-17), post-training section (ActionCond)",
+                "ar_token notes Group 1 (Cosmos-Predict1 AR) for the [D] arithmetic"],
+    "diagram": {
+        "encoder": {"text": "Video 640x1024 → Cosmos-Tokenize1 DV8×16×16", "sub": "2,560 FSQ tokens per latent frame (8 video frames), vocab 64,000",
+                    "tag": "frozen", "short": "FSQ tokenizer, 2,560 tokens/frame"},
+        "tokens": {"groups": [("frame", 24, "2,560 video tokens")],
+                   "note": "per latent frame; 5 latent frames = 12,800 tokens"},
+        "core": {"title": "Llama3-style ×16 · d 4096 · 32 heads (4B)",
+                 "rows": [("attn", "Causal self-attention, 3D RoPE, 8 KV heads"),
+                          ("xattn", "T5 cross-attention (Video2World 5B/13B)"),
+                          ("mlp", "SwiGLU MLP (14,336)")],
+                 "notes": ["12B: 40 layers, d 5120", "context 12,800 tokens; 3D absolute PE per block"]},
+        "sampling": {"kind": "ar", "text": "Next-token softmax, 64,000 codes", "sub": "2,560 passes per latent frame; Medusa heads: 4.6x fewer passes",
+                     "short": "Next token, 2,560 passes/frame"},
+        "decoder": {"text": "Tokenizer decoder → 640x1024 frames", "sub": "optional 7B diffusion decoder doubles the time", "tag": "frozen"},
+        "loop": "AR rollout",
+    },
+}

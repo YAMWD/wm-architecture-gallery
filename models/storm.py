@@ -1,0 +1,48 @@
+MODEL = {
+    "slug": "storm",
+    "name": "STORM",
+    "year": 2023, "month": 10,
+    "org": "Beijing Institute of Technology",
+    "family": "rl",
+    "role": "Per-step latent model",
+    "status": "NeurIPS 2023",
+    "params": "~16.5M (4.2M in blocks)",
+    "params_num": 16.5e6,
+    "open": "code",
+    "links": {"arXiv": "https://arxiv.org/abs/2310.09615", "code": "https://github.com/weipu-zhang/STORM"},
+    "summary": "The transformer world model cut down to one token per environment step. A CNN categorical VAE encodes "
+               "each 64x64 frame as 32x32 categoricals, an MLP action mixer fuses that code with the action into a "
+               "single d 512 token, and a 2-layer GPT predicts the next latent distribution, reward and continuation. "
+               "Imagination draws one categorical sample per step at batch 1024 and decodes no pixels, so a full "
+               "Atari 100k run takes 4.3 h on one RTX 3090.",
+    "facts": [
+        ("Representation", "32 categoricals x 32 classes per 3x64x64 frame from a CNN categorical VAE"),
+        ("Core", "GPT-style causal transformer: 2 layers, d 512, 8 heads, FFN 1024, post-LN, learned absolute positions; ~4.2M block parameters, ~16.5M world model (verifier count from the code)"),
+        ("Attention", "Causal over one token per step; training batch 16 x 64 steps; imagination 8 context + 16 imagined steps"),
+        ("Actions", "Action mixer MLP (Linear-LN-ReLU-Linear-LN) fuses z_t and a_t into one d 512 token before the transformer"),
+        ("Prediction", "One pass per imagined step; one categorical sample from the predicted next distribution; no iterative decoding"),
+        ("Decoder", "CNN decoder trains the VAE only; the agent acts on [z_t, h_t], so no pixels are decoded in imagination"),
+        ("Memory", "24 cached steps at batch 1024: ~50 MB bf16 as implemented (the released 'KV cache' stores layer inputs and recomputes K and V each step), ~100 MB as a true K/V cache (verifier arithmetic)"),
+        ("Speed", "4.3 h per Atari 100k run on one RTX 3090 = 9.3 V100-hours at 11.9 training FPS (authors); no imagination throughput reported"),
+        ("Key detail", "1 token per step and 2 layers: a transformer whose weights and cache fit in tens of MB, but per-step cost grows with context because K and V are recomputed"),
+    ],
+    "evidence": "verified",
+    "sources": ["verified_findings Finding 3 (arXiv 2310.09615 Tables 1, 5-10, 12; github.com/weipu-zhang/STORM)",
+                "arXiv 2310.09615 Sec. 3.1-3.2 (action mixer, KV cache, agent state [z_t, h_t])"],
+    "diagram": {
+        "encoder": {"text": "Frame 64x64 → CNN categorical VAE", "sub": "32 categoricals × 32 classes per frame",
+                    "tag": "trained jointly", "short": "CNN VAE, 32×32 categoricals"},
+        "tokens": {"groups": [("latent", 1, "1 fused token: z_t + a_t")],
+                   "note": "per step; 8 context + 16 imagined steps"},
+        "core": {"title": "GPT ×2 · d 512 · 8 heads",
+                 "rows": [("action", "Action mixer: z_t and a_t → one token"),
+                          ("attn", "Causal self-attention over steps"),
+                          ("mlp", "MLP (FFN 1024)")],
+                 "notes": ["KV cache over 24 steps at batch 1024 (K, V recomputed)", "learned absolute positions, post-LN"]},
+        "sampling": {"kind": "ar", "text": "Next latent: one categorical sample, 32×32",
+                     "sub": "1 pass per imagined step; no iterative decoding", "short": "Next latent, 1 pass per step"},
+        "heads": ["reward", "continuation"],
+        "decoder": {"none": "agent acts on [z_t, h_t]; the CNN decoder only trains the VAE"},
+        "loop": "AR rollout",
+    },
+}

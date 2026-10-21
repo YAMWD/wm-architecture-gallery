@@ -1,0 +1,46 @@
+MODEL = {
+    "slug": "wham",
+    "name": "WHAM (Muse)",
+    "year": 2025, "month": 2,
+    "org": "Microsoft Research",
+    "family": "token",
+    "role": "Discrete-token model",
+    "status": "Nature 638 (2025)",
+    "params": "1.6B (+~300M ViT-VQGAN)",
+    "params_num": 1.6e9,
+    "open": "weights",
+    "links": {"paper": "https://doi.org/10.1038/s41586-025-08600-3", "weights": "https://huggingface.co/microsoft/wham"},
+    "summary": "World and Human Action Model: a nanoGPT-style causal transformer trained from scratch on seven years of "
+               "Bleeding Edge gameplay to predict interleaved image and controller-action tokens. The 1.6B model sees "
+               "540 ViT-VQGAN tokens per 300x180 frame (vocabulary 16,384) plus 16 action tokens, with a 1 s context of "
+               "ten frames = 5,560 tokens. Generation is token by token, more than 540 serial passes per frame, which "
+               "is why Microsoft followed it with a MaskGIT variant (WHAMM, 10+ fps against about 1 fps).",
+    "facts": [
+        ("Representation", "540 discrete tokens per 300x180 frame from a ~300M ViT-VQGAN, vocabulary 16,384 (1.6B model); the 15M-894M models use 256 tokens per 128x128 frame from a ~60M conv VQGAN, vocabulary 4,096"),
+        ("Core", "Modified nanoGPT implementation of GPT-2, 1.6B parameters (also 15M-894M); layer and head counts are in Extended Data Fig. 2c, which the text extraction does not include"),
+        ("Attention", "Dense causal over 5,560 tokens = 1 s = 10 frames at 10 Hz (2,720 tokens for the 894M model)"),
+        ("Actions", "Xbox controller as 16 tokens per step [D: (5,560 - 10 x 540) / 10]: 12 buttons plus the x and y of both sticks discretized into 11 buckets; actions are predicted as well as consumed"),
+        ("Prediction", "Next-token softmax: at least 540 serial passes per frame plus the 16 action tokens [D]"),
+        ("Decoder", "ViT-VQGAN decoder → 300x180 frame"),
+        ("Memory", "KV policy not disclosed; 1 s context"),
+        ("Speed", "About 1 fps for WHAM-1.6B against 10+ fps for the MaskGIT-based WHAMM (Microsoft Research blog, Apr 2025, as recorded in the notes; the Nature paper gives no inference figure). Training: 200k updates x 2.5M tokens = 5e11 tokens [D]; GPUs not disclosed"),
+        ("Key detail", "556 sequential tokens per frame at 1.6B with a 5.6k-token context: the same profile as GAIA-1 at a quarter of the size; the fix was parallel MaskGIT decoding (WHAMM)"),
+    ],
+    "evidence": "read",
+    "sources": ["Nature 638 (2025) doi 10.1038/s41586-025-08600-3, Methods (Encoder/decoder, Transformer, Model scale), Fig. 2",
+                "ar_token notes Group 1 (WHAM), incl. the MSR WHAMM blog figure (not re-fetched)"],
+    "diagram": {
+        "encoder": {"text": "Frame 300x180 → ViT-VQGAN (~300M)", "sub": "540 tokens per frame, vocab 16,384", "tag": "frozen",
+                    "short": "ViT-VQGAN, 540 tokens/frame"},
+        "tokens": {"groups": [("frame", 24, "540 image tokens"), ("action", 8, "16 controller tokens")],
+                   "note": "per step; 1 s = 10 frames = 5,560 tokens"},
+        "core": {"title": "nanoGPT 1.6B · layers not disclosed",
+                 "rows": [("attn", "Causal self-attention over all tokens"),
+                          ("mlp", "MLP")],
+                 "notes": ["context 5,560 tokens (1 s); actions predicted too"]},
+        "sampling": {"kind": "ar", "text": "Next-token softmax, 16,384 codes", "sub": "≥ 540 serial passes per frame",
+                     "short": "Next token, 540+ passes per frame"},
+        "decoder": {"text": "ViT-VQGAN decoder → 300x180 frame", "tag": "frozen"},
+        "loop": "AR rollout",
+    },
+}

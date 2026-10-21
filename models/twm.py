@@ -1,0 +1,47 @@
+MODEL = {
+    "slug": "twm",
+    "name": "TWM",
+    "year": 2023, "month": 3,
+    "org": "TU Dortmund",
+    "family": "rl",
+    "role": "Per-step latent model",
+    "status": "ICLR 2023",
+    "params": "19M (10.8M dynamics)",
+    "params_num": 19e6,
+    "open": "code",
+    "links": {"arXiv": "https://arxiv.org/abs/2303.07109", "code": "https://github.com/jrobine/twm"},
+    "summary": "A Dreamer-style agent whose dynamics model is a causal Transformer-XL instead of a GRU. A CNN VAE "
+               "turns each 64x64 observation into 32x32 categorical latents; latent, action and reward enter as three "
+               "separate tokens per step, and the hidden state read from the action token drives MLP heads for the "
+               "next latent, reward and discount. The policy acts from z_t alone, so the transformer runs only in "
+               "training and imagination, where the XL memory doubles throughput to 39,000 samples/s on one A100.",
+    "facts": [
+        ("Representation", "32 categorical variables x 32 classes per step from a CNN VAE on 64x64 grayscale frames (stack of 4)"),
+        ("Core", "Transformer-XL: 10 layers, d 256, 4 heads of 64, FFN 1024, SiLU; dynamics model 10.8M, world model 19M (Table 5)"),
+        ("Attention", "Causal with relative positions; history 16 steps = 47 tokens (3x16-1) [D], plus Transformer-XL segment memory"),
+        ("Actions", "Own action token through a modality-specific linear embedding; h_t is read from the action token's output"),
+        ("Prediction", "One pass per imagined step; MLP heads give the next latent (categorical sample), reward (mean) and discount"),
+        ("Decoder", "CNN decoder trains the VAE only; the policy is conditioned on z_t, so nothing is decoded in imagination"),
+        ("Memory", "Cached XL segment outputs: imagination 39,000 samples/s with the memory vs 19,900 with a vanilla transformer (~2x) [D]"),
+        ("Speed", "Imagination 39,000 samples/s on one A100 at batch 400 and ~10 h per Atari run (authors); policy 653 frames/s on a CPU"),
+        ("Key detail", "3 tokens per step, against 1 in STORM and 17 in IRIS; the transformer is never needed at deployment"),
+    ],
+    "evidence": "read",
+    "sources": ["arXiv 2303.07109 Sec. 2.1 (tokens, Transformer-XL), Table 4 (hyperparameters), Table 5 (parameters), App. A.1 (wall-clock)",
+                "verified_findings Finding 3 (STORM Table 1: TWM 3 tokens per step, 10 layers)"],
+    "diagram": {
+        "encoder": {"text": "Frame 64x64 (stack 4) → CNN VAE", "sub": "32 categoricals × 32 classes per step",
+                    "tag": "trained jointly", "short": "CNN VAE, 32×32 categoricals"},
+        "tokens": {"groups": [("latent", 1, "latent z"), ("action", 1, "action"), ("reward", 1, "reward")],
+                   "note": "per step; history 16 steps = 47 tokens"},
+        "core": {"title": "Transformer-XL ×10 · d 256 · 4 heads",
+                 "rows": [("attn", "Causal self-attention, relative positions"),
+                          ("mlp", "MLP (FFN 1024)")],
+                 "notes": ["XL memory: cached segment outputs reused as context", "h_t read from the action token"]},
+        "sampling": {"kind": "ar", "text": "Next latent: categorical sample from MLP head",
+                     "sub": "1 pass per imagined step", "short": "Next latent, 1 pass per step"},
+        "heads": ["reward", "discount"],
+        "decoder": {"none": "policy acts from z_t; the CNN decoder only trains the VAE"},
+        "loop": "AR rollout",
+    },
+}
