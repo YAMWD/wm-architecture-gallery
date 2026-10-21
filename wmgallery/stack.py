@@ -77,6 +77,8 @@ class Node:
         self.lines = []
         self.side = None                              # (label, w, h, x) of the side-input box
         self.group_left = None                        # x of the enclosing group's left border
+        self.fan = None                               # (branch index, branch count) inside a fanout
+        self.strip = 0                                # header strip height of a group
         self.row = None                               # (left, right) extent of the row (fanouts)
         if self.kind in ("group", "residual"):
             self.children = [Node(s) for s in spec[self.kind]]
@@ -206,7 +208,18 @@ class StackLayout:
                 self._measure(c)
             inner_w = max(c.w for c in n.children)
             n.w = inner_w + 2 * p.pad
-            n.h = sum(c.h for c in n.children) + p.gap * (len(n.children) - 1) + 2 * (p.pad + 2)
+            # header strip: group label (left) and loop label (right) sit above the children,
+            # so leader lines from the children never cross them
+            hs = p.ann - 0.5
+            wl = text_width(n.spec["label"], "body", p.box - 1) if n.spec.get("label") else 0
+            wr = text_width(n.spec["loop"], "body", hs) if n.spec.get("loop") else 0
+            n.strip = (hs * 1.3 + 8) if (wl or wr) else 0
+            if wl and wr:
+                n.w = max(n.w, wl + wr + 36)
+            elif wl or wr:
+                n.w = max(n.w, wl + wr + 24)
+            top_pad = max(p.pad + 2, n.strip)
+            n.h = sum(c.h for c in n.children) + p.gap * (len(n.children) - 1) + (p.pad + 2) + top_pad
         elif n.kind == "fanout":
             widths, heights = [], []
             for br in n.children:
@@ -282,7 +295,7 @@ class StackLayout:
         if self.inset_layouts:
             right_need = max(right_need, max(i["w"] for i in self.inset_layouts) + p.margin)
         self.right_w = right_need
-        self.fb_w = 34 if (self.flow.get("feedback") and not self.condensed) else 0
+        self.fb_w = 40 if (self.flow.get("feedback") and not self.condensed) else 0
         self.title_h = p.title_h
         # the column may be wider than the container when below/above stacks are wider
         extra = max(0, max(self.below_w, self.above_w) - self.cont_w)
@@ -312,10 +325,33 @@ class StackLayout:
             if n.side:
                 lo = min(lo, n.side[3])
             if n.kind == "group" and n.spec.get("repeat"):
-                lo = min(lo, n.x - 12 - text_width(n.spec["repeat"], "headm", 12.5))
+                lo = min(lo, self._repeat_x(n) - text_width(n.spec["repeat"], "headm", 12.5) - 2)
             if n.kind == "group" and n.spec.get("loop"):
-                hi = max(hi, n.x + n.w + 10 + 22)
+                hi = max(hi, n.x + n.w + 10 + 6)
         return lo, hi
+
+    def _repeat_x(self, n):
+        """Right edge (text-anchor end) of a group's "N ×" label: left of its own border, and left of the
+        enclosing group's border when nested, so no border runs through it."""
+        x = n.x - 10
+        if n.group_left is not None:
+            x = min(x, n.group_left - 6)
+        return x
+
+    def _repeat_y(self, n):
+        """Baseline height for the "N ×" label: lowest spot on the left that no side box occupies."""
+        sides = []
+        for c in _flatten(n.children, []):
+            if c.kind == "box" and c.side:
+                sh = c.side[2]
+                top = c.y + (c.h - sh) / 2
+                sides.append((top - 4, top + sh + 4))
+        y = n.y + n.h - 14
+        while y > n.y + 16:
+            if all(not (a < y + 8 and y - 10 < b) for a, b in sides):
+                return y
+            y -= 4
+        return n.y + 16
 
     # ---------------------------------------------------------------- placing
     def _place_stack(self, nodes, cx, y_bottom, group_left=None):
@@ -347,8 +383,10 @@ class StackLayout:
             for br, bw in zip(n.children, n.branch_w):
                 self._place_stack(br, x + bw / 2, y_bottom - p.gap, group_left)
                 x += bw + 14
-            for c in _flatten([c for br in n.children for c in br], []):
-                c.row = (n.x, n.x + n.w)
+            for i, br in enumerate(n.children):
+                for c in _flatten(br, []):
+                    c.row = (n.x, n.x + n.w)
+                    c.fan = (i, len(n.children))
 
     def place_all(self):
         p = self.p
@@ -367,6 +405,8 @@ class StackLayout:
     def draw(self, cv, ox=0, oy=0):
         p = self.p
         self.cv = cv
+        self.geo_boxes = []      # (x0, y0, x1, y1, tag) of everything a leader must not cross
+        self.geo_leaders = []    # (points, set of tags the leader may touch)
         self.place_all()
         self.ox, self.oy = ox, oy
         cv.warnings.extend(self.warnings)
@@ -389,12 +429,50 @@ class StackLayout:
             self._connect(self.stack[-1], self.above[0])
         else:
             t = self.stack[-1]
-            src = self._top_point(t)
-            cv.arrow(src[0], src[1], src[0], oy + self.cont_y - 12, stroke=INK, sw=1.2)
+            tops = [br[-1] for br in t.children if not br[-1].spec.get("terminal")] if t.kind == "fanout" else [t]
+            for tt in tops:
+                src = self._top_point(tt)
+                cv.arrow(src[0], src[1], src[0], oy + self.cont_y - 12, stroke=INK, sw=1.2)
         self._draw_right_column()
         self._draw_left_annotations()
         if self.flow.get("feedback") and not self.condensed:
             self._draw_feedback()
+        self._check_leaders()
+
+    def _box(self, x0, y0, x1, y1, tag):
+        self.geo_boxes.append((x0, y0, x1, y1, tag))
+
+    def _check_leaders(self):
+        """Warn when a leader line crosses a box, a side box, an inset or another annotation."""
+        def crosses(p0, p1, r):
+            x0, y0, x1, y1 = r[0] + 1.5, r[1] + 1.5, r[2] - 1.5, r[3] - 1.5
+            if x1 <= x0 or y1 <= y0:
+                return False
+            dx, dy = p1[0] - p0[0], p1[1] - p0[1]
+            t0, t1 = 0.0, 1.0
+            for pp, qq in ((-dx, p0[0] - x0), (dx, x1 - p0[0]), (-dy, p0[1] - y0), (dy, y1 - p0[1])):
+                if pp == 0:
+                    if qq < 0:
+                        return False
+                else:
+                    t = qq / pp
+                    if pp < 0:
+                        t0 = max(t0, t)
+                    else:
+                        t1 = min(t1, t)
+                    if t0 > t1:
+                        return False
+            return True
+        for pts, ok in self.geo_leaders:
+            hit = set()
+            for a, b in zip(pts, pts[1:]):
+                for r in self.geo_boxes:
+                    if r[4] in ok or r[4] in hit:
+                        continue
+                    if crosses(a, b, r):
+                        hit.add(r[4])
+            for tag in sorted(hit):
+                self.cv.warnings.append("%s: leader to %r crosses %s" % (self.spec["slug"], sorted(ok)[0], tag))
 
     def _top_point(self, n):
         """Where an arrow leaving `n` upward starts."""
@@ -408,6 +486,17 @@ class StackLayout:
     def _connect(self, lower, upper):
         """Arrow(s) from the top of `lower` to the bottom of `upper`, handling fanouts on either side."""
         cv = self.cv
+        if upper.kind == "fanout" and lower.kind == "fanout":
+            lows = [br[-1] for br in lower.children if not br[-1].spec.get("terminal")]
+            ups = [br[0] for br in upper.children]
+            if len(lows) != len(ups):
+                cv.warnings.append("%s: fanout feeds a fanout with a different branch count; each branch "
+                                   "connects to the nearest one above" % self.spec["slug"])
+            for lo in lows:
+                up = min(ups, key=lambda u: abs(u.cx - lo.cx))
+                src, dst = self._top_point(lo), self._bottom_point(up)
+                cv.arrow(src[0], src[1], dst[0], dst[1], stroke=INK, sw=1.2)
+            return
         if upper.kind == "fanout":
             src = self._top_point(lower)
             for br in upper.children:
@@ -436,6 +525,8 @@ class StackLayout:
         ox, oy = self.ox, self.oy
         if n.kind == "gap":
             return
+        if n.kind in ("merge", "text", "box"):
+            self._box(ox + n.x, oy + n.y, ox + n.x + n.w, oy + n.y + n.h, "box %r" % (n.id or n.label()))
         if n.kind == "merge":
             cx, cy = ox + n.cx, oy + n.y + 9
             cv.parts.append('<circle cx="%.1f" cy="%.1f" r="8" fill="%s" stroke="%s" stroke-width="1.1"/>' % (cx, cy, C["white"], INK))
@@ -463,6 +554,7 @@ class StackLayout:
             if n.side:
                 s, sw, sh, sx = n.side
                 sy = oy + n.y + (n.h - sh) / 2
+                self._box(ox + sx, sy, ox + sx + sw, sy + sh, "side box %r" % s)
                 cv.rect(ox + sx, sy, sw, sh, fill=C["white"], stroke=INK, sw=1.0, rx=6)
                 cv.text(ox + sx + sw / 2, sy + sh / 2 + (p.box - 1) * 0.35, s, "body", p.box - 1, INK)
                 cv.arrow(ox + sx + sw + 1, sy + sh / 2, ox + n.x - 1, sy + sh / 2, stroke=INK, sw=1.1)
@@ -470,26 +562,25 @@ class StackLayout:
         if n.kind == "group":
             fill, stroke = GROUP_STYLE.get(n.spec.get("tint", "navy"), GROUP_STYLE["navy"])
             cv.rect(ox + n.x, oy + n.y, n.w, n.h, fill=fill, stroke=stroke, sw=1.0, rx=14)
+            hs = p.ann - 0.5
+            base = oy + n.y + 5 + 0.9 * hs
             if n.spec.get("label"):
-                cv.text(ox + n.x + 8, oy + n.y + 12, n.spec["label"], "body", p.box - 1, C["grey"], anchor="start")
+                cv.text(ox + n.x + 10, base, n.spec["label"], "body", p.box - 1, C["grey"], anchor="start")
+            if n.spec.get("loop"):
+                cv.text(ox + n.x + n.w - 12, base, n.spec["loop"], "body", hs, ACCENT, anchor="end")
             self._draw_stack(n.children)
             if n.spec.get("repeat"):
-                by = oy + n.y + n.h - 14
-                # avoid a side box that sits at the same height on the left border
-                for c in _flatten(n.children, []):
-                    if c.side and (oy + c.y - 12) < by < (oy + c.y + c.h + 12):
-                        by = oy + n.y + 16
-                        break
+                by = oy + self._repeat_y(n)
                 bx = ox + n.x
                 cv.rect(bx - 4, by - 9, 8, 18, fill=fill, stroke=None, rx=0)
                 cv.path("M %.1f %.1f l 5 -6 l -8 -4 l 5 -6" % (bx - 1, by + 8), stroke=INK, sw=1.4, fill="none")
-                cv.text(bx - 10, by + 2, n.spec["repeat"], "headm", 12.5, ACCENT, anchor="end")
+                cv.text(ox + self._repeat_x(n), by + 2, n.spec["repeat"], "headm", 12.5, ACCENT, anchor="end")
             if n.spec.get("loop"):
                 x = ox + n.x + n.w + 10
+                ytop = base - 0.35 * hs
                 cv.path("M %.1f %.1f L %.1f %.1f L %.1f %.1f L %.1f %.1f" % (
-                    ox + n.x + n.w, oy + n.y + 14, x, oy + n.y + 14, x, oy + n.y + n.h - 14, ox + n.x + n.w + 2, oy + n.y + n.h - 14),
+                    ox + n.x + n.w, ytop, x, ytop, x, oy + n.y + n.h - 14, ox + n.x + n.w + 2, oy + n.y + n.h - 14),
                     stroke=ACCENT, sw=1.2, dash="4 3", marker=True)
-                cv.text(x + 14, oy + n.y + n.h / 2, n.spec["loop"], "body", p.ann - 0.5, ACCENT, anchor="middle", rotate=-90)
             return
         if n.kind == "residual":
             self._draw_stack(n.children)
@@ -511,10 +602,33 @@ class StackLayout:
                 self._draw_stack(br)
 
     def _anchor(self, n, side):
-        """Point on the row's outer edge for a leader line (never through a sibling box)."""
+        """Point where a leader line leaves the diagram: the outer edge of every node drawn at the target's
+        height (siblings in a fanout, side boxes of a group's children), so the line never crosses a box."""
+        y = n.y + n.h / 2
         left, right = n.row if n.row else (n.x, n.x + n.w)
+        for d in _flatten([n], []):
+            if d is n or d.kind == "gap":
+                continue
+            if d.y - 2 <= y <= d.y + d.h + 2:
+                l, r = d.row if d.row else (d.x, d.x + d.w)
+                left, right = min(left, l), max(right, r)
+        prefix = []
+        if n.fan:
+            i, k = n.fan
+            if (side == "right" and i != k - 1) or (side == "left" and i != 0):
+                # inner branch: leave from the box's top corner and pass over the sibling boxes
+                ye = n.y - 7
+                xs = (n.x + n.w - 8) if side == "right" else (n.x + 8)
+                blocked = any(d.kind in ("box", "text", "merge") and d is not n and d.y - 2 <= ye <= d.y + d.h + 2
+                              and ((side == "right" and d.x > n.x) or (side == "left" and d.x < n.x))
+                              for d in _flatten(self.stack + self.below + self.above, []))
+                if blocked:
+                    self.cv.warnings.append("%s: %s annotation on %r: a taller sibling branch blocks the leader; "
+                                            "move it to the other side" % (self.spec["slug"], side, n.id))
+                prefix = [(self.ox + xs, self.oy + n.y - 1), (self.ox + xs, self.oy + ye)]
+                y = ye
         x = self.ox + (left if side == "left" else right)
-        return x, self.oy + n.y + n.h / 2
+        return x, self.oy + y, prefix
 
     def _resolve(self, items, ymin, ymax):
         """Stack items (sorted by target height) without overlaps inside [ymin, ymax].
@@ -568,13 +682,25 @@ class StackLayout:
                 cv.warnings.append("%s: annotation target %r not found" % (self.spec["slug"], a["spec"]["at"]))
                 continue
             items.append({"kind": "ann", "a": a, "target": t, "h": a["h"], "yc": oy + t.y + t.h / 2})
+        for it in items:
+            if it["target"].fan:
+                i, k = it["target"].fan
+                if i != k - 1:
+                    it["yc"] = oy + it["target"].y - 7
         self._resolve(items, oy + self.col_floor, oy + self.H - 6)
         for it in items:
             t = it["target"]
-            ax, ay = self._anchor(t, "right")
+            ax, ay, pre = self._anchor(t, "right")
+            if pre:
+                cv.path("M %.1f %.1f L %.1f %.1f L %.1f %.1f" % (pre[0][0], pre[0][1], pre[1][0], pre[1][1], ax + 1, ay),
+                        stroke=INK, sw=0.9, dash="2 3")
+            tgt = "box %r" % (t.id or t.label())
             if it["kind"] == "inset":
                 il = it["il"]
                 y = it["yc"] - it["h"] / 2 + it["lab"]
+                itag = "inset for %r" % il["spec"]["for"]
+                self._box(x0, y - it["lab"], x0 + il["w"], y + il["h"], itag)
+                self.geo_leaders.append((pre + [(ax + 1, ay), (x0 - 1, y + il["h"] / 2)], {tgt, itag}))
                 cv.rect(x0, y, il["w"], il["h"], fill=C["soft"], stroke=C["slate"], sw=1.0, rx=12, dash="4 3")
                 self._place_stack(il["nodes"], x0 + il["w"] / 2 - ox, y + il["h"] - 14 - oy)
                 self._draw_stack(il["nodes"])
@@ -584,6 +710,9 @@ class StackLayout:
             else:
                 a = it["a"]
                 y = it["yc"] - a["h"] / 2
+                atag = "annotation at %r" % a["spec"]["at"]
+                self._box(x0, y, x0 + a["w"], y + a["h"], atag)
+                self.geo_leaders.append((pre + [(ax + 1, ay), (x0 - 5, it["yc"])], {tgt, atag}))
                 self._ann_text(x0, y, a["lines"], "start")
                 cv.path("M %.1f %.1f L %.1f %.1f" % (ax + 1, ay, x0 - 5, it["yc"]), stroke=INK, sw=0.9, dash="2 3")
 
@@ -600,12 +729,21 @@ class StackLayout:
                 cv.warnings.append("%s: annotation target %r not found" % (self.spec["slug"], a["spec"]["at"]))
                 continue
             items.append({"kind": "ann", "a": a, "target": t, "h": a["h"], "yc": oy + t.y + t.h / 2})
+        for it in items:
+            if it["target"].fan and it["target"].fan[0] != 0:
+                it["yc"] = oy + it["target"].y - 7
         self._resolve(items, oy + self.title_h, oy + self.H - 6)
         for it in items:
             t = it["target"]
-            ax, ay = self._anchor(t, "left")
+            ax, ay, pre = self._anchor(t, "left")
+            if pre:
+                cv.path("M %.1f %.1f L %.1f %.1f L %.1f %.1f" % (pre[0][0], pre[0][1], pre[1][0], pre[1][1], ax - 1, ay),
+                        stroke=INK, sw=0.9, dash="2 3")
             a = it["a"]
             y = it["yc"] - a["h"] / 2
+            atag = "annotation at %r" % a["spec"]["at"]
+            self._box(x1 - a["w"], y, x1, y + a["h"], atag)
+            self.geo_leaders.append((pre + [(ax - 1, ay), (x1 + 5, it["yc"])], {"box %r" % (t.id or t.label()), atag}))
             self._ann_text(x1, y, a["lines"], "end")
             cv.path("M %.1f %.1f L %.1f %.1f" % (ax - 1, ay, x1 + 5, it["yc"]), stroke=INK, sw=0.9, dash="2 3")
 
@@ -614,13 +752,13 @@ class StackLayout:
         ox, oy = self.ox, self.oy
         top = (self.above or self.stack)[-1]
         bottom = (self.below or self.stack)[0]
-        x = ox + self.W - 12
+        x = ox + self.W - 26
         y_top = oy + top.y + top.h / 2
         y_bot = oy + bottom.y + bottom.h / 2
         cv.path("M %.1f %.1f L %.1f %.1f L %.1f %.1f L %.1f %.1f" % (
             ox + top.x + top.w + 4, y_top, x, y_top, x, y_bot, ox + bottom.x + bottom.w + 5, y_bot),
             stroke=ACCENT, sw=1.1, dash="4 3", marker=True)
-        cv.text(x + 13, (y_top + y_bot) / 2, self.flow["feedback"], "body", p.ann - 0.5, ACCENT, anchor="middle", rotate=-90)
+        cv.text(x + 15, (y_top + y_bot) / 2, self.flow["feedback"], "body", p.ann - 0.5, ACCENT, anchor="middle", rotate=-90)
 
 
 def render_stack_svg(spec, condensed=False, background=True, fonts=True):

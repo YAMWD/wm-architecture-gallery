@@ -56,7 +56,7 @@ MODEL = {
         "loop": "MCTS",
     },
     "flow": {
-        "below": [{"text": "Prompt: demonstrations + state + action (text)"}],
+        "below": [{"text": "Prompt: demonstrations + state + action (text)", "short": "Prompt (text)"}],
         "stack": [
             {"box": "LLaMA tokenizer", "id": "tok", "style": "teal"},
             {"box": "Token embedding", "id": "emb", "minor": True},
@@ -76,7 +76,7 @@ MODEL = {
                                                                     {"box": "Predict next state (LLM)"}, {"box": "Score, back-propagate Q"}]},
         ],
         "annotations": [
-            {"at": "tok", "text": "frozen LLaMA-33B, no training; states and actions are natural-language text", "side": "left", "key": True},
+            {"at": "tok", "text": "frozen LLaMA-33B, no training; states and actions are natural-language text", "short": "frozen LLaMA-33B; states are text", "side": "left", "key": True},
             {"at": "attn", "text": "*52* heads, width *6,656*; causal over prompt and generated text, cut at *2,048* tokens or a newline", "side": "left", "key": True},
             {"at": "block", "text": "*60* layers, *32.5B* parameters (LLaMA paper); MCTS: *10–20* iterations of LLM generations", "side": "right", "key": True},
             {"at": "sample", "text": "temperature *0.8*; one full generation per state transition; the same model is policy, world model and reward model", "side": "left"},

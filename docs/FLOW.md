@@ -15,8 +15,10 @@ python3 -m wmgallery.render <slug> --stack              # docs/png/stack/<slug>.
 python3 -m wmgallery.render <slug> --stack --condensed  # docs/png/stack_condensed/<slug>.png (slide version)
 ```
 
-Open both PNGs. A flow is done when there are no WARN lines, no label is cut, no leader line crosses a
-box, and the condensed version is at most 430 units tall (the CLI flags taller ones).
+Open both PNGs. A flow is done when the full version prints no WARN lines, no label is cut, and the condensed
+version is at most 430 units tall (the CLI flags taller ones). The renderer checks every leader line and warns
+when one crosses a box, a side box, an inset or another annotation. Before a model goes on a slide, also clear
+the condensed warnings: give long annotations and wide input or output lines a `short` text.
 
 ## Grammar
 
@@ -36,8 +38,8 @@ Nodes:
 | node | draws | keys |
 |---|---|---|
 | `{"box": "Label"}` | one rounded box | `id`, `style` (`plain`, `dark` for the attention operator, `teal` for encoders and decoders, `orange` for action or conditioning modules, `soft` for data such as noisy latents), `side` (label of a small side-input box with an arrow into this box, e.g. `"RoPE"`, `"Timestep emb."`, `"Keys + mouse"`), `minor` (dropped in the condensed version), `short` (label used in the condensed version), `terminal` (a branch that ends here) |
-| `{"text": "..."}` | unboxed monospace text (inputs and outputs) | |
-| `{"group": [...]}` | tinted container around a sub-stack | `repeat` (`"30 ×"`), `loop` (`"3 denoising steps"`: dashed loop arrow on the right), `tint` (`navy` for the transformer block, `grey` for a sampling loop, `orange`, `teal`), `label`, `id` |
+| `{"text": "..."}` | unboxed monospace text (inputs and outputs) | `short` (used in the condensed version) |
+| `{"group": [...]}` | tinted container around a sub-stack | `repeat` (`"30 ×"`, drawn left of the border), `loop` (`"3 denoising steps"`: the label sits in the group's header strip and a dashed loop arrow runs down the right side), `tint` (`navy` for the transformer block, `grey` for a sampling loop, `orange`, `teal`), `label` (header strip, left), `id` |
 | `{"residual": [...]}` | the sub-stack, then ⊕ with a skip line from below the first node | |
 | `{"fanout": [[...], [...]]}` | parallel branches side by side, joined by diagonal arrows | each branch is a stack; its top node may be `terminal` |
 | `{"merge": "x"}` or `{"merge": "+"}` | a circled operator that joins the branches below it | |
@@ -46,8 +48,10 @@ Nodes:
 Annotations: `at` is a node id; `text` uses `*…*` around every number so it is set in the accent colour;
 `short` (optional) replaces `text` in the condensed slide version, where an annotation may run to at most
 three lines (the renderer warns otherwise);
-`side` is `left` or `right` (balance the two sides; put insets' targets on the right); `key: True` keeps the
-annotation in the condensed version (keep three or four key ones).
+`side` is `left` or `right` (balance the two sides; put insets' targets on the right; the condensed version
+puts every kept annotation on the right); `key: True` keeps the annotation in the condensed version (keep
+three or four key ones). An annotation on an inner fanout branch leaves from the box's top corner and passes
+over its siblings; prefer the outer branch on the side you annotate.
 
 ## What a flow must show
 

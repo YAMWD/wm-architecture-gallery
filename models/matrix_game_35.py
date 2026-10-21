@@ -64,7 +64,7 @@ MODEL = {
         "loop": "AR rollout",
     },
     "flow": {
-        "below": [{"text": "Previous frames + camera trajectory (from keys/mouse) + text"}],
+        "below": [{"text": "Previous frames + camera trajectory (from keys/mouse) + text", "short": "Previous frames + camera + text"}],
         "stack": [
             {"box": "Wan2.2 VAE encoder (4×16×16)", "short": "Wan2.2 VAE encoder", "id": "vae", "style": "teal"},
             {"box": "Patchify 2×2", "id": "patch", "minor": True},
@@ -85,7 +85,7 @@ MODEL = {
         "insets": [{"for": "ffn", "stack": [{"box": "Linear"}, {"box": "GELU"}, {"box": "Linear"}]},
                    {"for": "attn", "label": "tiled PRoPE", "stack": [{"box": "RoPE"}, {"box": "q × P-transpose; k, v × P-inverse"}, {"box": "Attention"}, {"box": "out × P"}]}],
         "annotations": [
-            {"at": "vae", "text": "*880* tokens per 22×40 latent frame; a chunk of *3* latent frames = *2,640* target tokens = *12* frames [D]", "side": "left", "key": True},
+            {"at": "vae", "text": "*880* tokens per 22×40 latent frame; a chunk of *3* latent frames = *2,640* target tokens = *12* frames [D]", "short": "*2,640* tokens per *12*-frame chunk", "side": "left", "key": True},
             {"at": "mem", "text": "patch memory: ≤*1* token per target cell, frustum-queried and z-buffered; retrieval once per segment, off the per-frame loop", "side": "left"},
             {"at": "seq", "text": "noisy targets + clean anchor + context frames + re-projected memory patches + reference prefix: ≤≈*7,900* tokens per chunk [D], bounded in rollout length", "side": "right", "key": True},
             {"at": "attn", "text": "*24* heads, width *3,072*; camera pose via tiled PRoPE in every block, no new parameters", "side": "left", "key": True},

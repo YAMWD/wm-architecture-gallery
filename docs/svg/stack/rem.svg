@@ -1,7 +1,7 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="804" height="628" viewBox="0 0 804 628" font-family="IBM Plex Sans">
+<svg xmlns="http://www.w3.org/2000/svg" width="810" height="628" viewBox="0 0 810 628" font-family="IBM Plex Sans">
 <style>@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;700&amp;family=Saira+Semi+Condensed:wght@500;600&amp;display=swap");</style>
 <defs><marker id="ah_1E2A3B" markerWidth="7" markerHeight="7" refX="5.5" refY="3.5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0 L7,3.5 L0,7 z" fill="#1E2A3B"/></marker><marker id="ah_B95A08" markerWidth="7" markerHeight="7" refX="5.5" refY="3.5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0 L7,3.5 L0,7 z" fill="#B95A08"/></marker></defs>
-<rect x="0.0" y="0.0" width="805.0" height="629.0" rx="0.0" fill="#FFFFFF"/>
+<rect x="0.0" y="0.0" width="811.0" height="629.0" rx="0.0" fill="#FFFFFF"/>
 <text x="382.4" y="22.0" font-family="Saira SemiCondensed" font-weight="600" font-size="18.0" fill="#1D3E72" text-anchor="middle">REM</text>
 <text x="382.4" y="38.0" font-family="IBM Plex Sans" font-weight="400" font-size="10.5" fill="#5E6B80" text-anchor="middle">Technion · 2024 · size not disclosed (~4M [D])</text>
 <rect x="166.7" y="115.0" width="394.6" height="471.0" rx="20.0" fill="#EEF1F5" stroke="#5E6B80" stroke-width="1.0"/>
@@ -86,6 +86,7 @@
 <text x="694.2" y="137.3" font-family="IBM Plex Sans" font-weight="400" font-size="11.0" fill="#1E2A3B" text-anchor="start">no</text>
 <text x="589.3" y="151.6" font-family="IBM Plex Sans" font-weight="400" font-size="11.0" fill="#1E2A3B" text-anchor="start">pixels</text>
 <path d="M 449.3 87.3 L 584.3 112.6" fill="none" stroke="#1E2A3B" stroke-width="0.9" stroke-dasharray="2 3"/>
+<path d="M 352.7 132.0 L 352.7 126.0 L 544.3 126.0" fill="none" stroke="#1E2A3B" stroke-width="0.9" stroke-dasharray="2 3"/>
 <rect x="589.3" y="163.5" width="170.6" height="129.9" rx="12.0" fill="#EEF1F5" stroke="#5E6B80" stroke-width="1.0" stroke-dasharray="4 3"/>
 <rect x="603.3" y="256.1" width="142.6" height="23.3" rx="6.0" fill="#FFFFFF" stroke="#1E2A3B" stroke-width="1.0"/>
 <text x="674.6" y="271.0" font-family="IBM Plex Sans" font-weight="400" font-size="11.0" fill="#1E2A3B" text-anchor="middle">Update S_t with (z_t, a_t)</text>
@@ -95,7 +96,8 @@
 <path d="M 674.6 215.8 L 674.6 201.8" fill="none" stroke="#1E2A3B" stroke-width="1.2" marker-end="url(#ah_1E2A3B)"/>
 <rect x="605.4" y="177.4" width="138.4" height="23.3" rx="6.0" fill="#FFFFFF" stroke="#1E2A3B" stroke-width="1.0"/>
 <text x="674.6" y="192.4" font-family="IBM Plex Sans" font-weight="400" font-size="11.0" fill="#1E2A3B" text-anchor="middle">All next codes in parallel</text>
-<path d="M 544.3 151.8 L 588.3 228.4" fill="none" stroke="#1E2A3B" stroke-width="0.9" stroke-dasharray="2 3"/>
+<path d="M 544.3 126.0 L 588.3 228.4" fill="none" stroke="#1E2A3B" stroke-width="0.9" stroke-dasharray="2 3"/>
+<path d="M 449.3 146.3 L 449.3 140.3 L 544.3 140.3" fill="none" stroke="#1E2A3B" stroke-width="0.9" stroke-dasharray="2 3"/>
 <text x="589.3" y="311.8" font-family="IBM Plex Sans" font-weight="400" font-size="11.0" fill="#1E2A3B" text-anchor="start">reward</text>
 <text x="626.4" y="311.8" font-family="IBM Plex Sans" font-weight="400" font-size="11.0" fill="#1E2A3B" text-anchor="start">and</text>
 <text x="647.5" y="311.8" font-family="IBM Plex Sans" font-weight="400" font-size="11.0" fill="#1E2A3B" text-anchor="start">termination</text>
@@ -115,7 +117,7 @@
 <text x="649.2" y="354.7" font-family="IBM Plex Sans" font-weight="700" font-size="11.0" fill="#B95A08" text-anchor="start">10</text>
 <text x="665.0" y="354.7" font-family="IBM Plex Sans" font-weight="400" font-size="11.0" fill="#1E2A3B" text-anchor="start">vs</text>
 <text x="678.4" y="354.7" font-family="IBM Plex Sans" font-weight="700" font-size="11.0" fill="#B95A08" text-anchor="start">640</text>
-<path d="M 544.3 158.9 L 584.3 330.0" fill="none" stroke="#1E2A3B" stroke-width="0.9" stroke-dasharray="2 3"/>
+<path d="M 544.3 140.3 L 584.3 330.0" fill="none" stroke="#1E2A3B" stroke-width="0.9" stroke-dasharray="2 3"/>
 <text x="589.3" y="377.0" font-family="IBM Plex Sans" font-weight="700" font-size="11.0" fill="#B95A08" text-anchor="start">5</text>
 <text x="598.5" y="377.0" font-family="IBM Plex Sans" font-weight="400" font-size="11.0" fill="#1E2A3B" text-anchor="start">layers,</text>
 <text x="633.7" y="377.0" font-family="IBM Plex Sans" font-weight="400" font-size="11.0" fill="#1E2A3B" text-anchor="start">FFN</text>
@@ -227,6 +229,6 @@
 <text x="62.3" y="566.8" font-family="IBM Plex Sans" font-weight="400" font-size="11.0" fill="#1E2A3B" text-anchor="start">vocabulary</text>
 <text x="118.9" y="566.8" font-family="IBM Plex Sans" font-weight="700" font-size="11.0" fill="#B95A08" text-anchor="start">512</text>
 <path d="M 315.6 556.3 L 143.7 556.3" fill="none" stroke="#1E2A3B" stroke-width="0.9" stroke-dasharray="2 3"/>
-<path d="M 477.7 52.8 L 791.9 52.8 L 791.9 608.8 L 472.3 608.8" fill="none" stroke="#B95A08" stroke-width="1.1" stroke-dasharray="4 3" marker-end="url(#ah_B95A08)"/>
-<text x="804.9" y="330.8" font-family="IBM Plex Sans" font-weight="400" font-size="10.5" fill="#B95A08" text-anchor="middle" transform="rotate(-90.0 804.9 330.8)">next step</text>
+<path d="M 477.7 52.8 L 783.9 52.8 L 783.9 608.8 L 472.3 608.8" fill="none" stroke="#B95A08" stroke-width="1.1" stroke-dasharray="4 3" marker-end="url(#ah_B95A08)"/>
+<text x="798.9" y="330.8" font-family="IBM Plex Sans" font-weight="400" font-size="10.5" fill="#B95A08" text-anchor="middle" transform="rotate(-90.0 798.9 330.8)">next step</text>
 </svg>

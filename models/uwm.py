@@ -55,4 +55,37 @@ MODEL = {
         "decoder": {"text": "SDXL VAE decoder → 224x224 frames", "sub": "only for dynamics and video modes; the policy never decodes",
                     "tag": "frozen", "short": "SDXL VAE decoder (not for policy)"},
     },
+    "flow": {
+        "below": [{"text": "Current + future frames 224×224 + actions", "short": "Frames 224×224 + actions"}],
+        "stack": [
+            {"box": "SDXL VAE encoder (frozen)", "short": "SDXL VAE encoder", "id": "vae", "style": "teal"},
+            {"box": "Patchify 4×4×2 (3D conv)", "id": "patch", "minor": True},
+            {"group": [
+                {"box": "Actions + patches + registers", "short": "Token sequence", "id": "seq", "style": "soft", "side": "Action MLP enc."},
+                {"group": [
+                    {"residual": [{"box": "AdaLN", "id": "ada", "style": "orange", "side": "ResNet-18 + timesteps"},
+                                  {"box": "Bidirectional self-attention", "short": "Bidirectional attention", "id": "attn", "style": "dark"}]},
+                    {"residual": [{"box": "AdaLN", "minor": True}, {"box": "MLP", "id": "mlp"}]},
+                ], "repeat": "12 ×", "id": "block"},
+                {"box": "DDIM update", "id": "upd", "minor": True},
+            ], "loop": "10 DDIM steps", "tint": "grey", "id": "denoise"},
+            {"fanout": [[{"box": "Future image latents", "short": "Future images", "id": "img"}],
+                        [{"box": "Action chunk", "id": "act", "style": "orange", "terminal": True}]]},
+        ],
+        "above": [{"box": "SDXL VAE decoder", "id": "dec", "style": "teal", "minor": True}, {"text": "Future frames (not used by the policy)", "short": "Future frames (not for the policy)"}],
+        "annotations": [
+            {"at": "vae", "text": "frozen SDXL VAE: future 224×224 frames → 28×28×4 latents, patch (4,4,2) → *49* tokens per camera per 2-frame stack [D]",
+             "short": "SDXL VAE: *49* tokens per camera per 2-frame stack [D]", "side": "left", "key": True},
+            {"at": "seq", "text": "*16* action tokens (shallow shared MLP) + *49* patches per camera + *8* registers, learnable positional embedding: *171* tokens with *3* cameras [D]", "side": "left"},
+            {"at": "ada", "text": "current frames (*2* per camera) → trainable ResNet-18; its features + the action and image timestep embeddings drive AdaLN in every block",
+             "short": "AdaLN: ResNet-18 features + *2* timestep embeddings", "side": "left", "key": True},
+            {"at": "attn", "text": "*12* heads, width *768*; bidirectional over action tokens, image patches and registers", "side": "left"},
+            {"at": "mlp", "text": "*12* layers, d *768*, MLP ratio *4* (activation not stated); ~*85M* in the blocks [D]; trained from scratch",
+             "short": "*12* layers, d *768*, *12* heads; ~*85M* [D]", "side": "right", "key": True},
+            {"at": "upd", "text": "DDIM, *10* steps (*100* in training); the policy fixes the image timestep at T, so the image tokens stay in the sequence as pure noise", "side": "right"},
+            {"at": "act", "text": "*16* actions per chunk, *8* executed, robot at *10* Hz; inference latency not disclosed",
+             "short": "*16* actions per chunk; latency not disclosed", "side": "right", "key": True},
+            {"at": "dec", "text": "only in forward-dynamics and video modes; the policy never decodes", "side": "right"},
+        ],
+    },
 }

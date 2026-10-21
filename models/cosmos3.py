@@ -65,4 +65,38 @@ MODEL = {
         "decoder": {"text": "Wan2.2 VAE decoder → video (+ audio)", "sub": "skipped when serving the policy", "tag": "frozen",
                     "short": "Wan2.2 VAE decoder (policy skips it)"},
     },
+    "flow": {
+        "below": [{"fanout": [[{"text": "Text + images (AR)"}], [{"text": "Video, audio, actions (DM)"}]]}],
+        "stack": [
+            {"box": "ViT · Wan2.2 VAE · projections", "short": "ViT + Wan2.2 VAE", "id": "enc", "style": "teal"},
+            {"box": "Pack AR + DM tokens", "id": "seq", "minor": True},
+            {"group": [
+                {"box": "Noisy DM tokens", "id": "noisy", "style": "soft", "minor": True},
+                {"group": [
+                    {"fanout": [[{"box": "LayerNorm", "minor": True}, {"box": "Reasoner QKV", "id": "rqkv", "minor": True}],
+                                [{"box": "LayerNorm", "minor": True}, {"box": "Generator QKV", "id": "gqkv", "minor": True}]]},
+                    {"box": "Shared self-attention", "id": "attn", "style": "dark", "side": "3D MRoPE"},
+                    {"fanout": [[{"box": "LayerNorm", "minor": True}, {"box": "Reasoner MLP", "id": "rmlp"}],
+                                [{"box": "LayerNorm", "minor": True}, {"box": "Generator MLP", "id": "gmlp"}]]},
+                ], "repeat": "36 ×", "id": "block"},
+                {"box": "Update DM tokens", "id": "upd", "minor": True},
+            ], "loop": "50 flow steps (policy 4)", "tint": "grey", "id": "denoise"},
+            {"fanout": [[{"box": "Video latents", "id": "vid"}],
+                        [{"box": "Next text token", "id": "txt", "terminal": True, "minor": True}],
+                        [{"box": "Action out-projection", "short": "Action chunk", "id": "act", "style": "orange", "terminal": True}]]},
+        ],
+        "above": [{"box": "Wan2.2 VAE decoder", "id": "dec", "style": "teal"}, {"text": "Video + audio (policy skips it)"}],
+        "annotations": [
+            {"at": "enc", "text": "AR: ViT (patch *16*, 2×2 merge) and text tokens; DM: frozen Wan2.2 VAE (*4×* temporal, *32×32* spatial = (H/32)×(W/32) tokens per latent frame [D]), audio at *25* tokens/s [D], per-embodiment action projections",
+             "short": "frozen Wan2.2 VAE: *4×* temporal, *32×32* spatial; ViT for AR images", "side": "left", "key": True},
+            {"at": "seq", "text": "one packed sequence, AR first and DM after; *74,000* tokens in training; a learned modality embedding marks each non-text token", "side": "left"},
+            {"at": "attn", "text": "*32* query and *8* KV heads of *128* (Nano); AR tokens attend causally to AR only, DM tokens bidirectionally to AR + DM; AR never reads DM", "side": "left"},
+            {"at": "upd", "text": "flow matching: *50* steps for generation, *4* for the DROID policy (CFG split over *2* GPUs); the reasoner pass runs once and is cached across steps; how σ enters the generator is not described", "side": "left"},
+            {"at": "gmlp", "text": "Nano: *36* layers, hidden *4,096*, FFN *12,288* in each tower; two towers from Qwen3-VL-8B = *16B* (Super: *64* layers, *5,120*, *64B*); each token uses one tower, so per-token compute stays near the dense *8B* backbone [D]",
+             "short": "Nano: *36* layers, *4,096* wide, *2* towers = *16B*", "side": "right", "key": True},
+            {"at": "act", "text": "the DROID policy predicts *32* joint positions at *15* Hz per chunk, served on *2* RTX Pro 6000; per-chunk latency not disclosed",
+             "short": "policy: *32* actions per chunk in *4* steps; latency not disclosed", "side": "right", "key": True},
+            {"at": "dec", "text": "skipped when serving the policy; Nano 720p text-to-video takes *297* s on one H100 NVL vs *115* s on one B200 (company claim)", "side": "right"},
+        ],
+    },
 }
