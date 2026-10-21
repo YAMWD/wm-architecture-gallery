@@ -6,12 +6,12 @@ MODEL = {
     "family": "dit",
     "role": "Diffusion transformer",
     "status": "blog post (web technical report)",
-    "params": "500M open; demo checkpoint larger",
+    "params": "500M (demo checkpoint larger)",
     "params_num": 500e6,
     "open": "code + weights",
     "links": {"page": "https://oasis-model.github.io/", "code": "https://github.com/etched-ai/open-oasis",
               "weights": "https://huggingface.co/Etched/oasis-500m"},
-    "summary": "The first publicly playable real-time diffusion world model (Minecraft). A ViT autoencoder maps each "
+    "summary": "An early playable real-time diffusion world model (Minecraft), released with open 500M weights. A ViT autoencoder maps each "
                "360x640 frame to 144 latent tokens, and a small DiT generates one frame at a time with full spatial "
                "attention inside the frame and causal temporal attention over a 32-frame window, trained with "
                "Diffusion Forcing. Each pass carries only 144 tokens, so batch-1 serving is bound by weight reads "

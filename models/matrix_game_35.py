@@ -43,7 +43,8 @@ MODEL = {
     "sources": ["arXiv 2608.29910 Sec. 2.1 (tiled PRoPE), 2.2 (patch, context and reference memory), 2.3 (distillation), 4.1 (implementation), "
                 "4.4 (real-time inference), Table 1",
                 "HF Wan-AI/Wan2.2-TI2V-5B config.json (local copy: 30 layers, dim 3072, 24 heads, ffn 14336, 48 latent channels)",
-                "Wan2.2 README (VAE compression 4x16x16; local copy)"],
+                "Wan2.2 README (VAE compression 4x16x16; local copy)",
+                "code link on the paper's title page (weights release not verified in this pass)"],
     "diagram": {
         "encoder": {"text": "Frames → Wan2.2 VAE (4x16x16) + patchify", "sub": "880 latents per 22x40 latent frame at 1280x704 [D]",
                     "tag": "frozen", "short": "Wan2.2 VAE → 880 latents"},

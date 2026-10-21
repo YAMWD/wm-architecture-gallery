@@ -45,7 +45,7 @@ def read_changelog():
     return "\n".join(out)
 
 
-def card_html(m, svg):
+def card_html(m, svg, artifact=False):
     links = " · ".join('<a href="%s" target="_blank" rel="noopener">%s</a>' % (h(u), h(k)) for k, u in m.get("links", {}).items())
     facts = "".join("<tr><th>%s</th><td>%s</td></tr>" % (h(k), h(v)) for k, v in m["facts"])
     sources = "; ".join(h(s) for s in m.get("sources", []))
@@ -74,7 +74,7 @@ def card_html(m, svg):
       <p class="summary">{h(m["summary"])}</p>
       <table class="facts">{facts}</table>
       <p class="sources"><b>Sources:</b> {sources}</p>
-      <p class="tools"><a href="svg/{h(m["slug"])}.svg" download>Download SVG</a> · <button class="cmp" data-slug="{h(m["slug"])}">Compare</button></p>
+      <p class="tools"><a href="svg/{h(m["slug"])}.svg"{"" if artifact else " download"} target="_blank" rel="noopener">{"Open" if artifact else "Download"} SVG</a> · <button class="cmp" data-slug="{h(m["slug"])}">Compare</button></p>
     </div>
   </div>
 </article>'''
@@ -83,13 +83,14 @@ def card_html(m, svg):
 CSS = r"""
 :root{--bg:#f6f8fb;--card:#ffffff;--ink:#1E2A3B;--muted:#5E6B80;--navy:#1D3E72;--orange:#F58F2D;--teal:#00A8A4;--gold:#F0B225;
 --line:#d7dde7;--soft:#EEF1F5;--link:#1D3E72;--badge:#e4eaf4;}
-@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#0f1b2d;--card:#162642;--ink:#eef2f7;--muted:#aab6c8;--navy:#8fb0e6;--line:#2b3b57;--soft:#1d2f4e;--link:#9cc0ff;--badge:#22365a;}}
-:root[data-theme="dark"]{--bg:#0f1b2d;--card:#162642;--ink:#eef2f7;--muted:#aab6c8;--navy:#8fb0e6;--line:#2b3b57;--soft:#1d2f4e;--link:#9cc0ff;--badge:#22365a;}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#0f1b2d;--card:#162642;--ink:#eef2f7;--muted:#aab6c8;--navy:#8fb0e6;--line:#2b3b57;--soft:#1d2f4e;--link:#9cc0ff;--badge:#22365a;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0f1b2d;--card:#162642;--ink:#eef2f7;--muted:#aab6c8;--navy:#8fb0e6;--line:#2b3b57;--soft:#1d2f4e;--link:#9cc0ff;--badge:#22365a;color-scheme:dark}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font-family:"IBM Plex Sans",system-ui,-apple-system,Segoe UI,Roboto,sans-serif;font-size:15px;line-height:1.45}
 a{color:var(--link)}
 h1,h2,h3,h4{font-family:"Saira Semi Condensed","Saira SemiCondensed","IBM Plex Sans",sans-serif;font-weight:600;color:var(--navy);margin:0}
-.wrap{max-width:1280px;margin:0 auto;padding:16px}
+.wrap{max-width:1280px;margin:0 auto;padding-inline:16px;padding-block:16px}
+.scroll{overflow-x:auto;max-width:100%}
 header.top{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;justify-content:space-between;border-bottom:3px solid var(--orange);padding-bottom:12px;margin-bottom:16px}
 header.top h1{font-size:34px;line-height:1.1}
 header.top .sub{color:var(--muted);margin-top:4px}
@@ -116,7 +117,8 @@ button.primary{background:var(--navy);color:#fff;border-color:var(--navy)}
 .badges{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
 .badge{font-size:12px;padding:2px 8px;border-radius:999px;background:var(--badge);color:var(--ink);white-space:nowrap}
 .badge.ev-verified{background:#dcf2f1;color:#055e5c}.badge.ev-read{background:#e4eaf4;color:#1D3E72}.badge.ev-claim{background:#fde8d4;color:#8a4a07}
-.card-body{display:grid;grid-template-columns:320px 1fr;gap:16px;padding:14px 16px}
+.card-body{display:grid;grid-template-columns:320px minmax(0,1fr);gap:16px;padding:14px 16px}
+.text{min-width:0}
 @media (max-width:760px){.card-body{grid-template-columns:1fr}}
 .fig{background:#fff;border:1px solid var(--line);border-radius:8px;padding:6px;align-self:start}
 .fig svg{width:100%;height:auto;display:block}
@@ -208,7 +210,7 @@ JS = r"""
 """
 
 
-def build(out_dir=DEFAULT_OUT, png=False, width=300):
+def build(out_dir=DEFAULT_OUT, png=False, width=300, artifact=None):
     specs = R.load_models()
     bad = False
     for m in specs:
@@ -221,6 +223,7 @@ def build(out_dir=DEFAULT_OUT, png=False, width=300):
     specs.sort(key=R.sort_key)
     os.makedirs(os.path.join(out_dir, "svg"), exist_ok=True)
     cards = []
+    acards = []
     data = []
     for m in specs:
         svg, warns, size = D.render_svg(m, width)
@@ -231,7 +234,9 @@ def build(out_dir=DEFAULT_OUT, png=False, width=300):
         if png:
             D.svg_to_png(svg, os.path.join(out_dir, "png", m["slug"] + ".png")) if os.makedirs(os.path.join(out_dir, "png"), exist_ok=True) is None else None
         inline = svg.replace(D.FONT_IMPORT, "")  # the page loads the fonts once
-        cards.append(card_html(m, inline))
+        cards.append(card_html(m, inline, artifact=False))
+        if artifact:
+            acards.append(card_html(m, inline, artifact=True))
         d = {k: v for k, v in m.items() if not k.startswith("_")}
         d["facts"] = [list(f) for f in m["facts"]]
         data.append(d)
@@ -248,19 +253,8 @@ def build(out_dir=DEFAULT_OUT, png=False, width=300):
     today = datetime.date.today().isoformat()
     n_models = len(specs)
     years = sorted({m["year"] for m in specs})
-    page = f'''<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{SITE_TITLE}</title>
-<meta name="description" content="Architecture cards for {n_models} world models whose core is a transformer, drawn in one visual language: tokenizer, token layout, transformer blocks, sampling, decoder.">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;600;700&family=IBM+Plex+Mono&family=Saira+Semi+Condensed:wght@500;600&display=swap" rel="stylesheet">
-<style>{CSS}</style>
-</head>
-<body>
-<div class="wrap">
+    def body(cards_html):
+        return f'''<div class="wrap">
 <header class="top">
   <div>
     <h1>{SITE_TITLE}</h1>
@@ -295,10 +289,10 @@ def build(out_dir=DEFAULT_OUT, png=False, width=300):
   <button id="cmpswap">Swap</button> <button id="cmpclear">Clear</button>
 </div>
 <div class="cmpview hidden" id="cmpview"></div>
-<table class="cmptable hidden" id="cmptable"></table>
+<div class="scroll"><table class="cmptable hidden" id="cmptable"></table></div>
 
 <div class="grid" id="grid">
-{"".join(cards)}
+{"".join(cards_html)}
 </div>
 
 <section class="panel changelog" style="margin-top:20px"><h2>Changelog</h2>{read_changelog()}</section>
@@ -306,12 +300,26 @@ def build(out_dir=DEFAULT_OUT, png=False, width=300):
 <footer>Cards © the gallery authors, CC BY 4.0. Diagrams are drawn from the cited papers, code and reports; figures that come from a developer's own report are marked as such. Fonts: IBM Plex and Saira (OFL).</footer>
 </div>
 <script>{JS}</script>
-</body>
-</html>
 '''
+    fonts = ('<link rel="preconnect" href="https://fonts.googleapis.com">\n'
+             '<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;600;700&family=IBM+Plex+Mono'
+             '&family=Saira+Semi+Condensed:wght@500;600&display=swap" rel="stylesheet">\n')
+    desc = ("Architecture cards for %d world models whose core is a transformer, drawn in one visual language: "
+            "tokenizer, token layout, transformer blocks, sampling, decoder." % n_models)
+    page = ('<!doctype html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n'
+            '<meta name="viewport" content="width=device-width, initial-scale=1">\n<title>%s</title>\n'
+            '<meta name="description" content="%s">\n%s<style>%s</style>\n</head>\n<body>\n%s</body>\n</html>\n'
+            % (SITE_TITLE, h(desc), fonts, CSS, body(cards)))
     with open(os.path.join(out_dir, "index.html"), "w", encoding="utf-8") as f:
         f.write(page)
     print("built %s with %d cards -> %s" % (SITE_TITLE, n_models, os.path.join(out_dir, "index.html")))
+    if artifact:
+        # fragment for publishing as a claude.ai artifact: the host adds the document skeleton
+        frag = "<title>%s</title>\n%s<style>%s</style>\n%s" % (SITE_TITLE, fonts, CSS, body(acards))
+        os.makedirs(os.path.dirname(os.path.abspath(artifact)), exist_ok=True)
+        with open(artifact, "w", encoding="utf-8") as f:
+            f.write(frag)
+        print("artifact fragment -> %s" % artifact)
 
 
 def main(argv=None):
@@ -319,8 +327,9 @@ def main(argv=None):
     ap.add_argument("--out", default=DEFAULT_OUT)
     ap.add_argument("--png", action="store_true")
     ap.add_argument("--width", type=int, default=300)
+    ap.add_argument("--artifact", default=None, help="also write a skeleton-free copy for publishing as an artifact")
     a = ap.parse_args(argv)
-    build(a.out, a.png, a.width)
+    build(a.out, a.png, a.width, a.artifact)
 
 
 if __name__ == "__main__":

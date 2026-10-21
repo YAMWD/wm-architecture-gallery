@@ -6,7 +6,7 @@ MODEL = {
     "family": "dit",
     "role": "Diffusion transformer",
     "status": "arXiv preprint (ICML 2026 format), v2 Jun 2026",
-    "params": "8B (HunyuanVideo-1.5); 5B Wan variant",
+    "params": "8B (HunyuanVideo-1.5)",
     "params_num": 8e9,
     "open": "code + weights",
     "links": {"arXiv": "https://arxiv.org/abs/2512.14614", "code": "https://github.com/Tencent-Hunyuan/HY-WorldPlay",

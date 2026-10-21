@@ -6,7 +6,7 @@ MODEL = {
     "family": "ssm",
     "role": "SSM hybrid",
     "status": "arXiv preprint",
-    "params": "2.6B (+ optional 17B LTX-2 refiner)",
+    "params": "2.6B (+17B optional refiner)",
     "params_num": 2.6e9,
     "open": "code + weights",
     "links": {"arXiv": "https://arxiv.org/abs/2605.15178"},

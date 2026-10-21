@@ -6,7 +6,7 @@ MODEL = {
     "family": "dit",
     "role": "Diffusion transformer",
     "status": "arXiv preprint",
-    "params": "13B (HunyuanVideo base; not restated)",
+    "params": "13B (HunyuanVideo base)",
     "params_num": 13e9,
     "open": "code + weights",
     "links": {"arXiv": "https://arxiv.org/abs/2506.17201", "page": "https://hunyuan-gamecraft.github.io/",

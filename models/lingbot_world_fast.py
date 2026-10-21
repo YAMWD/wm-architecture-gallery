@@ -6,7 +6,7 @@ MODEL = {
     "family": "dit",
     "role": "Diffusion transformer",
     "status": "arXiv preprint (company), Jan 2026",
-    "params": "14B dense (Wan2.2 A14B high-noise expert)",
+    "params": "14B dense (Wan2.2 A14B expert)",
     "params_num": 14e9,
     "open": "code + weights",
     "links": {"arXiv": "https://arxiv.org/abs/2601.20540", "code": "https://github.com/robbyant/lingbot-world",

@@ -215,6 +215,7 @@ class Layout:
         self.bw = width - 2 * self.PAD - self.right_margin
         self.inner = self.bw - 20
         self.rows = []
+        self.warnings = []
         self._measure()
 
     # -- helpers --------------------------------------------------------------
@@ -245,7 +246,15 @@ class Layout:
         meta = spec.get("meta") or " · ".join(str(v) for v in (spec.get("year"), spec.get("org"), spec.get("params")) if v)
         if self.compact:
             meta = " · ".join(str(v) for v in (spec.get("year"), spec.get("org")) if v)
-        self.meta_lines = wrap(meta, "body", self.SUB, self.W - 2 * self.PAD)[:2]
+        ml = wrap(meta, "body", self.SUB, self.W - 2 * self.PAD)
+        if len(ml) > 2:
+            self.warnings.append("%s: header line too long, truncated (shorten params or org)" % spec["slug"])
+        self.meta_lines = ml[:2]
+        self.name_size = 17.0
+        while text_width(spec["name"], "head", self.name_size) > self.W - 2 * self.PAD - 2 and self.name_size > 13:
+            self.name_size -= 0.5
+        if text_width(spec["name"], "head", self.name_size) > self.W - 2 * self.PAD - 2:
+            self.warnings.append("%s: name does not fit the header; shorten it" % spec["slug"])
         self.header_h = 22 + len(self.meta_lines) * self.SUB * 1.3 + (1 if self.compact else 4)
         self.rows = []
         enc = d.get("encoder")
@@ -263,8 +272,13 @@ class Layout:
                 self._tok.append((g, sq, lw, ls))
             nlab = max([len(t[3]) for t in self._tok] + [0])
             h = (6 if self.compact else 7) + 9 + 3 + nlab * self.SMALL * self.LH + (4 if self.compact else 6)
+            self._tok_note = []
             if tok.get("note") and not self.compact:
-                h += self.SMALL * self.LH + 2
+                self._tok_note = wrap(tok["note"], "body", self.SMALL, self.bw - 12)
+                if len(self._tok_note) > 2:
+                    self.warnings.append("%s: token note longer than two lines; shorten it" % self.spec["slug"])
+                    self._tok_note = self._tok_note[:2]
+                h += len(self._tok_note) * self.SMALL * self.LH + 2
             self.rows.append(("tokens", h, self._draw_tokens))
         core = d.get("core")
         if core:
@@ -321,7 +335,8 @@ class Layout:
         self.cv, self.ox, self.oy = cv, ox, oy
         x, y = ox + self.PAD, oy + self.PAD
         spec = self.spec
-        cv.text(x, y + 16, spec["name"], "head", 17, C["navy"], anchor="start")
+        cv.warnings.extend(self.warnings)
+        cv.text(x, y + 16, spec["name"], "head", self.name_size, C["navy"], anchor="start")
         yy = y + 16 + self.SUB * 1.3
         for ml in self.meta_lines:
             cv.text(x, yy, ml, "body", self.SUB, C["grey"], anchor="start")
@@ -403,8 +418,9 @@ class Layout:
             if ls:
                 cv.lines(x + lw / 2, ys + s + 3, ls, "body", self.SMALL, C["grey"])
             x += lw + gap
-        if t.get("note") and not self.compact:
-            cv.text(x0 + self.bw / 2, top + h - 5, t["note"], "body", self.SMALL, C["grey"])
+        if self._tok_note:
+            cv.lines(x0 + self.bw / 2, top + h - 4 - len(self._tok_note) * self.SMALL * self.LH + 2, self._tok_note,
+                     "body", self.SMALL, C["grey"])
 
     def _draw_core(self, top, h):
         cv, core = self.cv, self.spec["diagram"]["core"]
@@ -416,6 +432,8 @@ class Layout:
         ts = 13.5 if self.compact else 13.0
         while text_width(title, "head", ts) > self.bw - 12 and ts > 10:
             ts -= 0.5
+        if ts < 11.5:
+            cv.warnings.append("%s: core title shrunk to %.1f pt; shorten it" % (self.spec["slug"], ts))
         cv.text(x + self.bw / 2, top + 16.5, title, "head", ts, C["white"])
         y = top + 24 + 5
         rs = self.SUB + 0.5 if not self.compact else self.MAIN - 1
