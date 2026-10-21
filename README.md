@@ -6,6 +6,8 @@ what the transformer blocks look like, how the next state is sampled and what de
 The idea follows Sebastian Raschka's [LLM Architecture Gallery](https://sebastianraschka.com/llm-architecture-gallery/),
 applied to world models.
 
+Published copy (private claude.ai page, share from its menu): https://claude.ai/artifact/Ds373si23Shvz56ZVURwaj
+
 The site is a single static page (`docs/index.html`) with filters (family, role, evidence level, availability),
 sorting, search, a two-model comparison view, per-card permalinks and downloadable SVGs. `docs/data.json`
 holds every card as data.
