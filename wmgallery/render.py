@@ -1,0 +1,96 @@
+"""Render model diagrams.
+
+    python3 -m wmgallery.render                 # all models -> site/svg, site/png (warnings printed)
+    python3 -m wmgallery.render iris storm      # only these slugs
+    python3 -m wmgallery.render --sheet /tmp/sheet.png   # also build a contact sheet of the PNGs
+    python3 -m wmgallery.render --row iris storm dreamer4 --out /tmp/row.png   # one composite row (for slides)
+"""
+import os
+import sys
+import argparse
+
+from . import diagram as D
+from . import registry as R
+
+
+def contact_sheet(png_paths, out, cols=4, thumb_w=360, label=True):
+    from PIL import Image, ImageDraw, ImageFont
+    ims = []
+    for p in png_paths:
+        im = Image.open(p).convert("RGB")
+        s = thumb_w / im.width
+        ims.append((os.path.basename(p)[:-4], im.resize((thumb_w, int(im.height * s)), Image.LANCZOS)))
+    rows = (len(ims) + cols - 1) // cols
+    row_h = [max(im.height for _, im in ims[r * cols:(r + 1) * cols]) + 22 for r in range(rows)]
+    sheet = Image.new("RGB", (cols * (thumb_w + 16) + 16, sum(row_h) + 16), "white")
+    dr = ImageDraw.Draw(sheet)
+    try:
+        font = ImageFont.truetype(os.path.join(D.FONT_DIR, D.FONT_FILES["bold"]), 16)
+    except OSError:
+        font = None
+    y = 8
+    for r in range(rows):
+        for c in range(cols):
+            i = r * cols + c
+            if i >= len(ims):
+                break
+            name, im = ims[i]
+            x = 16 + c * (thumb_w + 16)
+            dr.text((x, y), name, fill="#333", font=font)
+            sheet.paste(im, (x, y + 20))
+        y += row_h[r]
+    sheet.save(out)
+    return out
+
+
+def main(argv=None):
+    ap = argparse.ArgumentParser()
+    ap.add_argument("slugs", nargs="*")
+    ap.add_argument("--out", default=None, help="output dir (default: site/) or, with --row, the PNG path")
+    ap.add_argument("--width", type=int, default=300)
+    ap.add_argument("--scale", type=float, default=3.0)
+    ap.add_argument("--no-png", action="store_true")
+    ap.add_argument("--sheet", default=None)
+    ap.add_argument("--row", action="store_true", help="compose the given slugs side by side into one PNG")
+    ap.add_argument("--gap", type=int, default=24)
+    ap.add_argument("--compact", action="store_true", help="compact mode (slides): main text only")
+    a = ap.parse_args(argv)
+
+    specs = R.load_models(only=set(a.slugs) or None)
+    if a.slugs:
+        order = {s: i for i, s in enumerate(a.slugs)}
+        specs.sort(key=lambda m: order.get(m["slug"], 999))
+    bad = False
+    for m in specs:
+        errs = R.validate(m)
+        if errs:
+            bad = True
+            print("INVALID %s: %s" % (m["slug"], "; ".join(errs)))
+    if bad:
+        sys.exit(1)
+    if a.row:
+        svg, warns, size = D.compose_row(specs, width=a.width, gap=a.gap, compact=a.compact)
+        out = a.out or "row.png"
+        if out.endswith(".svg"):
+            open(out, "w").write(svg)
+        else:
+            D.svg_to_png(svg, out, a.scale)
+        for w in warns:
+            print("WARN", w)
+        print("wrote %s (%d x %d units)" % (out, size[0], size[1]))
+        return
+    out_dir = a.out or os.path.join(R.ROOT, "site")
+    pngs = []
+    for m in specs:
+        p, warns, size = D.write_outputs(m, out_dir, width=a.width, png=not a.no_png, scale=a.scale, compact=a.compact)
+        for w in warns:
+            print("WARN", w)
+        print("%-28s %4d x %4d  %s" % (m["slug"], size[0], size[1], p))
+        pngs.append(os.path.join(out_dir, "png", "compact" if a.compact else "", m["slug"] + ".png"))
+    if a.sheet and pngs:
+        contact_sheet(pngs, a.sheet)
+        print("sheet:", a.sheet)
+
+
+if __name__ == "__main__":
+    main()

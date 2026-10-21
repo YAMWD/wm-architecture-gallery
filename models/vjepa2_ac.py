@@ -1,0 +1,42 @@
+MODEL = {
+    "slug": "vjepa2_ac",
+    "name": "V-JEPA 2-AC",
+    "year": 2025, "month": 6,
+    "org": "Meta FAIR",
+    "family": "jepa",
+    "role": "Embedding predictor",
+    "status": "arXiv preprint",
+    "params": "300M predictor + 1B frozen encoder",
+    "params_num": 1.3e9,
+    "open": "code",
+    "links": {"arXiv": "https://arxiv.org/abs/2506.09985", "code": "https://github.com/facebookresearch/vjepa2"},
+    "summary": "An action-conditioned predictor on top of the frozen V-JEPA 2 video encoder. It predicts the next "
+               "frame's encoder features from the current features, the end-effector state and the action, with an "
+               "L1 loss and no pixel reconstruction. Robots plan with it by cross-entropy-method search in feature "
+               "space: 800 action samples times 10 refinement iterations per executed action.",
+    "facts": [
+        ("Representation", "256 patch features (16x16 x 1408) per 256x256 frame from a frozen ViT-g encoder"),
+        ("Core", "Predictor: 24 layers, d 1024, 16 heads, 3D-RoPE; ~300M parameters"),
+        ("Attention", "Block-causal over interleaved (action, state, frame) steps; 15 steps = ~3,870 tokens in training"),
+        ("Actions", "7-D end-effector delta and state, each mapped to width 1024 as its own token"),
+        ("Prediction", "One pass regresses the next embedding (L1); no sampling, no pixels"),
+        ("Decoder", "None at deployment; the goal is an image embedding"),
+        ("Memory", "Short context of 16 frames at 4 fps"),
+        ("Speed", "16 s per action on one RTX 4090 with 800 CEM samples x 10 iterations (authors); ~2 ms per one-step rollout [D]"),
+        ("Key detail", "8,000 predictor calls per executed action: a batched-GEMM planning workload, not a latency-bound one"),
+    ],
+    "evidence": "read",
+    "sources": ["arXiv 2506.09985 Sec. 3 (architecture, planning), Sec. 4 (timing), App. A Table 12"],
+    "diagram": {
+        "encoder": {"text": "Frame 256x256 → V-JEPA 2 ViT-g (1B)", "sub": "256 patch features per frame", "tag": "frozen"},
+        "tokens": {"groups": [("action", 1, "action"), ("state", 1, "state"), ("latent", 16, "256 patch features")],
+                   "note": "per step; 16 frames at 4 fps"},
+        "core": {"title": "Predictor ×24 · d 1024 · 16 heads",
+                 "rows": [("attn", "Block-causal self-attention, 3D-RoPE"),
+                          ("mlp", "MLP")],
+                 "notes": ["frame t attends to action, state and frames ≤ t"]},
+        "sampling": {"kind": "regress", "text": "Next-frame embedding, L1 regression", "sub": "1 pass per step; no sampling"},
+        "decoder": {"none": "planning by CEM in feature space: 800 samples × 10 iterations"},
+        "loop": "CEM rollout",
+    },
+}
