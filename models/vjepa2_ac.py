@@ -59,7 +59,7 @@ MODEL = {
         "annotations": [
             {"at": "enc", "text": "frozen, *1B* parameters; *256* patch features of width *1,408* per frame", "side": "left", "key": True},
             {"at": "seq", "text": "*258* tokens per step; training clips of *16* frames at *4* fps", "side": "left"},
-            {"at": "attn", "text": "*16* heads, width *1,024*; frame t attends to its action, state and frames ≤ t", "side": "left", "key": True},
+            {"at": "attn", "text": "*16* heads, width *1,024*; frame t attends to its action, state and frames ≤ t", "short": "*16* heads, width *1,024*", "side": "left", "key": True},
             {"at": "block", "text": "*24* layers, ~*300M* parameters", "side": "right", "key": True},
             {"at": "pred", "text": "*8,000* predictor calls per executed action: *16* s on one RTX 4090 (authors)", "side": "left"},
         ],

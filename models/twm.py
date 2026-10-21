@@ -44,4 +44,33 @@ MODEL = {
         "decoder": {"none": "policy acts from z_t; the CNN decoder only trains the VAE"},
         "loop": "AR rollout",
     },
+    "flow": {
+        "below": [{"text": "Frames 64×64 + action + reward"}],
+        "stack": [
+            {"box": "CNN VAE encoder", "id": "enc", "style": "teal"},
+            {"box": "Categorical latent z", "id": "lat", "minor": True},
+            {"box": "Interleave (z, a, r) tokens", "short": "Interleave z, a, r", "id": "seq", "side": "Action + reward"},
+            {"group": [
+                {"residual": [{"box": "LayerNorm", "minor": True},
+                              {"box": "Masked self-attention", "id": "attn", "style": "dark", "side": "Relative positions"}]},
+                {"residual": [{"box": "LayerNorm", "minor": True}, {"box": "Feed forward", "id": "ffn"}]},
+            ], "repeat": "10 ×", "id": "block"},
+            {"box": "Read the action token", "short": "Read action token", "id": "read", "minor": True},
+            {"fanout": [[{"box": "Latent head (MLP)", "id": "lathead", "minor": True}, {"box": "Sample next latent", "id": "sample"}],
+                        [{"box": "Reward head", "terminal": True, "minor": True}],
+                        [{"box": "Discount head", "id": "disc", "terminal": True, "minor": True}]]},
+        ],
+        "above": [{"text": "Next z → actor-critic, no decoding"}],
+        "insets": [{"for": "ffn", "stack": [{"box": "Linear"}, {"box": "SiLU"}, {"box": "Linear"}]}],
+        "annotations": [
+            {"at": "enc", "text": "*32* categoricals × *32* classes per step (stack of *4* grayscale frames)", "side": "left", "key": True},
+            {"at": "seq", "text": "*3* tokens per step (latent, action, reward) through modality-specific linear embeddings; history *16* steps = *47* tokens [D]", "side": "left"},
+            {"at": "attn", "text": "*4* heads of *64*; Transformer-XL relative positions + cached segment memory", "side": "left", "key": True},
+            {"at": "block", "text": "*10* layers, width *256*, FFN *1,024*; *10.8M* dynamics model, *19M* world model", "side": "right", "key": True},
+            {"at": "read", "text": "h is the action token's output; norm placement not disclosed", "side": "right"},
+            {"at": "sample", "text": "*1* pass per imagined step; *39,000* samples/s on one A100 with the XL memory, *19,900* without (authors)", "side": "right"},
+            {"at": "disc", "text": "MLP heads; reward and discount take the mean", "side": "right"},
+        ],
+        "feedback": "next step",
+    },
 }

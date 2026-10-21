@@ -43,4 +43,30 @@ MODEL = {
         "decoder": {"text": "ViT-VQGAN decoder → 300x180 frame", "tag": "frozen"},
         "loop": "AR rollout",
     },
+    "flow": {
+        "below": [{"text": "Frame 300×180 + controller action"}],
+        "stack": [
+            {"box": "ViT-VQGAN encoder", "id": "enc", "style": "teal"},
+            {"box": "Nearest codebook entry", "short": "Codebook lookup", "id": "vq", "minor": True},
+            {"box": "Interleave image and action tokens", "short": "Interleave tokens", "id": "seq", "side": "Controller tokens"},
+            {"box": "Token + learned position emb.", "id": "emb", "minor": True},
+            {"group": [
+                {"residual": [{"box": "LayerNorm", "minor": True}, {"box": "Masked self-attention", "id": "attn", "style": "dark"}]},
+                {"residual": [{"box": "LayerNorm", "minor": True}, {"box": "Feed forward", "id": "ffn"}]},
+            ], "repeat": "N ×", "id": "block"},
+            {"box": "Final LayerNorm", "id": "ln", "minor": True},
+            {"box": "Sample next token", "id": "sample"},
+        ],
+        "above": [{"box": "ViT-VQGAN decoder", "id": "dec", "style": "teal"}, {"text": "Next frame 300×180 + next action"}],
+        "insets": [{"for": "ffn", "stack": [{"box": "Linear"}, {"box": "GELU"}, {"box": "Linear"}]}],
+        "annotations": [
+            {"at": "enc", "text": "~*300M* ViT-VQGAN; *540* tokens per frame, vocabulary *16,384*", "side": "left", "key": True},
+            {"at": "seq", "text": "*540* image + *16* controller tokens per step; context *1* s = *10* frames = *5,560* tokens", "side": "left", "key": True},
+            {"at": "vq", "text": "controller: *12* buttons + both sticks' x, y in *11* buckets; no delimiter token, the learned positions tell the modalities apart", "side": "left"},
+            {"at": "block", "text": "*1.6B* GPT-2 block as in nanoGPT; layers and heads only in Extended Data Fig. 2c", "side": "right", "key": True},
+            {"at": "sample", "text": "≥ *540* serial passes per frame; actions are predicted too", "side": "right", "key": True},
+            {"at": "dec", "text": "~*1* fps vs *10+* fps for the MaskGIT variant WHAMM (Microsoft Research blog)", "side": "right"},
+        ],
+        "feedback": "next step",
+    },
 }

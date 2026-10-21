@@ -67,8 +67,8 @@ MODEL = {
         "above": [{"box": "Wan2.1 VAE decoder", "id": "dec", "style": "teal"}, {"text": "12 frames at 352×640"}],
         "insets": [{"for": "ffn", "stack": [{"box": "Linear"}, {"box": "GELU"}, {"box": "Linear"}]}],
         "annotations": [
-            {"at": "vae", "text": "*880* latents per 44×80 latent frame; a chunk of *3* latent frames = *2,640* tokens", "side": "left", "key": True},
-            {"at": "attn", "text": "*12* heads of *128*, width *1,536* · attends to the chunk and a window of *6* latent frames = *5,280* tokens", "side": "left", "key": True},
+            {"at": "vae", "text": "*880* latents per 44×80 latent frame; a chunk of *3* latent frames = *2,640* tokens", "short": "*2,640* tokens per *3*-latent-frame chunk", "side": "left", "key": True},
+            {"at": "attn", "text": "*12* heads of *128*, width *1,536* · attends to the chunk and a window of *6* latent frames = *5,280* tokens", "short": "*12* heads; window of *6* latent frames = *5,280* tokens", "side": "left", "key": True},
             {"at": "act", "text": "action modules only in blocks *1–15* in the fast configuration", "side": "left"},
             {"at": "block", "text": "*30* layers, *1.3B* parameters (~*1.8B* with action modules)", "side": "right", "key": True},
             {"at": "upd", "text": "distilled from a bidirectional teacher with DMD Self-Forcing; timesteps *1000, 666, 333*", "side": "right"},

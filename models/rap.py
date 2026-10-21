@@ -55,4 +55,33 @@ MODEL = {
         "decoder": {"none": "states are text"},
         "loop": "MCTS",
     },
+    "flow": {
+        "below": [{"text": "Prompt: demonstrations + state + action (text)"}],
+        "stack": [
+            {"box": "LLaMA tokenizer", "id": "tok", "style": "teal"},
+            {"box": "Token embedding", "id": "emb", "minor": True},
+            {"group": [
+                {"residual": [{"box": "RMSNorm", "minor": True},
+                              {"box": "Masked self-attention", "id": "attn", "style": "dark", "side": "RoPE"}]},
+                {"residual": [{"box": "RMSNorm", "minor": True}, {"box": "SwiGLU feed forward", "id": "ffn"}]},
+            ], "repeat": "60 ×", "id": "block"},
+            {"box": "Final RMSNorm", "minor": True},
+            {"box": "Linear output layer", "id": "out", "minor": True},
+            {"box": "Sample next token", "id": "sample"},
+        ],
+        "above": [{"text": "Next state, action or reward as text"}],
+        "insets": [
+            {"for": "ffn", "stack": [{"fanout": [[{"box": "Linear"}], [{"box": "Linear"}, {"box": "SiLU"}]]}, {"merge": "x"}, {"box": "Linear"}]},
+            {"for": "sample", "label": "MCTS iteration", "stack": [{"box": "Select a leaf by UCT"}, {"box": "Propose d actions (LLM)"},
+                                                                    {"box": "Predict next state (LLM)"}, {"box": "Score, back-propagate Q"}]},
+        ],
+        "annotations": [
+            {"at": "tok", "text": "frozen LLaMA-33B, no training; states and actions are natural-language text", "side": "left", "key": True},
+            {"at": "attn", "text": "*52* heads, width *6,656*; causal over prompt and generated text, cut at *2,048* tokens or a newline", "side": "left", "key": True},
+            {"at": "block", "text": "*60* layers, *32.5B* parameters (LLaMA paper); MCTS: *10–20* iterations of LLM generations", "side": "right", "key": True},
+            {"at": "sample", "text": "temperature *0.8*; one full generation per state transition; the same model is policy, world model and reward model", "side": "left"},
+            {"at": "out", "text": "rewards: action log-probability, answer confidence, P('Yes' | 'is this step correct?'); runs on 4× A5000 24 GB, no latency figure", "side": "left"},
+        ],
+        "feedback": "MCTS",
+    },
 }

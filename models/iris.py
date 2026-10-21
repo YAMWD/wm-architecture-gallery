@@ -53,7 +53,7 @@ MODEL = {
                 {"residual": [{"box": "LayerNorm", "minor": True}, {"box": "Feed forward", "id": "ffn"}]},
             ], "repeat": "10 ×", "id": "block"},
             {"box": "Final LayerNorm", "minor": True},
-            {"fanout": [[{"box": "Linear output layer", "id": "out"}, {"box": "Sample next code", "id": "sample"}],
+            {"fanout": [[{"box": "Linear output layer", "id": "out", "minor": True}, {"box": "Sample next code", "id": "sample"}],
                         [{"box": "Reward head", "id": "rew", "terminal": True}], [{"box": "Done head", "terminal": True}]]},
         ],
         "above": [{"box": "VQ-VAE decoder (CNN)", "id": "dec", "style": "teal"}, {"text": "Next frame 64×64"}],

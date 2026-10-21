@@ -54,4 +54,34 @@ MODEL = {
                     "short": "VQ decoder (loss only)"},
         "loop": "AR rollout",
     },
+    "flow": {
+        "below": [{"text": "Atari frame 64×64 + action"}],
+        "stack": [
+            {"box": "VQ-VAE encoder (CNN)", "id": "enc", "style": "teal"},
+            {"box": "Nearest codebook entry", "id": "vq", "minor": True},
+            {"box": "Embed codes, action, prediction tokens u", "short": "Add action + u tokens", "id": "emb", "side": "Action emb."},
+            {"group": [
+                {"residual": [{"box": "LayerNorm", "minor": True},
+                              {"box": "Multi-scale retention", "id": "ret", "style": "dark", "side": "Relative positions"}]},
+                {"residual": [{"box": "LayerNorm", "minor": True}, {"box": "Feed forward", "id": "ffn"}]},
+            ], "repeat": "5 ×", "id": "block"},
+            {"fanout": [[{"box": "POP: sample all codes in one pass", "short": "POP: all codes in one pass", "id": "sample"}],
+                        [{"box": "Reward head", "id": "rew", "terminal": True, "minor": True}],
+                        [{"box": "Done head", "terminal": True, "minor": True}]]},
+        ],
+        "above": [{"box": "VQ-VAE decoder (CNN)", "id": "dec", "style": "teal"}, {"text": "Next frame 64×64 (loss only)"}],
+        "insets": [
+            {"for": "sample", "stack": [{"box": "Update S_t with (z_t, a_t)"}, {"box": "Run u from S_t"}, {"box": "All next codes in parallel"}]},
+        ],
+        "annotations": [
+            {"at": "enc", "text": "*64* codes per frame (*8×8*), vocabulary *512*", "side": "left", "key": True},
+            {"at": "emb", "text": "*64* learned prediction tokens u per step; u never enters the recurrent state; the world model reuses the tokenizer's embedding table", "side": "right"},
+            {"at": "ret", "text": "*4* heads, width *256*; parallel inside a chunk of *3* blocks, recurrent across chunks through a d×d state per head: no KV cache", "side": "left", "key": True},
+            {"at": "block", "text": "*5* layers, FFN *1,024*, dropout *0.1*; parameters not disclosed (~*3.9M* block weights [D]); per-head exponential decay + relative positions (Θ); a chunk of *3* observation-action blocks = *195* tokens [D]; FFN activation not disclosed", "side": "right"},
+            {"at": "sample", "text": "*2* calls per imagined frame instead of *64*; *15.4×* faster imagination (authors, RTX 4090)", "side": "left", "key": True},
+            {"at": "rew", "text": "reward and termination read from the action token; *2H* = *20* calls over a horizon of *10* vs *640*", "side": "right"},
+            {"at": "dec", "text": "reconstruction loss only; the actor-critic reads the token code vectors through a CNN + LSTM, so imagination decodes no pixels", "side": "right"},
+        ],
+        "feedback": "next step",
+    },
 }

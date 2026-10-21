@@ -56,4 +56,33 @@ MODEL = {
         "decoder": {"none": "output is text: trace frames, code, tool calls"},
         "loop": "AR rollout",
     },
+    "flow": {
+        "below": [{"text": "Trace text: locals JSON (observation) + Python line (action)"}],
+        "stack": [
+            {"box": "Llama 3 BPE tokenizer", "id": "tok", "style": "teal"},
+            {"box": "Token embedding", "id": "emb", "minor": True},
+            {"group": [
+                {"residual": [{"box": "RMSNorm", "minor": True},
+                              {"fanout": [[{"box": "Local-window attention (GQA)", "short": "Local-window attention", "id": "local", "style": "dark", "side": "Scaled RoPE"}],
+                                          [{"box": "Global-window attention (GQA)", "short": "Global-window attention", "id": "global", "style": "dark"}]]},
+                              {"merge": "or"}]},
+                {"residual": [{"box": "RMSNorm", "minor": True}, {"box": "SwiGLU feed forward", "id": "ffn"}]},
+            ], "repeat": "64 ×", "id": "block"},
+            {"box": "Final RMSNorm", "minor": True},
+            {"box": "Linear output layer", "id": "out", "minor": True},
+            {"box": "Sample next token", "id": "sample"},
+        ],
+        "above": [{"text": "Next observation as text: JSON frame, code, tool call"}],
+        "insets": [{"for": "ffn", "stack": [{"fanout": [[{"box": "Linear"}], [{"box": "Linear"}, {"box": "SiLU"}]]}, {"merge": "x"}, {"box": "Linear"}]}],
+        "annotations": [
+            {"at": "tok", "text": "vocabulary *128,256*; observations are stack-frame locals as JSON, actions are the Python lines executed", "short": "vocabulary *128,256*; traces as JSON", "side": "left", "key": True},
+            {"at": "emb", "text": "width *6,144*", "side": "left"},
+            {"at": "global", "text": "*48* query heads, *8* KV heads; windows of *8,192* (local) and *131,072* (global) tokens, interleaved *3:1*", "short": "windows of *8,192* and *131,072*, *3:1*", "side": "right", "key": True},
+            {"at": "block", "text": "*64* layers, *32B* parameters; KV cache ≈ *9.5 GiB* at *131k* context [D]", "short": "*64* layers, *32B*; KV ≈ *9.5 GiB* at *131k* [D]", "side": "right", "key": True},
+            {"at": "ffn", "text": "FFN width *21,504*; document-causal mask; scaled RoPE θ *1M*, scale factor *16*; *48* local + *16* global layers [D]", "side": "right"},
+            {"at": "sample", "text": "*1* pass per token over the *128k* vocabulary: a trace step costs as many passes as its JSON frame has tokens", "side": "left"},
+            {"at": "out", "text": "inference fits one 80 GB H100 with quantization (authors); no decode-throughput figure", "side": "right"},
+        ],
+        "feedback": "next token",
+    },
 }

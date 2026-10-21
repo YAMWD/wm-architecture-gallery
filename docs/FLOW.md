@@ -44,6 +44,8 @@ Nodes:
 | `{"gap": 10}` | vertical space | |
 
 Annotations: `at` is a node id; `text` uses `*…*` around every number so it is set in the accent colour;
+`short` (optional) replaces `text` in the condensed slide version, where an annotation may run to at most
+three lines (the renderer warns otherwise);
 `side` is `left` or `right` (balance the two sides; put insets' targets on the right); `key: True` keeps the
 annotation in the condensed version (keep three or four key ones).
 

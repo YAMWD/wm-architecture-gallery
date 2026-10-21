@@ -47,4 +47,33 @@ MODEL = {
         "decoder": {"text": "ST-ViViT decoder → 160x90 frame", "sub": "20 layers, d 1024", "tag": "frozen"},
         "loop": "AR rollout",
     },
+    "flow": {
+        "below": [{"text": "Frame 160×90 + latent action"}],
+        "stack": [
+            {"box": "ST-ViViT tokenizer (VQ-VAE)", "short": "ST-ViViT tokenizer", "id": "tok", "style": "teal"},
+            {"box": "Nearest codebook entry", "short": "Codebook lookup", "id": "vq", "minor": True},
+            {"box": "Add latent action embedding", "short": "Add action embedding", "id": "act", "style": "orange", "side": "Latent action"},
+            {"group": [
+                {"box": "Masked frame tokens", "id": "masked", "style": "soft", "minor": True},
+                {"group": [
+                    {"residual": [{"box": "Norm", "minor": True},
+                                  {"box": "Spatial attention (within frame)", "short": "Spatial attention", "id": "sattn", "style": "dark"}]},
+                    {"residual": [{"box": "Norm", "minor": True},
+                                  {"box": "Causal temporal attention", "short": "Temporal attention", "id": "tattn", "style": "dark"}]},
+                    {"residual": [{"box": "Norm", "minor": True}, {"box": "Feed forward", "id": "ffw", "minor": True}]},
+                ], "repeat": "48 ×", "id": "block"},
+                {"box": "Sample tokens, keep confident", "short": "Sample, keep confident", "id": "sample"},
+            ], "loop": "25 MaskGIT steps", "tint": "grey", "id": "maskgit"},
+        ],
+        "above": [{"box": "ST-ViViT decoder", "id": "dec", "style": "teal"}, {"text": "Next frame 160×90"}],
+        "annotations": [
+            {"at": "tok", "text": "*200M*, patch *4*, codebook *1,024* × *32*-d; ~*920* tokens per frame implied [D]", "short": "~*920* codes per frame [D]", "side": "left", "key": True},
+            {"at": "act", "text": "*300M* latent action model, codebook of *8*, learned without labels; added to the frame tokens", "short": "*8* latent actions, learned without labels", "side": "left", "key": True},
+            {"at": "tattn", "text": "temporal: the same position across *16* frames, causal; spatial: all tokens of one frame; QK-norm; norm type and positions not disclosed", "side": "left"},
+            {"at": "sample", "text": "*25* MaskGIT steps per frame at temperature *2*, all tokens of a frame per pass", "short": "*25* MaskGIT passes per frame, ~*1* fps", "side": "left", "key": True},
+            {"at": "block", "text": "*48* layers, *36* heads, width *5,120*; *10.1B* dynamics (*10.7B* total)", "short": "*48* layers, width *5,120*, *10.1B*", "side": "right", "key": True},
+            {"at": "dec", "text": "*20* layers, width *1,024*; ~*1* FPS, hardware not stated (authors); ≈ *0.46* PFLOP per frame [D]", "side": "right"},
+        ],
+        "feedback": "next frame",
+    },
 }

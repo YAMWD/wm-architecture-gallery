@@ -50,4 +50,33 @@ MODEL = {
         "decoder": {"text": "ViT decoder (100M) → 2 views at 128x256", "tag": "frozen", "short": "ViT decoder → 2 views"},
         "loop": "AR rollout",
     },
+    "flow": {
+        "below": [{"text": "2 camera views 128×256 + 6-DoF relative pose"}],
+        "stack": [
+            {"box": "ViT frame compressor (encoder)", "short": "ViT compressor", "id": "enc", "style": "teal"},
+            {"box": "Latent 32×16×32", "id": "lat", "minor": True},
+            {"group": [
+                {"box": "Noisy frame latent + context", "id": "noisy", "style": "soft", "minor": True},
+                {"group": [
+                    {"residual": [{"box": "AdaLN-single", "id": "ada", "side": "Pose + noise level + frame index"},
+                                  {"box": "Block-causal self-attention", "id": "attn", "style": "dark"}]},
+                    {"residual": [{"box": "AdaLN-single", "minor": True}, {"box": "MLP", "id": "mlp"}]},
+                ], "repeat": "48 ×", "id": "block"},
+                {"box": "Predicted velocity", "id": "vel", "minor": True},
+                {"box": "Euler update with CFG", "id": "upd", "minor": True},
+            ], "loop": "15 Euler steps", "tint": "grey", "id": "denoise"},
+            {"box": "Write frame to KV cache", "id": "kv", "minor": True},
+        ],
+        "above": [{"box": "ViT decoder", "id": "dec", "style": "teal"}, {"text": "Next frame, 2 views at 128×256"}],
+        "annotations": [
+            {"at": "enc", "text": "*50M* encoder: narrow + wide views → one *32×16×32* latent per frame at *5* fps; tokens per frame not stated", "short": "one *32×16×32* latent per frame at *5* fps", "side": "left", "key": True},
+            {"at": "ada", "text": "*6*-DoF relative positions, noise level and frame index → AdaLN-single (PixArt-α style)", "side": "left"},
+            {"at": "attn", "text": "*25* heads, width *1,600*; tokens attend to their frame and past frames; context *2* s + *1* s of future frames (inverse dynamics)", "short": "*25* heads, width *1,600*; block-causal", "side": "left", "key": True},
+            {"at": "block", "text": "*48* layers, *2B* parameters; norm and MLP details not disclosed", "short": "*48* layers, *2B* parameters", "side": "right", "key": True},
+            {"at": "upd", "text": "rectified flow, *15* Euler steps, CFG *2.0*: up to *30* passes per frame [D]", "side": "right"},
+            {"at": "kv", "text": "KV cache over the block-causal context", "side": "right"},
+            {"at": "dec", "text": "*100M* decoder; *12.2* frames/s per GPU throughput with KV caching (company claim)", "short": "*12.2* frames/s per GPU (company claim)", "side": "right", "key": True},
+        ],
+        "feedback": "next frame",
+    },
 }

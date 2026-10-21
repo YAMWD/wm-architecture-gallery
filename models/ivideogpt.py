@@ -46,4 +46,33 @@ MODEL = {
                     "short": "VQGAN decoder → 64x64 frame"},
         "loop": "AR rollout",
     },
+    "flow": {
+        "below": [{"text": "Frames 64×64 + action"}],
+        "stack": [
+            {"box": "Conditional VQGAN encoder", "short": "Compressive VQGAN", "id": "enc", "style": "teal", "side": "Context features"},
+            {"box": "Nearest codebook entry", "short": "Codebook lookup", "id": "vq", "minor": True},
+            {"box": "Slot tokens + action embedding", "short": "Slot tokens + action", "id": "seq", "style": "orange", "side": "Action (linear)"},
+            {"box": "Token embedding", "id": "emb", "minor": True},
+            {"group": [
+                {"residual": [{"box": "RMSNorm", "minor": True},
+                              {"box": "Masked self-attention", "id": "attn", "style": "dark", "side": "RoPE"}]},
+                {"residual": [{"box": "RMSNorm", "minor": True}, {"box": "SwiGLU feed forward", "short": "SwiGLU FFN", "id": "ffn"}]},
+            ], "repeat": "12 ×", "id": "block"},
+            {"fanout": [[{"box": "Output layer", "id": "out", "minor": True}, {"box": "Sample next token", "id": "sample"}],
+                        [{"box": "Reward head (linear)", "short": "Reward head", "id": "rew", "terminal": True, "minor": True}]]},
+        ],
+        "above": [{"box": "Conditional VQGAN decoder", "short": "VQGAN decoder", "id": "dec", "style": "teal"}, {"text": "Next frame 64×64"}],
+        "insets": [{"for": "ffn", "stack": [{"fanout": [[{"box": "Linear"}], [{"box": "Linear"}, {"box": "SiLU"}]]}, {"merge": "x"}, {"box": "Linear"}]}],
+        "annotations": [
+            {"at": "enc", "text": "*256* tokens per context frame, *16* per future frame; codebooks of *8,192*", "side": "left", "key": True},
+            {"at": "vq", "text": "*114M* at 64×64; future frames are encoded by cross-attending to the context-frame features", "side": "left"},
+            {"at": "seq", "text": "action added to the slot token before each future frame; *16* frames with *2* context frames = *751* tokens [D]", "side": "left", "key": True},
+            {"at": "attn", "text": "*12* heads, width *768*; dense causal over the whole clip", "side": "left"},
+            {"at": "dec", "text": "cross-attention to the context features; generation *1.11* s + detokenize *0.06* s on an RTX 4090 vs *22.5* s with a 16×16 tokenizer (authors); top-k *100*", "side": "left"},
+            {"at": "block", "text": "*12* layers, FFN *3,072*, *138M*; scaling run *24* layers, width *1,024*, *436M*", "side": "right", "key": True},
+            {"at": "sample", "text": "*17* passes per future frame (slot + *16* tokens) vs *257* with a 16×16 tokenizer", "side": "right", "key": True},
+            {"at": "rew", "text": "MSE reward head on the last token of each frame (fine-tuning only)", "side": "right"},
+        ],
+        "feedback": "next frame",
+    },
 }

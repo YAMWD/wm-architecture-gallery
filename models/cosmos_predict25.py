@@ -56,4 +56,34 @@ MODEL = {
                      "short": "rCM, 4 steps per clip"},
         "decoder": {"text": "Wan2.1 VAE decoder → 93 frames at 1280x704", "tag": "frozen", "short": "Wan2.1 VAE decoder → 93 frames"},
     },
+    "flow": {
+        "below": [{"text": "Text prompt + 1 or 5 conditioning frames (no action input)"}],
+        "stack": [
+            {"box": "Wan2.1 causal VAE encoder", "id": "vae", "style": "teal"},
+            {"box": "Patchify 1×2×2 + mask-token flag", "short": "Patchify + mask flag", "id": "patch", "minor": True},
+            {"group": [
+                {"box": "Noisy clip latents", "id": "noisy", "style": "soft", "minor": True},
+                {"group": [
+                    {"residual": [{"box": "AdaLN-LoRA (scale, shift, gate)", "minor": True, "side": "Timestep emb."},
+                                  {"box": "Full self-attention", "id": "attn", "style": "dark", "side": "3D RoPE"}]},
+                    {"residual": [{"box": "AdaLN-LoRA", "minor": True},
+                                  {"box": "Cross-attention", "id": "xattn", "side": "Cosmos-Reason1 text"}]},
+                    {"residual": [{"box": "AdaLN-LoRA", "minor": True}, {"box": "Feed forward", "id": "ffn"}]},
+                ], "repeat": "32 ×", "id": "block"},
+                {"box": "Predicted velocity", "id": "vel", "minor": True},
+                {"box": "Update latents", "id": "upd", "minor": True},
+            ], "loop": "4 denoising steps (rCM)", "tint": "grey", "id": "denoise"},
+        ],
+        "above": [{"box": "Wan2.1 VAE decoder", "id": "dec", "style": "teal"}, {"text": "93 frames at 1280×704 (5.8 s)"}],
+        "insets": [{"for": "ffn", "stack": [{"box": "Linear"}, {"box": "GELU"}, {"box": "Linear"}]}],
+        "annotations": [
+            {"at": "vae", "text": "*3,520* tokens per 44×80 latent frame; *84,480* tokens per 93-frame clip of *24* latent frames [D]", "side": "left", "key": True},
+            {"at": "patch", "text": "conditioning frames replace noisy frames in the sequence, flagged by a mask token", "side": "left"},
+            {"at": "attn", "text": "*16* heads of *128*, width *2,048*; bidirectional over the whole clip, no KV cache", "side": "left", "key": True},
+            {"at": "xattn", "text": "no action input in the base model; text = Cosmos-Reason1 multi-block activations projected to *1,024*-d", "side": "left"},
+            {"at": "block", "text": "2B: *32* layers, FFN *8,192*, AdaLN-LoRA rank *256*; 14B: *36* layers, width *5,120*, *40* heads", "side": "right", "key": True},
+            {"at": "upd", "text": "flow matching distilled with rCM to *4* steps (score *0.768* → *0.764*, Table 7); teacher step count not located", "side": "right"},
+            {"at": "dec", "text": "inference speed not disclosed; ≈*3.4e14* dense FLOPs per 2B pass before attention [D]", "side": "right", "key": True},
+        ],
+    },
 }

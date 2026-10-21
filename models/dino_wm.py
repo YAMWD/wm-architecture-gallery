@@ -56,4 +56,32 @@ MODEL = {
         "decoder": {"none": "planning by CEM in feature space: 100 samples × 10 iterations; decoder only for visualization"},
         "loop": "CEM rollout",
     },
+    "flow": {
+        "below": [{"text": "Frame 196×196 + action + proprio"}],
+        "stack": [
+            {"box": "DINOv2 encoder (frozen)", "short": "DINOv2 encoder", "id": "enc", "style": "teal"},
+            {"box": "Patch features", "id": "feat", "minor": True},
+            {"box": "Concatenate action + proprio", "short": "Concat action + proprio", "id": "cat", "style": "orange",
+             "side": "Action + proprio emb."},
+            {"group": [
+                {"residual": [{"box": "LayerNorm", "minor": True},
+                              {"box": "Frame-causal self-attention", "short": "Frame-causal attention", "id": "attn", "style": "dark"}]},
+                {"residual": [{"box": "LayerNorm", "minor": True}, {"box": "MLP", "id": "mlp"}]},
+            ], "repeat": "6 ×", "id": "block"},
+            {"box": "Predicted next-frame features", "short": "Next-frame features", "id": "pred"},
+        ],
+        "above": [{"text": "MSE distance to the goal features"}],
+        "insets": [{"for": "mlp", "stack": [{"box": "Linear"}, {"box": "GELU"}, {"box": "Linear"}]},
+                   {"for": "pred", "label": "planning loop", "stack": [{"box": "Sample 100 action sequences"}, {"box": "Roll the predictor out"},
+                                                                       {"box": "MSE to the goal features"}, {"box": "Refit the Gaussian, ×10"}]}],
+        "annotations": [
+            {"at": "enc", "text": "frozen DINOv2; *196* patch features of width *384* per frame", "side": "left", "key": True},
+            {"at": "cat", "text": "an MLP maps the action to a *10*-d embedding that is concatenated to every patch vector (channels, not tokens); proprio enters the same way", "side": "left"},
+            {"at": "attn", "text": "*16* heads; frame-level causal mask over H = *3* frames = *588* tokens", "side": "left", "key": True},
+            {"at": "block", "text": "*6* layers, MLP *2,048*, ~*19M* parameters", "side": "right", "key": True},
+            {"at": "block", "text": "ViT block with the patch-embedding layer removed; positional encoding not disclosed", "side": "right"},
+            {"at": "pred", "text": "one pass regresses the next features (MSE); *0.014* s per batch-32 step and *53* s per CEM plan on one A6000 (authors); the transposed-conv decoder is for visualisation only", "side": "left"},
+        ],
+        "feedback": "CEM rollout",
+    },
 }

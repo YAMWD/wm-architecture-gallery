@@ -61,4 +61,36 @@ MODEL = {
         "decoder": {"text": "ViT-L/20 decoder → 360x640 frame", "sub": "12 layers, width 1024, one frame per step"},
         "loop": "AR rollout",
     },
+    "flow": {
+        "below": [{"text": "Frame 360×640 + keyboard/mouse vector"}],
+        "stack": [
+            {"box": "ViT-L/20 VAE encoder", "id": "vae", "style": "teal"},
+            {"box": "Patchify 2×2", "id": "patch", "minor": True},
+            {"group": [
+                {"box": "Noisy frame + context frames", "id": "noisy", "style": "soft", "minor": True},
+                {"group": [
+                    {"residual": [{"box": "AdaLN (shift, scale, gate)", "short": "AdaLN", "id": "ada", "side": "Action + timestep emb."},
+                                  {"box": "Spatial attention (full)", "short": "Spatial attention", "id": "sattn", "style": "dark", "side": "Axial RoPE"}]},
+                    {"residual": [{"box": "AdaLN", "minor": True}, {"box": "MLP", "id": "smlp", "minor": True}]},
+                    {"residual": [{"box": "AdaLN", "minor": True},
+                                  {"box": "Temporal attention (causal)", "id": "tattn", "style": "dark", "side": "RoPE"}]},
+                    {"residual": [{"box": "AdaLN", "minor": True}, {"box": "MLP", "short": "MLP (one per attention)", "id": "tmlp"}]},
+                ], "repeat": "16 ×", "id": "block"},
+                {"box": "Predicted velocity", "id": "vel", "minor": True},
+                {"box": "DDIM update", "id": "upd", "minor": True},
+            ], "loop": "10 DDIM steps (reference)", "tint": "grey", "id": "denoise"},
+        ],
+        "above": [{"box": "ViT-L/20 VAE decoder", "id": "dec", "style": "teal"}, {"text": "Next frame 360×640"}],
+        "insets": [{"for": "tmlp", "stack": [{"box": "Linear"}, {"box": "GELU"}, {"box": "Linear"}]}],
+        "annotations": [
+            {"at": "vae", "text": "*6*-layer ViT encoder, width *1,024*; 18×32×16 latent → *144* tokens per frame [D]", "side": "left", "key": True},
+            {"at": "ada", "text": "*25*-dim one-hot action → Linear(*25*, *1,024*), added to the timestep embedding that drives every adaLN", "side": "left"},
+            {"at": "sattn", "text": "*16* heads, width *1,024*; bidirectional over the *144* tokens of a frame", "side": "left", "key": True},
+            {"at": "tattn", "text": "causal over a window of *32* frames per spatial position; no KV cache, so up to *4,608* tokens re-run every step [D]", "side": "left"},
+            {"at": "block", "text": "*16* layers, *500M* parameters (the demo checkpoint is larger, size not disclosed)", "side": "right", "key": True},
+            {"at": "upd", "text": "Diffusion Forcing, v-prediction; context frames held at noise level *14*; the demo's step count is not disclosed", "side": "right"},
+            {"at": "dec", "text": "*12*-layer ViT decoder; *20* fps at 360p, *47* ms per frame on H100s (company claim)", "side": "right", "key": True},
+        ],
+        "feedback": "next frame",
+    },
 }

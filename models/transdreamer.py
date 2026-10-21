@@ -55,4 +55,33 @@ MODEL = {
                     "short": "CNN decoder → frame (training only)"},
         "loop": "AR rollout",
     },
+    "flow": {
+        "below": [{"text": "Frame x_t + action a_t"}],
+        "stack": [
+            {"box": "DreamerV2 CNN encoder", "short": "DreamerV2 encoder", "id": "enc", "style": "teal"},
+            {"box": "Posterior q(z_t | x_t), discrete", "id": "post", "minor": True},
+            {"box": "Step token (z_t, a_t)", "short": "Token (z_t, a_t)", "id": "tok", "side": "Action a_t"},
+            {"group": [
+                {"residual": [{"box": "Masked self-attention", "id": "attn", "style": "dark"}]},
+                {"box": "LayerNorm", "minor": True},
+                {"residual": [{"box": "MLP", "id": "mlp"}]},
+                {"box": "LayerNorm", "minor": True},
+            ], "repeat": "2 ×", "id": "block"},
+            {"box": "Deterministic state h_t", "id": "h", "minor": True},
+            {"fanout": [[{"box": "Prior p(z_t | h_t)", "id": "prior", "minor": True}, {"box": "Sample z_t, feed back", "short": "Sample prior z_t", "id": "sample"}],
+                        [{"box": "Reward head", "id": "rew", "terminal": True}], [{"box": "Discount head", "terminal": True, "minor": True}]]},
+        ],
+        "above": [{"box": "DreamerV2 CNN decoder", "short": "DreamerV2 decoder", "id": "dec", "style": "teal"}, {"text": "Reconstructed frame x_t (training only)"}],
+        "annotations": [
+            {"at": "enc", "text": "DreamerV2 CNN; posterior q(z_t | x_t) without h_t, so all steps train in parallel", "side": "left", "key": True},
+            {"at": "tok", "text": "*1* token per step; how z_t and a_t are combined is not stated", "side": "left"},
+            {"at": "attn", "text": "*10* heads, width *200* (DMC) or *600* (Atari); causal over all past (z, a) steps", "side": "left", "key": True},
+            {"at": "block", "text": "*2* layers (~*0.5M*–*4.3M* block weights [D]); post-norm Vaswani block, no gating, no dropout", "side": "right", "key": True},
+            {"at": "mlp", "text": "no identity-map reordering (except Atari Pong), no KV cache mentioned; relative positional embedding (Transformer-XL) is a tunable option", "side": "right"},
+            {"at": "sample", "text": "*1* pass per imagined step; *K* = *3* imagined trajectories per replay sample; no wall-clock figure", "side": "left"},
+            {"at": "rew", "text": "reward and discount heads read (h_t, z_t)", "side": "right"},
+            {"at": "dec", "text": "reads (h_t, z_t); reconstruction loss and visualisation only, not run in imagination", "side": "right"},
+        ],
+        "feedback": "next step: z_t",
+    },
 }

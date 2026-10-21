@@ -58,4 +58,37 @@ MODEL = {
         "decoder": {"text": "VAE decoder → frame", "sub": "low-resolution synthetic video", "tag": "pretrained"},
         "loop": "AR rollout",
     },
+    "flow": {
+        "below": [{"text": "Past frames + action (camera pose or keys)"}],
+        "stack": [
+            {"box": "Video VAE encoder", "id": "vae", "style": "teal"},
+            {"box": "Flatten, spatial-major order", "short": "Spatial-major tokens", "id": "order", "minor": True},
+            {"group": [
+                {"box": "Noisy latent frame", "id": "noisy", "style": "soft", "minor": True},
+                {"group": [
+                    {"residual": [{"box": "AdaLN (scale, shift)", "minor": True, "side": "Noise level + action"},
+                                  {"box": "Block-wise Mamba scan", "id": "ssm", "style": "soft"}]},
+                    {"residual": [{"box": "AdaLN (scale, shift)", "minor": True},
+                                  {"box": "Frame-local attention", "id": "attn", "style": "dark"}]},
+                    {"residual": [{"box": "AdaLN (scale, shift)", "minor": True}, {"box": "Feed forward", "id": "ffn"}]},
+                ], "repeat": "N ×", "id": "block"},
+                {"box": "Denoising update", "id": "upd", "minor": True},
+            ], "loop": "denoising steps", "tint": "grey", "id": "denoise"},
+            {"box": "Update KV cache and SSM states", "short": "Update caches", "id": "state", "minor": True},
+        ],
+        "above": [{"box": "VAE decoder", "id": "dec", "style": "teal"}, {"text": "Next frame"}],
+        "insets": [
+            {"for": "ssm", "label": "block-wise scan", "stack": [{"box": "Split the frame into blocks"}, {"box": "Scan each block over time"}, {"box": "One SSM state per block"}]},
+        ],
+        "annotations": [
+            {"at": "vae", "text": "VAE latents per frame (spatio-temporal VAE or DFoT image VAE); resolution not stated", "side": "left", "key": True},
+            {"at": "ssm", "text": "one Mamba scan per spatial block (b_h, b_w) over time; a fixed-size state per block keeps memory from *400+* frames back", "side": "left", "key": True},
+            {"at": "attn", "text": "bidirectional inside a *5*-frame chunk and causal to the previous chunk: window *10* frames (FlexAttention); block size (b_h, b_w) differs by layer", "side": "left"},
+            {"at": "block", "text": "*200M* parameters, CogVideoX-style blocks; layers not disclosed; per layer a *10*-frame KV cache + one SSM state per block", "side": "right", "key": True},
+            {"at": "upd", "text": "diffusion forcing: *1* frame per AR step, clean past frames as context; denoising steps not disclosed; actions: a small MLP added to the noise-level embedding, injected by AdaLN", "side": "right"},
+            {"at": "state", "text": "memory and time per frame are constant in rollout length, unlike a growing KV cache", "side": "right"},
+            {"at": "dec", "text": "no timing numbers in the text (Fig. 8 plots flat per-frame time and memory); hardware not stated", "side": "right"},
+        ],
+        "feedback": "next frame",
+    },
 }

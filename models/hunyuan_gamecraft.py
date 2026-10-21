@@ -58,4 +58,40 @@ MODEL = {
         "decoder": {"text": "HunyuanVideo VAE decoder → 33 frames at 720p", "short": "VAE decoder → 33 frames"},
         "loop": "AR rollout",
     },
+    "flow": {
+        "below": [{"text": "Reference image or history frames + keys/mouse + text"}],
+        "stack": [
+            {"box": "HunyuanVideo 3D causal VAE encoder", "short": "HunyuanVideo VAE encoder", "id": "vae", "style": "teal"},
+            {"box": "Patchify", "id": "patch", "minor": True},
+            {"box": "Add camera Plücker embedding", "id": "act", "style": "orange", "side": "Keys + mouse → camera"},
+            {"box": "Concat clean history latents + mask", "id": "hist", "minor": True},
+            {"group": [
+                {"box": "Noisy chunk + history latents", "id": "noisy", "style": "soft", "minor": True},
+                {"group": [
+                    {"fanout": [[{"box": "Text stream (AdaLN, QKV)", "short": "Text stream", "side": "Text emb."}],
+                                [{"box": "Video stream (AdaLN, QKV)", "short": "Video stream"}]]},
+                    {"box": "Joint full attention over chunk + history", "short": "Joint full attention", "id": "attn", "style": "dark", "side": "3D RoPE"},
+                    {"fanout": [[{"box": "Text feed forward", "minor": True}], [{"box": "Video feed forward", "id": "vffn", "minor": True}]]},
+                ], "repeat": "N ×", "label": "double-stream MM-DiT", "id": "dblock"},
+                {"group": [
+                    {"residual": [{"box": "AdaLN", "minor": True},
+                                  {"box": "Full self-attention (video + text)", "id": "sattn", "style": "dark", "minor": True}]},
+                    {"residual": [{"box": "AdaLN", "minor": True}, {"box": "Feed forward", "id": "ffn", "minor": True}]},
+                ], "repeat": "M ×", "label": "single-stream", "id": "sblock"},
+                {"box": "Predicted velocity", "id": "vel", "minor": True},
+                {"box": "Consistency update", "id": "upd", "minor": True},
+            ], "loop": "8 steps (PCM-distilled)", "tint": "grey", "id": "denoise"},
+        ],
+        "above": [{"box": "HunyuanVideo VAE decoder", "id": "dec", "style": "teal"}, {"text": "33 frames at 720p per chunk"}],
+        "annotations": [
+            {"at": "vae", "text": "strides not restated; HunyuanVideo's 4×8×8 VAE and 1×2×2 patch give *3,600* tokens per latent frame, ≈*32,400* per 33-frame chunk of *9* latent frames [D]", "side": "left", "key": True},
+            {"at": "act", "text": "W/A/S/D, arrows, mouse → continuous camera (translation, rotation, speed) → Plücker map → light conv + pooling encoder, added to the video tokens with a learnable scale", "side": "left"},
+            {"at": "hist", "text": "binary mask: *1* = history latents, *0* = predicted; history re-processed at every step, no KV cache", "side": "right"},
+            {"at": "attn", "text": "bidirectional over the chunk + concatenated clean history latents (one image, the last chunk or several chunks), re-processed at every step; no KV cache", "side": "left", "key": True},
+            {"at": "dblock", "text": "HunyuanVideo MM-DiT (double-stream, then single-stream blocks), full-parameter fine-tuned; block counts and widths not restated (*13B* in HunyuanVideo's report)", "side": "right", "key": True},
+            {"at": "upd", "text": "flow matching → Phased Consistency Model + CFG distillation, *8* steps per chunk; pre-distillation step count not stated", "side": "right"},
+            {"at": "dec", "text": "*0.25* FPS undistilled → *6.6* FPS with PCM (authors; GPU not stated): ≈*5.0* s per 33-frame chunk [D]", "side": "right", "key": True},
+        ],
+        "feedback": "next chunk",
+    },
 }

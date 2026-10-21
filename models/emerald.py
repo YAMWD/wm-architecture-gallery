@@ -45,4 +45,43 @@ MODEL = {
         "decoder": {"none": "actor-critic in latent space; the CNN decoder only trains the VAE"},
         "loop": "AR rollout",
     },
+    "flow": {
+        "below": [{"text": "Frame 64×64 + action"}],
+        "stack": [
+            {"box": "CNN categorical VAE encoder", "short": "CNN VAE encoder", "id": "enc", "style": "teal"},
+            {"box": "Latent encoder (conv, flatten)", "id": "flat", "minor": True},
+            {"box": "Action mixer (MLP)", "id": "mix", "style": "orange", "side": "One-hot action"},
+            {"group": [
+                {"residual": [{"box": "LayerNorm", "minor": True},
+                              {"box": "Masked temporal self-attention", "short": "Temporal attention", "id": "tattn", "style": "dark", "side": "Relative positions"}]},
+                {"residual": [{"box": "LayerNorm", "minor": True}, {"box": "Feed forward", "id": "tffn"}]},
+            ], "repeat": "4 ×", "id": "tgroup"},
+            {"fanout": [[{"box": "Hidden state h", "id": "h", "minor": True}],
+                        [{"box": "Reward head", "terminal": True, "minor": True}],
+                        [{"box": "Continue head", "id": "cont", "terminal": True, "minor": True}]]},
+            {"group": [
+                {"box": "Masked tokens + h", "id": "masked", "style": "soft", "minor": True},
+                {"box": "Linear + positions", "id": "pe", "minor": True},
+                {"group": [
+                    {"residual": [{"box": "LayerNorm", "minor": True},
+                                  {"box": "Spatial attention (bidirectional)", "short": "Spatial attention", "id": "sattn", "style": "dark"}]},
+                    {"residual": [{"box": "LayerNorm", "minor": True}, {"box": "Feed forward", "id": "sffn", "minor": True}]},
+                ], "repeat": "2 ×", "id": "sgroup"},
+                {"box": "Sample, keep confident tokens", "short": "Sample, keep confident", "id": "sample"},
+            ], "loop": "3 MaskGIT passes", "tint": "grey", "id": "maskgit"},
+            {"box": "Next 4×4 latent grid", "id": "next", "minor": True},
+        ],
+        "above": [{"text": "Next z → actor-critic, no decoding"}],
+        "insets": [{"for": "mix", "stack": [{"box": "Linear + LN + SiLU"}, {"box": "Linear + LN"}]}],
+        "annotations": [
+            {"at": "enc", "text": "*4×4* grid × *32* groups × *32* classes = *16* spatial tokens per frame", "side": "left", "key": True},
+            {"at": "mix", "text": "grid conv-encoded to *512* and concatenated with the one-hot action → *1* token per step", "side": "left"},
+            {"at": "tattn", "text": "*8* heads; relative positions; context *64* steps with cached K, V", "side": "left", "key": True},
+            {"at": "cont", "text": "reward and continue read [z, h]; *27* collected frames/s on one RTX 3090 (authors)", "side": "left"},
+            {"at": "sgroup", "text": "*2* blocks, width *256*, bidirectional over the *16* tokens of the next grid", "side": "left"},
+            {"at": "sample", "text": "*3* passes per imagined step (cosine mask schedule) instead of *16* serial decodes", "side": "left", "key": True},
+            {"at": "tgroup", "text": "*4* blocks, width *512*; *30M* parameters in total; block internals not disclosed", "side": "right", "key": True},
+        ],
+        "feedback": "next step",
+    },
 }

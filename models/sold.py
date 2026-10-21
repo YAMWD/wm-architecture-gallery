@@ -58,4 +58,47 @@ MODEL = {
                     "short": "SAVi decoder → frame (loss only)"},
         "loop": "AR rollout",
     },
+    "flow": {
+        "below": [{"text": "Frame + action a_t (4-D)"}],
+        "stack": [
+            {"box": "SAVi encoder (Slot Attention)", "short": "SAVi slot encoder", "id": "enc", "style": "teal"},
+            {"box": "Slots → 256-d tokens", "id": "proj", "minor": True},
+            {"fanout": [
+                [
+                    {"box": "Slots + actions", "id": "seq", "minor": True, "side": "Action a_t"},
+                    {"group": [
+                        {"residual": [{"box": "Norm", "minor": True},
+                                      {"box": "Temporal attention (per slot)", "short": "Temporal attention", "id": "tattn", "style": "dark"}]},
+                        {"residual": [{"box": "Norm", "minor": True},
+                                      {"box": "Relational attention (per step)", "short": "Relational attention", "id": "rattn", "style": "dark"}]},
+                        {"residual": [{"box": "Norm", "minor": True}, {"box": "MLP", "id": "mlp"}]},
+                    ], "repeat": "4 ×", "id": "dyn"},
+                    {"box": "Next slot set", "id": "pred"},
+                ],
+                [
+                    {"group": [
+                        {"residual": [{"box": "RMSNorm", "minor": True}, {"box": "Causal self-attention", "id": "sattn", "style": "dark"}]},
+                        {"residual": [{"box": "RMSNorm", "minor": True}, {"box": "MLP", "id": "smlp"}]},
+                    ], "repeat": "4 ×", "id": "sat"},
+                    {"box": "Reward, value, actor heads", "short": "Reward, value, actor", "id": "heads", "terminal": True},
+                ],
+            ]},
+        ],
+        "above": [{"box": "SAVi spatial-broadcast decoder", "short": "SAVi broadcast decoder", "id": "dec", "style": "teal"}, {"text": "Next frame (loss only)"}],
+        "insets": [
+            {"for": "heads", "label": "MLP heads on [out]", "stack": [{"box": "SAT [out] token"},
+                                                                     {"fanout": [[{"box": "Reward head"}], [{"box": "Value head"}], [{"box": "Actor head"}]]}]},
+        ],
+        "annotations": [
+            {"at": "enc", "text": "SAVi (fine-tuned); *N* = *2–10* slots of *128*-d per frame, projected to *256*-d tokens", "side": "left", "key": True},
+            {"at": "proj", "text": "*3* Slot Attention iterations on the first frame, *1* after; learned slot initialisation", "side": "left"},
+            {"at": "tattn", "text": "OCVP-Seq pattern: temporal attention (each slot over its own history), then relational attention (all slots of one step)", "side": "left"},
+            {"at": "dyn", "text": "*4* layers, *8* heads, width *256*, FFN *512*; actions a_0:t (*4*-D) enter with the slot history, embedding not spelled out; norm and activation not disclosed", "side": "left"},
+            {"at": "pred", "text": "dynamics transformer (left): *4* layers, *8* heads, width *256*; *1* pass predicts all *N* next slots; *15* imagined steps, no teacher forcing", "side": "left", "key": True},
+            {"at": "sat", "text": "Slot Aggregation Transformer (right): *4* causal layers, ALiBi, RMSNorm; [out] + *4* [reg] tokens per step; *12M* parameters in all", "side": "right", "key": True},
+            {"at": "heads", "text": "MLP heads on the [out] tokens: reward and value as symlog two-hot bins, actor as a Gaussian (μ, σ); both transformers re-read the slot history each step", "side": "right"},
+            {"at": "dec", "text": "per-slot RGB + alpha, composited; dynamics loss and visualisation only, not used by the actor; no speed figure (one A100 40 GB)", "side": "right"},
+        ],
+        "feedback": "next step",
+    },
 }

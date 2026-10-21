@@ -62,4 +62,34 @@ MODEL = {
                     "short": "SD VAE decoder → frame"},
         "loop": "CEM rollout",
     },
+    "flow": {
+        "below": [{"text": "Frame + navigation action (u, yaw) + time shift k"}],
+        "stack": [
+            {"box": "Stable Diffusion VAE encoder", "short": "SD VAE encoder", "id": "vae", "style": "teal"},
+            {"box": "Patchify", "id": "patch", "minor": True},
+            {"group": [
+                {"box": "Noisy target-frame latents", "id": "noisy", "style": "soft", "minor": True},
+                {"group": [
+                    {"residual": [{"box": "AdaLN (scale, shift, gate)", "short": "AdaLN", "id": "ada", "side": "Action + k + t emb."},
+                                  {"box": "Self-attention (target frame)", "short": "Target self-attention", "id": "attn", "style": "dark"}]},
+                    {"residual": [{"box": "AdaLN", "minor": True},
+                                  {"box": "Cross-attention", "id": "xattn", "side": "Context frames (K, V)"}]},
+                    {"residual": [{"box": "AdaLN", "minor": True}, {"box": "MLP", "id": "mlp"}]},
+                ], "repeat": "N ×", "id": "block"},
+                {"box": "Predicted noise + covariance", "id": "eps", "minor": True},
+                {"box": "DDPM update", "id": "upd", "minor": True},
+            ], "loop": "250 DDPM steps (6 distilled)", "tint": "grey", "id": "denoise"},
+        ],
+        "above": [{"box": "SD VAE decoder", "id": "dec", "style": "teal"}, {"text": "Next frame (LPIPS goal scoring)"}],
+        "insets": [{"for": "ada", "label": "conditioning", "stack": [{"box": "Sine-cosine features"}, {"box": "2-layer MLP"}, {"box": "Sum a, k, t → ξ"}]}],
+        "annotations": [
+            {"at": "vae", "text": "SD VAE latents 'as in DiT'; input resolution and tokens per frame not stated", "side": "left", "key": True},
+            {"at": "attn", "text": "self-attention over the tokens of the target frame only", "side": "left", "key": True},
+            {"at": "xattn", "text": "queries from the target, keys and values from m = *4* context frames: cost O(m·n²·d), linear in context; re-encoded every step, no KV cache", "side": "left"},
+            {"at": "block", "text": "CDiT-XL, *1B* parameters; depth, width and heads not stated", "side": "right", "key": True},
+            {"at": "upd", "text": "*250* steps by default → *6* with distillation; ≈*7–8* ms per pass on an RTX 6000 Ada [D]", "side": "right"},
+            {"at": "dec", "text": "*4* s trajectory of *16* states: *30.3* s → *0.4* s with Time Skip + *6* steps (authors, Table 8)", "side": "right", "key": True},
+        ],
+        "feedback": "CEM planning rollout",
+    },
 }

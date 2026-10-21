@@ -53,4 +53,28 @@ MODEL = {
                     "short": "SAVi decoder → 64×64 frame"},
         "loop": "AR rollout",
     },
+    "flow": {
+        "below": [{"text": "Burn-in frames 64×64 (no actions)"}],
+        "stack": [
+            {"box": "SAVi encoder (Slot Attention)", "short": "SAVi slot encoder", "id": "enc", "style": "teal"},
+            {"box": "Linear to d_e", "id": "proj", "minor": True},
+            {"group": [
+                {"residual": [{"box": "LayerNorm", "minor": True},
+                              {"box": "Bidirectional self-attention", "short": "Bidirectional attention", "id": "attn", "style": "dark", "side": "Temporal P.E."}]},
+                {"residual": [{"box": "LayerNorm", "minor": True}, {"box": "Feed forward", "id": "ffn"}]},
+            ], "repeat": "4 ×", "id": "block"},
+            {"box": "Last N outputs → Linear", "short": "Linear slot head", "id": "pred", "side": "Current slots"},
+        ],
+        "above": [{"box": "SAVi spatial-broadcast decoder", "short": "SAVi broadcast decoder", "id": "dec", "style": "teal"}, {"text": "Next frame 64×64"}],
+        "annotations": [
+            {"at": "enc", "text": "frozen SAVi; *6–8* slots of *128*-d per frame (STEVE on Physion), projected to d_e = *128* or *256*", "short": "frozen SAVi; *6–8* slots per frame", "side": "left", "key": True},
+            {"at": "proj", "text": "sinusoidal P.E. per frame, shared by all slots of that frame (permutation equivariant)", "side": "left"},
+            {"at": "attn", "text": "*8* heads; all T×N slot tokens attend to each other: *6* frames × *7* slots = *42* tokens on CLEVRER [D]", "short": "*8* heads over T×N slot tokens", "side": "left", "key": True},
+            {"at": "block", "text": "*4* layers (OBJ3D, CLEVRER) or *8* (Physion, PHYRE); size not disclosed (~*3M* block weights [D])", "short": "*4* or *8* layers; size not disclosed", "side": "right", "key": True},
+            {"at": "ffn", "text": "Pre-LN; FFN *4×* d_e; activation not disclosed", "side": "right"},
+            {"at": "pred", "text": "*1* pass predicts all *N* next-frame slots (L2 loss); the residual from the current slots keeps slot order; *K* = *10* rollout frames fed back", "side": "right"},
+            {"at": "dec", "text": "frozen; *16×16* broadcast grid; per-slot RGB + alpha, composited; no inference figure (training on *4* GPUs in < *5* days, authors)", "side": "right"},
+        ],
+        "feedback": "next frame",
+    },
 }

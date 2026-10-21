@@ -268,7 +268,11 @@ class StackLayout:
         # annotation text blocks
         self.ann_layouts = []
         for a in self.annotations:
-            lines = self._ann_lines(a["text"])
+            text = a.get("short") if (self.condensed and a.get("short")) else a["text"]
+            lines = self._ann_lines(text)
+            if self.condensed and len(lines) > 3:
+                self.warnings.append("%s: condensed annotation at %r runs to %d lines; add a \"short\" text"
+                                     % (self.spec["slug"], a["at"], len(lines)))
             self.ann_layouts.append({"spec": a, "lines": lines, "h": len(lines) * p.ann * 1.3,
                                      "w": max(lw for _, lw in lines), "side": a.get("side", "right")})
         left_items = [a for a in self.ann_layouts if a["side"] == "left"]
@@ -285,6 +289,18 @@ class StackLayout:
         self.W = 10 + self.left_w + self.cont_w + extra + self.right_w + self.fb_w + 10
         self.H = (self.title_h + self.above_h + (p.gap if self.above else 0) + self.cont_h
                   + (p.gap if self.below else 0) + self.below_h + 12)
+        right_items = ([i["h"] + (14 if i["spec"].get("label") else 0) for i in self.inset_layouts]
+                       + [a["h"] for a in self.ann_layouts if a["side"] == "right"])
+        left_items = [a["h"] for a in self.ann_layouts if a["side"] == "left"]
+        # the dashed feedback line runs across the right column at the height of the top output node
+        self.col_floor = self.title_h
+        if self.flow.get("feedback") and not self.condensed:
+            top = (self.above or self.stack)[-1]
+            self.col_floor = self.title_h + top.h + 10
+        for col, floor in ((right_items, self.col_floor), (left_items, self.title_h)):
+            if col:
+                need = floor + sum(col) + 8 * (len(col) - 1) + 12
+                self.H = max(self.H, need)
 
     def _extents(self, nodes):
         lo, hi = 1e9, -1e9
@@ -501,26 +517,19 @@ class StackLayout:
         return x, self.oy + n.y + n.h / 2
 
     def _resolve(self, items, ymin, ymax):
-        """Push overlapping items apart (1-D), keeping them inside [ymin, ymax]."""
+        """Stack items (sorted by target height) without overlaps inside [ymin, ymax].
+        measure_all() makes the canvas tall enough for every column, so this never has to overlap."""
         items.sort(key=lambda i: i["yc"])
         gap = 8
-        for k in range(1, len(items)):
-            prev, cur = items[k - 1], items[k]
-            need = prev["yc"] + prev["h"] / 2 + gap + cur["h"] / 2
-            if cur["yc"] < need:
-                cur["yc"] = need
-        for k in range(len(items) - 1, -1, -1):
-            it = items[k]
-            if it["yc"] + it["h"] / 2 > ymax:
-                it["yc"] = ymax - it["h"] / 2
-            if k + 1 < len(items):
-                nxt = items[k + 1]
-                lim = nxt["yc"] - nxt["h"] / 2 - gap - it["h"] / 2
-                if it["yc"] > lim:
-                    it["yc"] = lim
-        for it in items:
-            if it["yc"] - it["h"] / 2 < ymin:
-                it["yc"] = ymin + it["h"] / 2
+        floor = ymin
+        for it in items:                                   # forward: push down below the previous item
+            it["yc"] = max(it["yc"], floor + it["h"] / 2)
+            floor = it["yc"] + it["h"] / 2 + gap
+        ceil = ymax
+        for it in reversed(items):                         # backward: pull up above the next item
+            if it["yc"] + it["h"] / 2 > ceil:
+                it["yc"] = ceil - it["h"] / 2
+            ceil = it["yc"] - it["h"] / 2 - gap
 
     def _ann_text(self, x_edge, y, lines, align):
         """Annotation lines; align 'start' grows right from x_edge, 'end' grows left to x_edge."""
@@ -548,7 +557,9 @@ class StackLayout:
             if not t:
                 cv.warnings.append("%s: inset target %r not found" % (self.spec["slug"], il["spec"]["for"]))
                 continue
-            items.append({"kind": "inset", "il": il, "target": t, "h": il["h"], "yc": oy + t.y + t.h / 2})
+            lab = 14 if il["spec"].get("label") else 0
+            items.append({"kind": "inset", "il": il, "target": t, "h": il["h"] + lab, "lab": lab,
+                          "yc": oy + t.y + t.h / 2})
         for a in self.ann_layouts:
             if a["side"] != "right":
                 continue
@@ -557,19 +568,19 @@ class StackLayout:
                 cv.warnings.append("%s: annotation target %r not found" % (self.spec["slug"], a["spec"]["at"]))
                 continue
             items.append({"kind": "ann", "a": a, "target": t, "h": a["h"], "yc": oy + t.y + t.h / 2})
-        self._resolve(items, oy + self.title_h, oy + self.H - 6)
+        self._resolve(items, oy + self.col_floor, oy + self.H - 6)
         for it in items:
             t = it["target"]
             ax, ay = self._anchor(t, "right")
             if it["kind"] == "inset":
                 il = it["il"]
-                y = it["yc"] - il["h"] / 2
+                y = it["yc"] - it["h"] / 2 + it["lab"]
                 cv.rect(x0, y, il["w"], il["h"], fill=C["soft"], stroke=C["slate"], sw=1.0, rx=12, dash="4 3")
                 self._place_stack(il["nodes"], x0 + il["w"] / 2 - ox, y + il["h"] - 14 - oy)
                 self._draw_stack(il["nodes"])
                 if il["spec"].get("label"):
                     cv.text(x0 + il["w"] / 2, y - 5, il["spec"]["label"], "body", p.box - 1, C["grey"])
-                cv.path("M %.1f %.1f L %.1f %.1f" % (ax + 1, ay, x0 - 1, it["yc"]), stroke=INK, sw=0.9, dash="2 3")
+                cv.path("M %.1f %.1f L %.1f %.1f" % (ax + 1, ay, x0 - 1, y + il["h"] / 2), stroke=INK, sw=0.9, dash="2 3")
             else:
                 a = it["a"]
                 y = it["yc"] - a["h"] / 2

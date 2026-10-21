@@ -43,4 +43,30 @@ MODEL = {
         "decoder": {"text": "VQ-VAE decoder → 224x384 frame", "tag": "frozen"},
         "loop": "AR rollout",
     },
+    "flow": {
+        "below": [{"text": "Frame 224×384 + action tokens"}],
+        "stack": [
+            {"box": "VQ-VAE encoder", "id": "enc", "style": "teal"},
+            {"box": "Nearest codebook entry", "short": "Codebook lookup", "id": "vq", "minor": True},
+            {"box": "Interleave frame and action tokens", "short": "Interleave tokens", "id": "seq", "side": "Action tokens"},
+            {"box": "Token embedding", "id": "emb", "minor": True},
+            {"group": [
+                {"residual": [{"box": "RMSNorm", "minor": True},
+                              {"box": "Masked self-attention", "id": "attn", "style": "dark", "side": "RoPE"}]},
+                {"residual": [{"box": "RMSNorm", "minor": True}, {"box": "Feed forward", "id": "ffn"}]},
+            ], "repeat": "20 ×", "id": "block"},
+            {"box": "Sample next anti-diagonal", "short": "Sample next diagonal", "id": "sample"},
+        ],
+        "above": [{"box": "VQ-VAE decoder", "id": "dec", "style": "teal"}, {"text": "Next frame 224×384"}],
+        "annotations": [
+            {"at": "enc", "text": "*16×* compression: *336* tokens per frame (14×24), codebook *8,192*", "side": "left", "key": True},
+            {"at": "seq", "text": "*11* action tokens after each frame; *16* frames = *5,552* tokens [D]", "side": "left", "key": True},
+            {"at": "emb", "text": "[aBOS], *9* action tokens incl. *2* camera bins, [aEOS]; vocabulary *8,192* + *70* = *8,262*", "side": "left"},
+            {"at": "attn", "text": "*32* heads; the causal mask is replaced by a parallel mask when fine-tuned for diagonal decoding; activation not disclosed", "side": "left"},
+            {"at": "block", "text": "LLaMA-style: *20* layers, width *2,048*, MLP *8,192*; *1.2B* (also *300M*, *700M*)", "side": "right", "key": True},
+            {"at": "sample", "text": "diagonal decoding: *37* passes per frame instead of *336*; *0.89* → *3.01* FPS for *1.2B* (authors)", "side": "right", "key": True},
+            {"at": "dec", "text": "tokens (i, j+1) and (i+1, j) are released together; the inference GPU is not stated", "side": "right"},
+        ],
+        "feedback": "next frame",
+    },
 }

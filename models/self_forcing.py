@@ -57,4 +57,35 @@ MODEL = {
         "decoder": {"text": "Wan VAE decoder → 12 frames at 832x480", "tag": "frozen", "short": "Wan VAE decoder → 12 frames"},
         "loop": "AR rollout",
     },
+    "flow": {
+        "below": [{"text": "Text prompt + previous chunks (no action input)"}],
+        "stack": [
+            {"box": "Wan2.1 3D causal VAE encoder", "short": "Wan2.1 VAE encoder", "id": "vae", "style": "teal"},
+            {"box": "Patchify 1×2×2", "id": "patch", "minor": True},
+            {"group": [
+                {"box": "Noisy latent chunk", "id": "noisy", "style": "soft", "minor": True},
+                {"group": [
+                    {"residual": [{"box": "AdaLN (scale, shift)", "minor": True, "side": "Timestep emb."},
+                                  {"box": "Block-causal self-attention", "id": "attn", "style": "dark", "side": "3D RoPE"}]},
+                    {"residual": [{"box": "Cross-attention", "id": "xattn", "side": "umT5 text"}]},
+                    {"residual": [{"box": "AdaLN (scale, shift)", "minor": True}, {"box": "Feed forward", "id": "ffn"}]},
+                ], "repeat": "30 ×", "id": "block"},
+                {"box": "Predicted velocity", "id": "vel", "minor": True},
+                {"box": "Update latents", "id": "upd", "minor": True},
+            ], "loop": "4 denoising steps (DMD)", "tint": "grey", "id": "denoise"},
+            {"box": "KV-refresh pass, write cache", "id": "kv", "minor": True},
+        ],
+        "above": [{"box": "Wan2.1 VAE decoder", "id": "dec", "style": "teal"}, {"text": "12 frames at 832×480"}],
+        "insets": [{"for": "ffn", "stack": [{"box": "Linear"}, {"box": "GELU"}, {"box": "Linear"}]}],
+        "annotations": [
+            {"at": "vae", "text": "*1,560* latents per 30×52 latent frame; a chunk of *3* latent frames = *4,680* tokens [D]", "side": "left", "key": True},
+            {"at": "attn", "text": "*12* heads of *128*, width *1,536*; dense within the chunk, causal over a rolling cache of *21* latent frames = *32,760* tokens", "side": "left", "key": True},
+            {"at": "xattn", "text": "no action input: text-to-video only; *512*-token text KV per layer", "side": "left"},
+            {"at": "block", "text": "*30* layers, *1.3B* parameters, FFN *8,960* (Wan2.1-T2V-1.3B, unchanged)", "side": "right", "key": True},
+            {"at": "upd", "text": "timesteps *1000, 750, 500, 250* (shift *5*); distilled with DMD from the frozen *14B* teacher", "side": "right"},
+            {"at": "kv", "text": "*1* extra pass at timestep *0* writes clean KV: *5* passes per chunk; the rolling cache (≈*6.0 GB* BF16 [D]) evicts the oldest frames", "side": "right"},
+            {"at": "dec", "text": "*17.0* fps at 832×480 on one H100, *0.69* s first-chunk latency (authors, Table 1)", "side": "right", "key": True},
+        ],
+        "feedback": "next chunk",
+    },
 }

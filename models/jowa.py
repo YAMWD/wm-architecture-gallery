@@ -54,4 +54,37 @@ MODEL = {
                     "short": "VQ decoder (not used in planning)"},
         "loop": "beam search",
     },
+    "flow": {
+        "below": [{"text": "Atari frame 84×84 + action + task ID"}],
+        "stack": [
+            {"box": "VQ-VAE encoder (CNN)", "id": "enc", "style": "teal"},
+            {"box": "Nearest codebook entry", "id": "vq"},
+            {"box": "Token embedding", "id": "emb", "minor": True},
+            {"group": [
+                {"residual": [{"box": "LayerNorm", "minor": True},
+                              {"box": "Masked self-attention", "id": "attn", "style": "dark", "side": "Position + task emb."}]},
+                {"residual": [{"box": "LayerNorm", "minor": True}, {"box": "Feed forward", "id": "ffn"}]},
+            ], "repeat": "12 ×", "id": "block"},
+            {"fanout": [[{"box": "Next-code head", "id": "out", "minor": True}, {"box": "Sample next code", "id": "sample"}],
+                        [{"box": "Reward head", "id": "rew", "terminal": True, "minor": True}],
+                        [{"box": "Done head", "terminal": True, "minor": True}],
+                        [{"box": "Q-value head", "id": "q", "terminal": True}]]},
+        ],
+        "above": [{"box": "VQ-VAE decoder (CNN)", "id": "dec", "style": "teal"}, {"text": "Next frame 84×84 (reconstruction only)"}],
+        "insets": [
+            {"for": "ffn", "stack": [{"box": "Linear"}, {"box": "GELU"}, {"box": "Linear"}]},
+            {"for": "q", "label": "Q-value head", "stack": [{"box": "Linear, LayerNorm, Mish"}, {"box": "Linear, LayerNorm, Mish"}, {"box": "Linear → return bins"}]},
+        ],
+        "annotations": [
+            {"at": "vq", "text": "*36* codes per frame (*6×6* [D]), vocabulary *2,048*", "side": "left", "key": True},
+            {"at": "emb", "text": "width *768*; learnable task embedding added to observation and action tokens; VQ-VAE frozen after stage 1", "side": "left"},
+            {"at": "attn", "text": "*12* heads; causal over (*36* codes + action) per step; context *8* steps = *296* tokens", "side": "left", "key": True},
+            {"at": "block", "text": "*12* layers, *150M* parameters (also 70M and 40M variants); dropout *0.1*", "side": "right", "key": True},
+            {"at": "sample", "text": "beam search, H *2*, K *2–4*: expand the top-K actions by Q, imagine the next frame (*36* serial decodes [D]), score reward + Q, keep the best beams", "side": "left"},
+            {"at": "out", "text": "next-code, reward and done heads are *2*-layer MLPs; the Q-head a *3*-layer MLP (hidden *1,792*, *3* distributional heads) trained by TD with CQL", "side": "right"},
+            {"at": "q", "text": "*10.8* FPS without planning, *1.26* FPS with beam search H *2* (authors; hardware not stated)", "side": "right", "key": True},
+            {"at": "dec", "text": "reconstruction only; planning and Q-values stay in token space", "side": "right"},
+        ],
+        "feedback": "next step",
+    },
 }

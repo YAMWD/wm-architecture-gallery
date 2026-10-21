@@ -63,4 +63,36 @@ MODEL = {
                     "short": "MG-LightVAE → 12 frames"},
         "loop": "AR rollout",
     },
+    "flow": {
+        "below": [{"text": "Previous frames + camera trajectory (from keys/mouse) + text"}],
+        "stack": [
+            {"box": "Wan2.2 VAE encoder (4×16×16)", "short": "Wan2.2 VAE encoder", "id": "vae", "style": "teal"},
+            {"box": "Patchify 2×2", "id": "patch", "minor": True},
+            {"box": "Patch memory: lift to 3D, re-project", "id": "mem", "minor": True, "side": "Metric depth + poses"},
+            {"group": [
+                {"box": "Pose-aware token sequence", "short": "Pose-aware sequence", "id": "seq", "style": "soft"},
+                {"group": [
+                    {"residual": [{"box": "AdaLN (scale, shift)", "minor": True, "side": "Timestep emb."},
+                                  {"box": "Block-causal self-attention", "short": "Block-causal attention", "id": "attn", "style": "dark", "side": "RoPE + tiled PRoPE"}]},
+                    {"residual": [{"box": "Cross-attention", "id": "xattn", "side": "umT5 text"}]},
+                    {"residual": [{"box": "AdaLN (scale, shift)", "minor": True}, {"box": "Feed forward", "id": "ffn"}]},
+                ], "repeat": "30 ×", "id": "block"},
+                {"box": "Predicted velocity", "id": "vel", "minor": True},
+                {"box": "Update latents", "id": "upd", "minor": True},
+            ], "loop": "3 denoising steps (DMD)", "tint": "grey", "id": "denoise"},
+        ],
+        "above": [{"box": "MG-LightVAE decoder (75% pruned)", "short": "MG-LightVAE decoder", "id": "dec", "style": "teal"}, {"text": "12 frames at 1280×704"}],
+        "insets": [{"for": "ffn", "stack": [{"box": "Linear"}, {"box": "GELU"}, {"box": "Linear"}]},
+                   {"for": "attn", "label": "tiled PRoPE", "stack": [{"box": "RoPE"}, {"box": "q × P-transpose; k, v × P-inverse"}, {"box": "Attention"}, {"box": "out × P"}]}],
+        "annotations": [
+            {"at": "vae", "text": "*880* tokens per 22×40 latent frame; a chunk of *3* latent frames = *2,640* target tokens = *12* frames [D]", "side": "left", "key": True},
+            {"at": "mem", "text": "patch memory: ≤*1* token per target cell, frustum-queried and z-buffered; retrieval once per segment, off the per-frame loop", "side": "left"},
+            {"at": "seq", "text": "noisy targets + clean anchor + context frames + re-projected memory patches + reference prefix: ≤≈*7,900* tokens per chunk [D], bounded in rollout length", "side": "right", "key": True},
+            {"at": "attn", "text": "*24* heads, width *3,072*; camera pose via tiled PRoPE in every block, no new parameters", "side": "left", "key": True},
+            {"at": "block", "text": "*30* layers, *5B* (Wan2.2-TI2V-5B); INT8 DiT at inference", "side": "right", "key": True},
+            {"at": "upd", "text": "PFM causal adaptation, then self-rollout DMD → *3* steps; prefix and context held at the next noise level each substep (HiAR), not cached", "side": "right"},
+            {"at": "dec", "text": "up to *20* fps at 1280×704 on one H100 incl. retrieval and decode (company claim)", "side": "right", "key": True},
+        ],
+        "feedback": "next chunk",
+    },
 }

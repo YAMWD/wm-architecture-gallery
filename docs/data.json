@@ -114,6 +114,152 @@
     "none": "states are discretized scalars"
    },
    "loop": "beam search"
+  },
+  "flow": {
+   "below": [
+    {
+     "text": "Scalars: state, action, reward, reward-to-go"
+    }
+   ],
+   "stack": [
+    {
+     "box": "Per-dimension discretization",
+     "short": "Per-dimension bins",
+     "id": "disc",
+     "style": "teal"
+    },
+    {
+     "box": "Token embedding",
+     "id": "emb",
+     "minor": true
+    },
+    {
+     "group": [
+      {
+       "residual": [
+        {
+         "box": "LayerNorm",
+         "minor": true
+        },
+        {
+         "box": "Masked self-attention",
+         "id": "attn",
+         "style": "dark",
+         "side": "Position emb."
+        }
+       ]
+      },
+      {
+       "residual": [
+        {
+         "box": "LayerNorm",
+         "minor": true
+        },
+        {
+         "box": "Feed forward",
+         "id": "ffn"
+        }
+       ]
+      }
+     ],
+     "repeat": "4 ×",
+     "id": "block"
+    },
+    {
+     "box": "Linear output layer",
+     "id": "out",
+     "minor": true
+    },
+    {
+     "box": "Sample next token",
+     "id": "sample"
+    }
+   ],
+   "above": [
+    {
+     "box": "Bin centre lookup",
+     "id": "dec",
+     "style": "teal"
+    },
+    {
+     "text": "Planned trajectory; first action executed"
+    }
+   ],
+   "insets": [
+    {
+     "for": "ffn",
+     "stack": [
+      {
+       "box": "Linear"
+      },
+      {
+       "box": "GELU"
+      },
+      {
+       "box": "Linear"
+      }
+     ]
+    },
+    {
+     "for": "sample",
+     "label": "beam search",
+     "stack": [
+      {
+       "box": "Grow each beam one token"
+      },
+      {
+       "box": "Keep the likeliest beams"
+      },
+      {
+       "box": "Rank by reward + R-to-go"
+      },
+      {
+       "box": "Repeat to the horizon"
+      }
+     ]
+    }
+   ],
+   "annotations": [
+    {
+     "at": "disc",
+     "text": "no learned encoder: each scalar becomes one of *100* bins (uniform or quantile); *N + M + 2* tokens per step",
+     "side": "left",
+     "key": true
+    },
+    {
+     "at": "emb",
+     "text": "width *128*; input vocabulary *100* × (N + M + 2), output logits over *100* bins",
+     "side": "left"
+    },
+    {
+     "at": "attn",
+     "text": "*4* heads; causal over *5* transitions, e.g. *125* tokens for a 17-D state and 6-D action [D]",
+     "side": "left",
+     "key": true
+    },
+    {
+     "at": "block",
+     "text": "*4* layers, width *128*; parameters not disclosed (~*0.8M* block weights [D]); GPT block as in minGPT",
+     "side": "right",
+     "key": true
+    },
+    {
+     "at": "ffn",
+     "text": "dropout *0.1* at the end of each block",
+     "side": "right"
+    },
+    {
+     "at": "sample",
+     "text": "*1* token per pass: *15* × (N + M + 2) serial decodes per action with *256* beams batched, e.g. *375* for HalfCheetah [D]; 'up to multiple seconds' per action (authors)",
+     "side": "left"
+    },
+    {
+     "at": "dec",
+     "text": "greedy observations (k_obs *1*), actions from the top *20* tokens; horizon *15* transitions",
+     "side": "right"
+    }
+   ],
+   "feedback": "receding horizon"
   }
  },
  {
@@ -232,6 +378,155 @@
     "short": "CNN decoder → frame (training only)"
    },
    "loop": "AR rollout"
+  },
+  "flow": {
+   "below": [
+    {
+     "text": "Frame x_t + action a_t"
+    }
+   ],
+   "stack": [
+    {
+     "box": "DreamerV2 CNN encoder",
+     "short": "DreamerV2 encoder",
+     "id": "enc",
+     "style": "teal"
+    },
+    {
+     "box": "Posterior q(z_t | x_t), discrete",
+     "id": "post",
+     "minor": true
+    },
+    {
+     "box": "Step token (z_t, a_t)",
+     "short": "Token (z_t, a_t)",
+     "id": "tok",
+     "side": "Action a_t"
+    },
+    {
+     "group": [
+      {
+       "residual": [
+        {
+         "box": "Masked self-attention",
+         "id": "attn",
+         "style": "dark"
+        }
+       ]
+      },
+      {
+       "box": "LayerNorm",
+       "minor": true
+      },
+      {
+       "residual": [
+        {
+         "box": "MLP",
+         "id": "mlp"
+        }
+       ]
+      },
+      {
+       "box": "LayerNorm",
+       "minor": true
+      }
+     ],
+     "repeat": "2 ×",
+     "id": "block"
+    },
+    {
+     "box": "Deterministic state h_t",
+     "id": "h",
+     "minor": true
+    },
+    {
+     "fanout": [
+      [
+       {
+        "box": "Prior p(z_t | h_t)",
+        "id": "prior",
+        "minor": true
+       },
+       {
+        "box": "Sample z_t, feed back",
+        "short": "Sample prior z_t",
+        "id": "sample"
+       }
+      ],
+      [
+       {
+        "box": "Reward head",
+        "id": "rew",
+        "terminal": true
+       }
+      ],
+      [
+       {
+        "box": "Discount head",
+        "terminal": true,
+        "minor": true
+       }
+      ]
+     ]
+    }
+   ],
+   "above": [
+    {
+     "box": "DreamerV2 CNN decoder",
+     "short": "DreamerV2 decoder",
+     "id": "dec",
+     "style": "teal"
+    },
+    {
+     "text": "Reconstructed frame x_t (training only)"
+    }
+   ],
+   "annotations": [
+    {
+     "at": "enc",
+     "text": "DreamerV2 CNN; posterior q(z_t | x_t) without h_t, so all steps train in parallel",
+     "side": "left",
+     "key": true
+    },
+    {
+     "at": "tok",
+     "text": "*1* token per step; how z_t and a_t are combined is not stated",
+     "side": "left"
+    },
+    {
+     "at": "attn",
+     "text": "*10* heads, width *200* (DMC) or *600* (Atari); causal over all past (z, a) steps",
+     "side": "left",
+     "key": true
+    },
+    {
+     "at": "block",
+     "text": "*2* layers (~*0.5M*–*4.3M* block weights [D]); post-norm Vaswani block, no gating, no dropout",
+     "side": "right",
+     "key": true
+    },
+    {
+     "at": "mlp",
+     "text": "no identity-map reordering (except Atari Pong), no KV cache mentioned; relative positional embedding (Transformer-XL) is a tunable option",
+     "side": "right"
+    },
+    {
+     "at": "sample",
+     "text": "*1* pass per imagined step; *K* = *3* imagined trajectories per replay sample; no wall-clock figure",
+     "side": "left"
+    },
+    {
+     "at": "rew",
+     "text": "reward and discount heads read (h_t, z_t)",
+     "side": "right"
+    },
+    {
+     "at": "dec",
+     "text": "reads (h_t, z_t); reconstruction loss and visualisation only, not run in imagination",
+     "side": "right"
+    }
+   ],
+   "feedback": "next step: z_t"
   }
  },
  {
@@ -345,6 +640,155 @@
     "sub": "decoded frames feed the actor-critic"
    },
    "loop": "AR rollout"
+  },
+  "flow": {
+   "below": [
+    {
+     "text": "Atari frame 64×64 + action"
+    }
+   ],
+   "stack": [
+    {
+     "box": "VQ-VAE encoder (CNN)",
+     "id": "enc",
+     "style": "teal"
+    },
+    {
+     "box": "Nearest codebook entry",
+     "id": "vq"
+    },
+    {
+     "box": "Token embedding",
+     "id": "emb",
+     "minor": true
+    },
+    {
+     "group": [
+      {
+       "residual": [
+        {
+         "box": "LayerNorm",
+         "minor": true
+        },
+        {
+         "box": "Masked self-attention",
+         "id": "attn",
+         "style": "dark",
+         "side": "Learned positions"
+        }
+       ]
+      },
+      {
+       "residual": [
+        {
+         "box": "LayerNorm",
+         "minor": true
+        },
+        {
+         "box": "Feed forward",
+         "id": "ffn"
+        }
+       ]
+      }
+     ],
+     "repeat": "10 ×",
+     "id": "block"
+    },
+    {
+     "box": "Final LayerNorm",
+     "minor": true
+    },
+    {
+     "fanout": [
+      [
+       {
+        "box": "Linear output layer",
+        "id": "out",
+        "minor": true
+       },
+       {
+        "box": "Sample next code",
+        "id": "sample"
+       }
+      ],
+      [
+       {
+        "box": "Reward head",
+        "id": "rew",
+        "terminal": true
+       }
+      ],
+      [
+       {
+        "box": "Done head",
+        "terminal": true
+       }
+      ]
+     ]
+    }
+   ],
+   "above": [
+    {
+     "box": "VQ-VAE decoder (CNN)",
+     "id": "dec",
+     "style": "teal"
+    },
+    {
+     "text": "Next frame 64×64"
+    }
+   ],
+   "insets": [
+    {
+     "for": "ffn",
+     "stack": [
+      {
+       "box": "Linear"
+      },
+      {
+       "box": "GELU"
+      },
+      {
+       "box": "Linear"
+      }
+     ]
+    }
+   ],
+   "annotations": [
+    {
+     "at": "vq",
+     "text": "*16* codes per frame, vocabulary of *512*",
+     "side": "left",
+     "key": true
+    },
+    {
+     "at": "emb",
+     "text": "Embedding dimension of *256*",
+     "side": "right"
+    },
+    {
+     "at": "attn",
+     "text": "*4* heads · context of *20* steps = *340* tokens",
+     "side": "left",
+     "key": true
+    },
+    {
+     "at": "block",
+     "text": "*10* layers, ~*30M* parameters",
+     "side": "right",
+     "key": true
+    },
+    {
+     "at": "sample",
+     "text": "*17* serial passes per frame",
+     "side": "left"
+    },
+    {
+     "at": "rew",
+     "text": "read from the action token",
+     "side": "right"
+    }
+   ],
+   "feedback": "next step"
   }
  },
  {
@@ -455,6 +899,120 @@
     "short": "SAVi decoder → 64×64 frame"
    },
    "loop": "AR rollout"
+  },
+  "flow": {
+   "below": [
+    {
+     "text": "Burn-in frames 64×64 (no actions)"
+    }
+   ],
+   "stack": [
+    {
+     "box": "SAVi encoder (Slot Attention)",
+     "short": "SAVi slot encoder",
+     "id": "enc",
+     "style": "teal"
+    },
+    {
+     "box": "Linear to d_e",
+     "id": "proj",
+     "minor": true
+    },
+    {
+     "group": [
+      {
+       "residual": [
+        {
+         "box": "LayerNorm",
+         "minor": true
+        },
+        {
+         "box": "Bidirectional self-attention",
+         "short": "Bidirectional attention",
+         "id": "attn",
+         "style": "dark",
+         "side": "Temporal P.E."
+        }
+       ]
+      },
+      {
+       "residual": [
+        {
+         "box": "LayerNorm",
+         "minor": true
+        },
+        {
+         "box": "Feed forward",
+         "id": "ffn"
+        }
+       ]
+      }
+     ],
+     "repeat": "4 ×",
+     "id": "block"
+    },
+    {
+     "box": "Last N outputs → Linear",
+     "short": "Linear slot head",
+     "id": "pred",
+     "side": "Current slots"
+    }
+   ],
+   "above": [
+    {
+     "box": "SAVi spatial-broadcast decoder",
+     "short": "SAVi broadcast decoder",
+     "id": "dec",
+     "style": "teal"
+    },
+    {
+     "text": "Next frame 64×64"
+    }
+   ],
+   "annotations": [
+    {
+     "at": "enc",
+     "text": "frozen SAVi; *6–8* slots of *128*-d per frame (STEVE on Physion), projected to d_e = *128* or *256*",
+     "short": "frozen SAVi; *6–8* slots per frame",
+     "side": "left",
+     "key": true
+    },
+    {
+     "at": "proj",
+     "text": "sinusoidal P.E. per frame, shared by all slots of that frame (permutation equivariant)",
+     "side": "left"
+    },
+    {
+     "at": "attn",
+     "text": "*8* heads; all T×N slot tokens attend to each other: *6* frames × *7* slots = *42* tokens on CLEVRER [D]",
+     "short": "*8* heads over T×N slot tokens",
+     "side": "left",
+     "key": true
+    },
+    {
+     "at": "block",
+     "text": "*4* layers (OBJ3D, CLEVRER) or *8* (Physion, PHYRE); size not disclosed (~*3M* block weights [D])",
+     "short": "*4* or *8* layers; size not disclosed",
+     "side": "right",
+     "key": true
+    },
+    {
+     "at": "ffn",
+     "text": "Pre-LN; FFN *4×* d_e; activation not disclosed",
+     "side": "right"
+    },
+    {
+     "at": "pred",
+     "text": "*1* pass predicts all *N* next-frame slots (L2 loss); the residual from the current slots keeps slot order; *K* = *10* rollout frames fed back",
+     "side": "right"
+    },
+    {
+     "at": "dec",
+     "text": "frozen; *16×16* broadcast grid; per-slot RGB + alpha, composited; no inference figure (training on *4* GPUs in < *5* days, authors)",
+     "side": "right"
+    }
+   ],
+   "feedback": "next frame"
   }
  },
  {
@@ -575,6 +1133,161 @@
     "none": "policy acts from z_t; the CNN decoder only trains the VAE"
    },
    "loop": "AR rollout"
+  },
+  "flow": {
+   "below": [
+    {
+     "text": "Frames 64×64 + action + reward"
+    }
+   ],
+   "stack": [
+    {
+     "box": "CNN VAE encoder",
+     "id": "enc",
+     "style": "teal"
+    },
+    {
+     "box": "Categorical latent z",
+     "id": "lat",
+     "minor": true
+    },
+    {
+     "box": "Interleave (z, a, r) tokens",
+     "short": "Interleave z, a, r",
+     "id": "seq",
+     "side": "Action + reward"
+    },
+    {
+     "group": [
+      {
+       "residual": [
+        {
+         "box": "LayerNorm",
+         "minor": true
+        },
+        {
+         "box": "Masked self-attention",
+         "id": "attn",
+         "style": "dark",
+         "side": "Relative positions"
+        }
+       ]
+      },
+      {
+       "residual": [
+        {
+         "box": "LayerNorm",
+         "minor": true
+        },
+        {
+         "box": "Feed forward",
+         "id": "ffn"
+        }
+       ]
+      }
+     ],
+     "repeat": "10 ×",
+     "id": "block"
+    },
+    {
+     "box": "Read the action token",
+     "short": "Read action token",
+     "id": "read",
+     "minor": true
+    },
+    {
+     "fanout": [
+      [
+       {
+        "box": "Latent head (MLP)",
+        "id": "lathead",
+        "minor": true
+       },
+       {
+        "box": "Sample next latent",
+        "id": "sample"
+       }
+      ],
+      [
+       {
+        "box": "Reward head",
+        "terminal": true,
+        "minor": true
+       }
+      ],
+      [
+       {
+        "box": "Discount head",
+        "id": "disc",
+        "terminal": true,
+        "minor": true
+       }
+      ]
+     ]
+    }
+   ],
+   "above": [
+    {
+     "text": "Next z → actor-critic, no decoding"
+    }
+   ],
+   "insets": [
+    {
+     "for": "ffn",
+     "stack": [
+      {
+       "box": "Linear"
+      },
+      {
+       "box": "SiLU"
+      },
+      {
+       "box": "Linear"
+      }
+     ]
+    }
+   ],
+   "annotations": [
+    {
+     "at": "enc",
+     "text": "*32* categoricals × *32* classes per step (stack of *4* grayscale frames)",
+     "side": "left",
+     "key": true
+    },
+    {
+     "at": "seq",
+     "text": "*3* tokens per step (latent, action, reward) through modality-specific linear embeddings; history *16* steps = *47* tokens [D]",
+     "side": "left"
+    },
+    {
+     "at": "attn",
+     "text": "*4* heads of *64*; Transformer-XL relative positions + cached segment memory",
+     "side": "left",
+     "key": true
+    },
+    {
+     "at": "block",
+     "text": "*10* layers, width *256*, FFN *1,024*; *10.8M* dynamics model, *19M* world model",
+     "side": "right",
+     "key": true
+    },
+    {
+     "at": "read",
+     "text": "h is the action token's output; norm placement not disclosed",
+     "side": "right"
+    },
+    {
+     "at": "sample",
+     "text": "*1* pass per imagined step; *39,000* samples/s on one A100 with the XL memory, *19,900* without (authors)",
+     "side": "right"
+    },
+    {
+     "at": "disc",
+     "text": "MLP heads; reward and discount take the mean",
+     "side": "right"
+    }
+   ],
+   "feedback": "next step"
   }
  },
  {
@@ -686,6 +1399,154 @@
     "none": "states are text"
    },
    "loop": "MCTS"
+  },
+  "flow": {
+   "below": [
+    {
+     "text": "Prompt: demonstrations + state + action (text)"
+    }
+   ],
+   "stack": [
+    {
+     "box": "LLaMA tokenizer",
+     "id": "tok",
+     "style": "teal"
+    },
+    {
+     "box": "Token embedding",
+     "id": "emb",
+     "minor": true
+    },
+    {
+     "group": [
+      {
+       "residual": [
+        {
+         "box": "RMSNorm",
+         "minor": true
+        },
+        {
+         "box": "Masked self-attention",
+         "id": "attn",
+         "style": "dark",
+         "side": "RoPE"
+        }
+       ]
+      },
+      {
+       "residual": [
+        {
+         "box": "RMSNorm",
+         "minor": true
+        },
+        {
+         "box": "SwiGLU feed forward",
+         "id": "ffn"
+        }
+       ]
+      }
+     ],
+     "repeat": "60 ×",
+     "id": "block"
+    },
+    {
+     "box": "Final RMSNorm",
+     "minor": true
+    },
+    {
+     "box": "Linear output layer",
+     "id": "out",
+     "minor": true
+    },
+    {
+     "box": "Sample next token",
+     "id": "sample"
+    }
+   ],
+   "above": [
+    {
+     "text": "Next state, action or reward as text"
+    }
+   ],
+   "insets": [
+    {
+     "for": "ffn",
+     "stack": [
+      {
+       "fanout": [
+        [
+         {
+          "box": "Linear"
+         }
+        ],
+        [
+         {
+          "box": "Linear"
+         },
+         {
+          "box": "SiLU"
+         }
+        ]
+       ]
+      },
+      {
+       "merge": "x"
+      },
+      {
+       "box": "Linear"
+      }
+     ]
+    },
+    {
+     "for": "sample",
+     "label": "MCTS iteration",
+     "stack": [
+      {
+       "box": "Select a leaf by UCT"
+      },
+      {
+       "box": "Propose d actions (LLM)"
+      },
+      {
+       "box": "Predict next state (LLM)"
+      },
+      {
+       "box": "Score, back-propagate Q"
+      }
+     ]
+    }
+   ],
+   "annotations": [
+    {
+     "at": "tok",
+     "text": "frozen LLaMA-33B, no training; states and actions are natural-language text",
+     "side": "left",
+     "key": true
+    },
+    {
+     "at": "attn",
+     "text": "*52* heads, width *6,656*; causal over prompt and generated text, cut at *2,048* tokens or a newline",
+     "side": "left",
+     "key": true
+    },
+    {
+     "at": "block",
+     "text": "*60* layers, *32.5B* parameters (LLaMA paper); MCTS: *10–20* iterations of LLM generations",
+     "side": "right",
+     "key": true
+    },
+    {
+     "at": "sample",
+     "text": "temperature *0.8*; one full generation per state transition; the same model is policy, world model and reward model",
+     "side": "left"
+    },
+    {
+     "at": "out",
+     "text": "rewards: action log-probability, answer confidence, P('Yes' | 'is this step correct?'); runs on 4× A5000 24 GB, no latency figure",
+     "side": "left"
+    }
+   ],
+   "feedback": "MCTS"
   }
  },
  {
@@ -804,6 +1665,126 @@
     "short": "Diffusion U-Net, 50 DDIM steps"
    },
    "loop": "AR rollout"
+  },
+  "flow": {
+   "below": [
+    {
+     "text": "Frame 288×512 + text + action"
+    }
+   ],
+   "stack": [
+    {
+     "box": "Image tokenizer (2D U-Net)",
+     "short": "Image tokenizer",
+     "id": "tok",
+     "style": "teal"
+    },
+    {
+     "box": "Nearest codebook entry",
+     "short": "Codebook lookup",
+     "id": "vq",
+     "minor": true
+    },
+    {
+     "box": "Interleave text, image, action tokens",
+     "short": "Interleave tokens",
+     "id": "seq",
+     "side": "T5 text + action"
+    },
+    {
+     "box": "Token + spatio-temporal positions",
+     "id": "emb",
+     "minor": true
+    },
+    {
+     "group": [
+      {
+       "residual": [
+        {
+         "box": "Norm",
+         "minor": true
+        },
+        {
+         "box": "Masked self-attention",
+         "id": "attn",
+         "style": "dark"
+        }
+       ]
+      },
+      {
+       "residual": [
+        {
+         "box": "Norm",
+         "minor": true
+        },
+        {
+         "box": "Feed forward",
+         "id": "ffn"
+        }
+       ]
+      }
+     ],
+     "repeat": "N ×",
+     "id": "block"
+    },
+    {
+     "box": "Sample next image token",
+     "short": "Sample next token",
+     "id": "sample"
+    }
+   ],
+   "above": [
+    {
+     "box": "Video diffusion U-Net decoder",
+     "short": "Diffusion U-Net decoder",
+     "id": "dec",
+     "style": "soft"
+    },
+    {
+     "text": "Frames 288×512 at 25 Hz"
+    }
+   ],
+   "annotations": [
+    {
+     "at": "tok",
+     "text": "*0.3B*, DINO-distilled; *576* tokens per frame (18×32), vocabulary *8,192*",
+     "short": "*576* tokens per frame, vocabulary *8,192*",
+     "side": "left",
+     "key": true
+    },
+    {
+     "at": "seq",
+     "text": "*32* text + *576* image + *2* action tokens per step; *26* frames = *15,860* tokens",
+     "short": "*26* frames = *15,860* tokens of context",
+     "side": "left",
+     "key": true
+    },
+    {
+     "at": "attn",
+     "text": "dense causal attention (FlashAttention v2) with learned temporal + spatial position embeddings; sliding window beyond *26* frames at 6.25 Hz",
+     "side": "left"
+    },
+    {
+     "at": "dec",
+     "text": "*2.6B* video diffusion 3D U-Net, not a transformer: *50* DDIM steps per *7*-frame window, then 6.25 → *25* Hz upsampling; not real time (authors)",
+     "side": "left"
+    },
+    {
+     "at": "block",
+     "text": "*6.5B* trained from scratch; layers, heads and block details not disclosed",
+     "short": "*6.5B*; layers and heads not disclosed",
+     "side": "right",
+     "key": true
+    },
+    {
+     "at": "sample",
+     "text": "*576* serial passes per frame, top-k *50*; classifier-free guidance doubles the evaluations [D]",
+     "short": "*576* serial passes per frame",
+     "side": "right",
+     "key": true
+    }
+   ],
+   "feedback": "next frame"
   }
  },
  {
@@ -918,6 +1899,172 @@
     "none": "agent acts on [z_t, h_t]; the CNN decoder only trains the VAE"
    },
    "loop": "AR rollout"
+  },
+  "flow": {
+   "below": [
+    {
+     "text": "Frame 64×64 + action"
+    }
+   ],
+   "stack": [
+    {
+     "box": "CNN categorical VAE encoder",
+     "short": "CNN VAE encoder",
+     "id": "enc",
+     "style": "teal"
+    },
+    {
+     "box": "Categorical latent z",
+     "id": "lat",
+     "minor": true
+    },
+    {
+     "box": "Action mixer (MLP)",
+     "id": "mix",
+     "style": "orange",
+     "side": "Action"
+    },
+    {
+     "box": "Learned positions + LayerNorm",
+     "id": "pos",
+     "minor": true
+    },
+    {
+     "group": [
+      {
+       "residual": [
+        {
+         "box": "Masked self-attention",
+         "id": "attn",
+         "style": "dark"
+        }
+       ]
+      },
+      {
+       "box": "LayerNorm",
+       "minor": true
+      },
+      {
+       "residual": [
+        {
+         "box": "Feed forward",
+         "id": "ffn"
+        }
+       ]
+      },
+      {
+       "box": "LayerNorm",
+       "minor": true
+      }
+     ],
+     "repeat": "2 ×",
+     "id": "block"
+    },
+    {
+     "fanout": [
+      [
+       {
+        "box": "Dynamics head (Linear)",
+        "short": "Dynamics head",
+        "id": "dyn"
+       },
+       {
+        "box": "Sample next latent",
+        "id": "sample"
+       }
+      ],
+      [
+       {
+        "box": "Reward head",
+        "terminal": true,
+        "minor": true
+       }
+      ],
+      [
+       {
+        "box": "Continue head",
+        "id": "cont",
+        "terminal": true,
+        "minor": true
+       }
+      ]
+     ]
+    }
+   ],
+   "above": [
+    {
+     "text": "Next z → actor-critic, no decoding"
+    }
+   ],
+   "insets": [
+    {
+     "for": "mix",
+     "stack": [
+      {
+       "box": "Linear + LN"
+      },
+      {
+       "box": "ReLU"
+      },
+      {
+       "box": "Linear + LN"
+      }
+     ]
+    },
+    {
+     "for": "ffn",
+     "stack": [
+      {
+       "box": "Linear"
+      },
+      {
+       "box": "ReLU"
+      },
+      {
+       "box": "Linear"
+      }
+     ]
+    }
+   ],
+   "annotations": [
+    {
+     "at": "enc",
+     "text": "*32* categoricals × *32* classes per frame",
+     "side": "left",
+     "key": true
+    },
+    {
+     "at": "mix",
+     "text": "z and the action fused into *1* token of width *512*",
+     "side": "left",
+     "key": true
+    },
+    {
+     "at": "attn",
+     "text": "*8* heads; imagination at batch *1,024*: *8* context + *16* imagined steps",
+     "side": "left"
+    },
+    {
+     "at": "block",
+     "text": "*2* layers, FFN *1,024*, post-LN; ~*4.2M* block parameters, ~*16.5M* world model",
+     "short": "*2* layers, ~*4.2M* block parameters",
+     "side": "right",
+     "key": true
+    },
+    {
+     "at": "sample",
+     "text": "*1* pass per imagined step, one categorical sample, no iterative decoding",
+     "short": "*1* pass per imagined step",
+     "side": "right",
+     "key": true
+    },
+    {
+     "at": "cont",
+     "text": "*24* cached steps ≈ *50 MB* bf16 as implemented (K and V recomputed each step)",
+     "side": "right"
+    }
+   ],
+   "feedback": "next step"
   }
  },
  {
@@ -1033,6 +2180,150 @@
     "tag": "frozen"
    },
    "loop": "AR rollout"
+  },
+  "flow": {
+   "below": [
+    {
+     "text": "Frame 160×90 + latent action"
+    }
+   ],
+   "stack": [
+    {
+     "box": "ST-ViViT tokenizer (VQ-VAE)",
+     "short": "ST-ViViT tokenizer",
+     "id": "tok",
+     "style": "teal"
+    },
+    {
+     "box": "Nearest codebook entry",
+     "short": "Codebook lookup",
+     "id": "vq",
+     "minor": true
+    },
+    {
+     "box": "Add latent action embedding",
+     "short": "Add action embedding",
+     "id": "act",
+     "style": "orange",
+     "side": "Latent action"
+    },
+    {
+     "group": [
+      {
+       "box": "Masked frame tokens",
+       "id": "masked",
+       "style": "soft",
+       "minor": true
+      },
+      {
+       "group": [
+        {
+         "residual": [
+          {
+           "box": "Norm",
+           "minor": true
+          },
+          {
+           "box": "Spatial attention (within frame)",
+           "short": "Spatial attention",
+           "id": "sattn",
+           "style": "dark"
+          }
+         ]
+        },
+        {
+         "residual": [
+          {
+           "box": "Norm",
+           "minor": true
+          },
+          {
+           "box": "Causal temporal attention",
+           "short": "Temporal attention",
+           "id": "tattn",
+           "style": "dark"
+          }
+         ]
+        },
+        {
+         "residual": [
+          {
+           "box": "Norm",
+           "minor": true
+          },
+          {
+           "box": "Feed forward",
+           "id": "ffw",
+           "minor": true
+          }
+         ]
+        }
+       ],
+       "repeat": "48 ×",
+       "id": "block"
+      },
+      {
+       "box": "Sample tokens, keep confident",
+       "short": "Sample, keep confident",
+       "id": "sample"
+      }
+     ],
+     "loop": "25 MaskGIT steps",
+     "tint": "grey",
+     "id": "maskgit"
+    }
+   ],
+   "above": [
+    {
+     "box": "ST-ViViT decoder",
+     "id": "dec",
+     "style": "teal"
+    },
+    {
+     "text": "Next frame 160×90"
+    }
+   ],
+   "annotations": [
+    {
+     "at": "tok",
+     "text": "*200M*, patch *4*, codebook *1,024* × *32*-d; ~*920* tokens per frame implied [D]",
+     "short": "~*920* codes per frame [D]",
+     "side": "left",
+     "key": true
+    },
+    {
+     "at": "act",
+     "text": "*300M* latent action model, codebook of *8*, learned without labels; added to the frame tokens",
+     "short": "*8* latent actions, learned without labels",
+     "side": "left",
+     "key": true
+    },
+    {
+     "at": "tattn",
+     "text": "temporal: the same position across *16* frames, causal; spatial: all tokens of one frame; QK-norm; norm type and positions not disclosed",
+     "side": "left"
+    },
+    {
+     "at": "sample",
+     "text": "*25* MaskGIT steps per frame at temperature *2*, all tokens of a frame per pass",
+     "short": "*25* MaskGIT passes per frame, ~*1* fps",
+     "side": "left",
+     "key": true
+    },
+    {
+     "at": "block",
+     "text": "*48* layers, *36* heads, width *5,120*; *10.1B* dynamics (*10.7B* total)",
+     "short": "*48* layers, width *5,120*, *10.1B*",
+     "side": "right",
+     "key": true
+    },
+    {
+     "at": "dec",
+     "text": "*20* layers, width *1,024*; ~*1* FPS, hardware not stated (authors); ≈ *0.46* PFLOP per frame [D]",
+     "side": "right"
+    }
+   ],
+   "feedback": "next frame"
   }
  },
  {
@@ -1156,6 +2447,156 @@
     "short": "VQ decoder (loss only)"
    },
    "loop": "AR rollout"
+  },
+  "flow": {
+   "below": [
+    {
+     "text": "Atari frame 64×64 + action"
+    }
+   ],
+   "stack": [
+    {
+     "box": "VQ-VAE encoder (CNN)",
+     "id": "enc",
+     "style": "teal"
+    },
+    {
+     "box": "Nearest codebook entry",
+     "id": "vq",
+     "minor": true
+    },
+    {
+     "box": "Embed codes, action, prediction tokens u",
+     "short": "Add action + u tokens",
+     "id": "emb",
+     "side": "Action emb."
+    },
+    {
+     "group": [
+      {
+       "residual": [
+        {
+         "box": "LayerNorm",
+         "minor": true
+        },
+        {
+         "box": "Multi-scale retention",
+         "id": "ret",
+         "style": "dark",
+         "side": "Relative positions"
+        }
+       ]
+      },
+      {
+       "residual": [
+        {
+         "box": "LayerNorm",
+         "minor": true
+        },
+        {
+         "box": "Feed forward",
+         "id": "ffn"
+        }
+       ]
+      }
+     ],
+     "repeat": "5 ×",
+     "id": "block"
+    },
+    {
+     "fanout": [
+      [
+       {
+        "box": "POP: sample all codes in one pass",
+        "short": "POP: all codes in one pass",
+        "id": "sample"
+       }
+      ],
+      [
+       {
+        "box": "Reward head",
+        "id": "rew",
+        "terminal": true,
+        "minor": true
+       }
+      ],
+      [
+       {
+        "box": "Done head",
+        "terminal": true,
+        "minor": true
+       }
+      ]
+     ]
+    }
+   ],
+   "above": [
+    {
+     "box": "VQ-VAE decoder (CNN)",
+     "id": "dec",
+     "style": "teal"
+    },
+    {
+     "text": "Next frame 64×64 (loss only)"
+    }
+   ],
+   "insets": [
+    {
+     "for": "sample",
+     "stack": [
+      {
+       "box": "Update S_t with (z_t, a_t)"
+      },
+      {
+       "box": "Run u from S_t"
+      },
+      {
+       "box": "All next codes in parallel"
+      }
+     ]
+    }
+   ],
+   "annotations": [
+    {
+     "at": "enc",
+     "text": "*64* codes per frame (*8×8*), vocabulary *512*",
+     "side": "left",
+     "key": true
+    },
+    {
+     "at": "emb",
+     "text": "*64* learned prediction tokens u per step; u never enters the recurrent state; the world model reuses the tokenizer's embedding table",
+     "side": "right"
+    },
+    {
+     "at": "ret",
+     "text": "*4* heads, width *256*; parallel inside a chunk of *3* blocks, recurrent across chunks through a d×d state per head: no KV cache",
+     "side": "left",
+     "key": true
+    },
+    {
+     "at": "block",
+     "text": "*5* layers, FFN *1,024*, dropout *0.1*; parameters not disclosed (~*3.9M* block weights [D]); per-head exponential decay + relative positions (Θ); a chunk of *3* observation-action blocks = *195* tokens [D]; FFN activation not disclosed",
+     "side": "right"
+    },
+    {
+     "at": "sample",
+     "text": "*2* calls per imagined frame instead of *64*; *15.4×* faster imagination (authors, RTX 4090)",
+     "side": "left",
+     "key": true
+    },
+    {
+     "at": "rew",
+     "text": "reward and termination read from the action token; *2H* = *20* calls over a horizon of *10* vs *640*",
+     "side": "right"
+    },
+    {
+     "at": "dec",
+     "text": "reconstruction loss only; the actor-critic reads the token code vectors through a CNN + LSTM, so imagination decodes no pixels",
+     "side": "right"
+    }
+   ],
+   "feedback": "next step"
   }
  },
  {
@@ -1282,6 +2723,185 @@
     "short": "VQGAN decoder → 64x64 frame"
    },
    "loop": "AR rollout"
+  },
+  "flow": {
+   "below": [
+    {
+     "text": "Frames 64×64 + action"
+    }
+   ],
+   "stack": [
+    {
+     "box": "Conditional VQGAN encoder",
+     "short": "Compressive VQGAN",
+     "id": "enc",
+     "style": "teal",
+     "side": "Context features"
+    },
+    {
+     "box": "Nearest codebook entry",
+     "short": "Codebook lookup",
+     "id": "vq",
+     "minor": true
+    },
+    {
+     "box": "Slot tokens + action embedding",
+     "short": "Slot tokens + action",
+     "id": "seq",
+     "style": "orange",
+     "side": "Action (linear)"
+    },
+    {
+     "box": "Token embedding",
+     "id": "emb",
+     "minor": true
+    },
+    {
+     "group": [
+      {
+       "residual": [
+        {
+         "box": "RMSNorm",
+         "minor": true
+        },
+        {
+         "box": "Masked self-attention",
+         "id": "attn",
+         "style": "dark",
+         "side": "RoPE"
+        }
+       ]
+      },
+      {
+       "residual": [
+        {
+         "box": "RMSNorm",
+         "minor": true
+        },
+        {
+         "box": "SwiGLU feed forward",
+         "short": "SwiGLU FFN",
+         "id": "ffn"
+        }
+       ]
+      }
+     ],
+     "repeat": "12 ×",
+     "id": "block"
+    },
+    {
+     "fanout": [
+      [
+       {
+        "box": "Output layer",
+        "id": "out",
+        "minor": true
+       },
+       {
+        "box": "Sample next token",
+        "id": "sample"
+       }
+      ],
+      [
+       {
+        "box": "Reward head (linear)",
+        "short": "Reward head",
+        "id": "rew",
+        "terminal": true,
+        "minor": true
+       }
+      ]
+     ]
+    }
+   ],
+   "above": [
+    {
+     "box": "Conditional VQGAN decoder",
+     "short": "VQGAN decoder",
+     "id": "dec",
+     "style": "teal"
+    },
+    {
+     "text": "Next frame 64×64"
+    }
+   ],
+   "insets": [
+    {
+     "for": "ffn",
+     "stack": [
+      {
+       "fanout": [
+        [
+         {
+          "box": "Linear"
+         }
+        ],
+        [
+         {
+          "box": "Linear"
+         },
+         {
+          "box": "SiLU"
+         }
+        ]
+       ]
+      },
+      {
+       "merge": "x"
+      },
+      {
+       "box": "Linear"
+      }
+     ]
+    }
+   ],
+   "annotations": [
+    {
+     "at": "enc",
+     "text": "*256* tokens per context frame, *16* per future frame; codebooks of *8,192*",
+     "side": "left",
+     "key": true
+    },
+    {
+     "at": "vq",
+     "text": "*114M* at 64×64; future frames are encoded by cross-attending to the context-frame features",
+     "side": "left"
+    },
+    {
+     "at": "seq",
+     "text": "action added to the slot token before each future frame; *16* frames with *2* context frames = *751* tokens [D]",
+     "side": "left",
+     "key": true
+    },
+    {
+     "at": "attn",
+     "text": "*12* heads, width *768*; dense causal over the whole clip",
+     "side": "left"
+    },
+    {
+     "at": "dec",
+     "text": "cross-attention to the context features; generation *1.11* s + detokenize *0.06* s on an RTX 4090 vs *22.5* s with a 16×16 tokenizer (authors); top-k *100*",
+     "side": "left"
+    },
+    {
+     "at": "block",
+     "text": "*12* layers, FFN *3,072*, *138M*; scaling run *24* layers, width *1,024*, *436M*",
+     "side": "right",
+     "key": true
+    },
+    {
+     "at": "sample",
+     "text": "*17* passes per future frame (slot + *16* tokens) vs *257* with a 16×16 tokenizer",
+     "side": "right",
+     "key": true
+    },
+    {
+     "at": "rew",
+     "text": "MSE reward head on the last token of each frame (fine-tuning only)",
+     "side": "right"
+    }
+   ],
+   "feedback": "next frame"
   }
  },
  {
@@ -1396,6 +3016,164 @@
     "none": "no reconstruction; planning in latent space"
    },
    "loop": "MCTS"
+  },
+  "flow": {
+   "below": [
+    {
+     "text": "Frame 64×64 + action"
+    }
+   ],
+   "stack": [
+    {
+     "box": "Conv encoder",
+     "id": "enc",
+     "style": "teal"
+    },
+    {
+     "box": "Linear + SimNorm → latent z",
+     "short": "SimNorm latent z",
+     "id": "lat"
+    },
+    {
+     "box": "Interleave (z, a) tokens",
+     "short": "Interleave z, a",
+     "id": "seq",
+     "side": "Action emb."
+    },
+    {
+     "box": "Add learned positions",
+     "id": "pos",
+     "minor": true
+    },
+    {
+     "group": [
+      {
+       "residual": [
+        {
+         "box": "Masked self-attention",
+         "id": "attn",
+         "style": "dark"
+        }
+       ]
+      },
+      {
+       "box": "LayerNorm",
+       "minor": true
+      },
+      {
+       "residual": [
+        {
+         "box": "Feed forward",
+         "id": "ffn"
+        }
+       ]
+      },
+      {
+       "box": "LayerNorm",
+       "minor": true
+      }
+     ],
+     "repeat": "2 ×",
+     "id": "block"
+    },
+    {
+     "fanout": [
+      [
+       {
+        "box": "Policy + value head",
+        "id": "pol",
+        "terminal": true,
+        "minor": true
+       }
+      ],
+      [
+       {
+        "box": "Dynamics head (MLP)",
+        "short": "Dynamics head",
+        "id": "dyn",
+        "minor": true
+       },
+       {
+        "box": "Next latent + reward",
+        "id": "next"
+       }
+      ]
+     ]
+    }
+   ],
+   "above": [
+    {
+     "text": "Next latent → MCTS node, no decoding"
+    }
+   ],
+   "insets": [
+    {
+     "for": "ffn",
+     "stack": [
+      {
+       "box": "Linear"
+      },
+      {
+       "box": "GELU"
+      },
+      {
+       "box": "Linear"
+      }
+     ]
+    },
+    {
+     "for": "dyn",
+     "label": "MCTS per real step",
+     "stack": [
+      {
+       "box": "Pick an action (UCB)"
+      },
+      {
+       "box": "One-step transformer call"
+      },
+      {
+       "box": "Back up the value, ×50"
+      }
+     ]
+    }
+   ],
+   "annotations": [
+    {
+     "at": "enc",
+     "text": "one *768*-d latent per step, SimNorm in groups of *8*; no reconstruction",
+     "side": "left",
+     "key": true
+    },
+    {
+     "at": "seq",
+     "text": "*2* tokens per step; training context *10* steps = *20* tokens",
+     "side": "left",
+     "key": true
+    },
+    {
+     "at": "attn",
+     "text": "*8* heads; KV cache over the last *4* steps = *8* tokens [D], shared by all search nodes",
+     "side": "left"
+    },
+    {
+     "at": "next",
+     "text": "*50* MCTS simulations per real step = *50* dependent single-step calls",
+     "side": "left",
+     "key": true
+    },
+    {
+     "at": "pol",
+     "text": "policy and value from the same trunk; the dynamics head ends in SimNorm",
+     "side": "left"
+    },
+    {
+     "at": "block",
+     "text": "*2* layers, width *768*, GELU, post-LN; parameter count not disclosed",
+     "side": "right",
+     "key": true
+    }
+   ],
+   "feedback": "MCTS"
   }
  },
  {
@@ -1518,6 +3296,158 @@
     "short": "CNN decoder → 64x64, every step"
    },
    "loop": "AR rollout"
+  },
+  "flow": {
+   "below": [
+    {
+     "text": "Frame 64×64 + action"
+    }
+   ],
+   "stack": [
+    {
+     "box": "Δ-encoder (CNN)",
+     "id": "enc",
+     "style": "teal",
+     "side": "Prev. frame + action"
+    },
+    {
+     "box": "Nearest codebook entry",
+     "short": "Codebook lookup",
+     "id": "vq"
+    },
+    {
+     "box": "Interleave I-token, action, Δ-tokens",
+     "short": "Interleave tokens",
+     "id": "seq",
+     "side": "I-token (aux. CNN)"
+    },
+    {
+     "box": "Token embedding",
+     "id": "emb",
+     "minor": true
+    },
+    {
+     "group": [
+      {
+       "residual": [
+        {
+         "box": "LayerNorm",
+         "minor": true
+        },
+        {
+         "box": "Masked self-attention",
+         "id": "attn",
+         "style": "dark"
+        }
+       ]
+      },
+      {
+       "residual": [
+        {
+         "box": "LayerNorm",
+         "minor": true
+        },
+        {
+         "box": "Feed forward",
+         "id": "ffn"
+        }
+       ]
+      }
+     ],
+     "repeat": "3 ×",
+     "id": "block"
+    },
+    {
+     "fanout": [
+      [
+       {
+        "box": "Linear output layer",
+        "short": "Output layer",
+        "id": "out",
+        "minor": true
+       },
+       {
+        "box": "Sample next Δ-token",
+        "id": "sample"
+       }
+      ],
+      [
+       {
+        "box": "Reward head",
+        "terminal": true,
+        "minor": true
+       }
+      ],
+      [
+       {
+        "box": "Done head",
+        "id": "done",
+        "terminal": true,
+        "minor": true
+       }
+      ]
+     ]
+    }
+   ],
+   "above": [
+    {
+     "box": "Conditioned CNN decoder",
+     "short": "Conditioned decoder",
+     "id": "dec",
+     "style": "teal",
+     "side": "Prev. frame + action"
+    },
+    {
+     "text": "Next frame 64×64 → policy, I-token"
+    }
+   ],
+   "annotations": [
+    {
+     "at": "enc",
+     "text": "*4* Δ-tokens per frame, vocabulary *1,024*: only the stochastic change",
+     "side": "left",
+     "key": true
+    },
+    {
+     "at": "seq",
+     "text": "*6* tokens per step; context *21* steps = *126* tokens [D]",
+     "side": "left",
+     "key": true
+    },
+    {
+     "at": "attn",
+     "text": "*8* heads, width *512*; the continuous I-token is a frame embedding from an auxiliary CNN",
+     "side": "left"
+    },
+    {
+     "at": "dec",
+     "text": "runs every imagined step: the CNN+LSTM policy sees decoded frames and the next I-token comes from them",
+     "side": "left"
+    },
+    {
+     "at": "block",
+     "text": "*3* layers; *25M* parameters for the whole agent; block details not disclosed",
+     "side": "right",
+     "key": true
+    },
+    {
+     "at": "sample",
+     "text": "*4* serial passes per frame, then a decoder call",
+     "side": "right",
+     "key": true
+    },
+    {
+     "at": "out",
+     "text": "*20* collected frames/s on one A100 (authors), *10×* IRIS-64",
+     "side": "right"
+    },
+    {
+     "at": "done",
+     "text": "reward and termination read from the action token",
+     "side": "right"
+    }
+   ],
+   "feedback": "next step"
   }
  },
  {
@@ -1637,6 +3567,186 @@
     "short": "VQ decoder (not used in planning)"
    },
    "loop": "beam search"
+  },
+  "flow": {
+   "below": [
+    {
+     "text": "Atari frame 84×84 + action + task ID"
+    }
+   ],
+   "stack": [
+    {
+     "box": "VQ-VAE encoder (CNN)",
+     "id": "enc",
+     "style": "teal"
+    },
+    {
+     "box": "Nearest codebook entry",
+     "id": "vq"
+    },
+    {
+     "box": "Token embedding",
+     "id": "emb",
+     "minor": true
+    },
+    {
+     "group": [
+      {
+       "residual": [
+        {
+         "box": "LayerNorm",
+         "minor": true
+        },
+        {
+         "box": "Masked self-attention",
+         "id": "attn",
+         "style": "dark",
+         "side": "Position + task emb."
+        }
+       ]
+      },
+      {
+       "residual": [
+        {
+         "box": "LayerNorm",
+         "minor": true
+        },
+        {
+         "box": "Feed forward",
+         "id": "ffn"
+        }
+       ]
+      }
+     ],
+     "repeat": "12 ×",
+     "id": "block"
+    },
+    {
+     "fanout": [
+      [
+       {
+        "box": "Next-code head",
+        "id": "out",
+        "minor": true
+       },
+       {
+        "box": "Sample next code",
+        "id": "sample"
+       }
+      ],
+      [
+       {
+        "box": "Reward head",
+        "id": "rew",
+        "terminal": true,
+        "minor": true
+       }
+      ],
+      [
+       {
+        "box": "Done head",
+        "terminal": true,
+        "minor": true
+       }
+      ],
+      [
+       {
+        "box": "Q-value head",
+        "id": "q",
+        "terminal": true
+       }
+      ]
+     ]
+    }
+   ],
+   "above": [
+    {
+     "box": "VQ-VAE decoder (CNN)",
+     "id": "dec",
+     "style": "teal"
+    },
+    {
+     "text": "Next frame 84×84 (reconstruction only)"
+    }
+   ],
+   "insets": [
+    {
+     "for": "ffn",
+     "stack": [
+      {
+       "box": "Linear"
+      },
+      {
+       "box": "GELU"
+      },
+      {
+       "box": "Linear"
+      }
+     ]
+    },
+    {
+     "for": "q",
+     "label": "Q-value head",
+     "stack": [
+      {
+       "box": "Linear, LayerNorm, Mish"
+      },
+      {
+       "box": "Linear, LayerNorm, Mish"
+      },
+      {
+       "box": "Linear → return bins"
+      }
+     ]
+    }
+   ],
+   "annotations": [
+    {
+     "at": "vq",
+     "text": "*36* codes per frame (*6×6* [D]), vocabulary *2,048*",
+     "side": "left",
+     "key": true
+    },
+    {
+     "at": "emb",
+     "text": "width *768*; learnable task embedding added to observation and action tokens; VQ-VAE frozen after stage 1",
+     "side": "left"
+    },
+    {
+     "at": "attn",
+     "text": "*12* heads; causal over (*36* codes + action) per step; context *8* steps = *296* tokens",
+     "side": "left",
+     "key": true
+    },
+    {
+     "at": "block",
+     "text": "*12* layers, *150M* parameters (also 70M and 40M variants); dropout *0.1*",
+     "side": "right",
+     "key": true
+    },
+    {
+     "at": "sample",
+     "text": "beam search, H *2*, K *2–4*: expand the top-K actions by Q, imagine the next frame (*36* serial decodes [D]), score reward + Q, keep the best beams",
+     "side": "left"
+    },
+    {
+     "at": "out",
+     "text": "next-code, reward and done heads are *2*-layer MLPs; the Q-head a *3*-layer MLP (hidden *1,792*, *3* distributional heads) trained by TD with CQL",
+     "side": "right"
+    },
+    {
+     "at": "q",
+     "text": "*10.8* FPS without planning, *1.26* FPS with beam search H *2* (authors; hardware not stated)",
+     "side": "right",
+     "key": true
+    },
+    {
+     "at": "dec",
+     "text": "reconstruction only; planning and Q-values stay in token space",
+     "side": "right"
+    }
+   ],
+   "feedback": "next step"
   }
  },
  {
@@ -1757,6 +3867,179 @@
     "sub": "12 layers, width 1024, one frame per step"
    },
    "loop": "AR rollout"
+  },
+  "flow": {
+   "below": [
+    {
+     "text": "Frame 360×640 + keyboard/mouse vector"
+    }
+   ],
+   "stack": [
+    {
+     "box": "ViT-L/20 VAE encoder",
+     "id": "vae",
+     "style": "teal"
+    },
+    {
+     "box": "Patchify 2×2",
+     "id": "patch",
+     "minor": true
+    },
+    {
+     "group": [
+      {
+       "box": "Noisy frame + context frames",
+       "id": "noisy",
+       "style": "soft",
+       "minor": true
+      },
+      {
+       "group": [
+        {
+         "residual": [
+          {
+           "box": "AdaLN (shift, scale, gate)",
+           "short": "AdaLN",
+           "id": "ada",
+           "side": "Action + timestep emb."
+          },
+          {
+           "box": "Spatial attention (full)",
+           "short": "Spatial attention",
+           "id": "sattn",
+           "style": "dark",
+           "side": "Axial RoPE"
+          }
+         ]
+        },
+        {
+         "residual": [
+          {
+           "box": "AdaLN",
+           "minor": true
+          },
+          {
+           "box": "MLP",
+           "id": "smlp",
+           "minor": true
+          }
+         ]
+        },
+        {
+         "residual": [
+          {
+           "box": "AdaLN",
+           "minor": true
+          },
+          {
+           "box": "Temporal attention (causal)",
+           "id": "tattn",
+           "style": "dark",
+           "side": "RoPE"
+          }
+         ]
+        },
+        {
+         "residual": [
+          {
+           "box": "AdaLN",
+           "minor": true
+          },
+          {
+           "box": "MLP",
+           "short": "MLP (one per attention)",
+           "id": "tmlp"
+          }
+         ]
+        }
+       ],
+       "repeat": "16 ×",
+       "id": "block"
+      },
+      {
+       "box": "Predicted velocity",
+       "id": "vel",
+       "minor": true
+      },
+      {
+       "box": "DDIM update",
+       "id": "upd",
+       "minor": true
+      }
+     ],
+     "loop": "10 DDIM steps (reference)",
+     "tint": "grey",
+     "id": "denoise"
+    }
+   ],
+   "above": [
+    {
+     "box": "ViT-L/20 VAE decoder",
+     "id": "dec",
+     "style": "teal"
+    },
+    {
+     "text": "Next frame 360×640"
+    }
+   ],
+   "insets": [
+    {
+     "for": "tmlp",
+     "stack": [
+      {
+       "box": "Linear"
+      },
+      {
+       "box": "GELU"
+      },
+      {
+       "box": "Linear"
+      }
+     ]
+    }
+   ],
+   "annotations": [
+    {
+     "at": "vae",
+     "text": "*6*-layer ViT encoder, width *1,024*; 18×32×16 latent → *144* tokens per frame [D]",
+     "side": "left",
+     "key": true
+    },
+    {
+     "at": "ada",
+     "text": "*25*-dim one-hot action → Linear(*25*, *1,024*), added to the timestep embedding that drives every adaLN",
+     "side": "left"
+    },
+    {
+     "at": "sattn",
+     "text": "*16* heads, width *1,024*; bidirectional over the *144* tokens of a frame",
+     "side": "left",
+     "key": true
+    },
+    {
+     "at": "tattn",
+     "text": "causal over a window of *32* frames per spatial position; no KV cache, so up to *4,608* tokens re-run every step [D]",
+     "side": "left"
+    },
+    {
+     "at": "block",
+     "text": "*16* layers, *500M* parameters (the demo checkpoint is larger, size not disclosed)",
+     "side": "right",
+     "key": true
+    },
+    {
+     "at": "upd",
+     "text": "Diffusion Forcing, v-prediction; context frames held at noise level *14*; the demo's step count is not disclosed",
+     "side": "right"
+    },
+    {
+     "at": "dec",
+     "text": "*12*-layer ViT decoder; *20* fps at 360p, *47* ms per frame on H100s (company claim)",
+     "side": "right",
+     "key": true
+    }
+   ],
+   "feedback": "next frame"
   }
  },
  {
@@ -1883,6 +4166,214 @@
     "short": "SAVi decoder → frame (loss only)"
    },
    "loop": "AR rollout"
+  },
+  "flow": {
+   "below": [
+    {
+     "text": "Frame + action a_t (4-D)"
+    }
+   ],
+   "stack": [
+    {
+     "box": "SAVi encoder (Slot Attention)",
+     "short": "SAVi slot encoder",
+     "id": "enc",
+     "style": "teal"
+    },
+    {
+     "box": "Slots → 256-d tokens",
+     "id": "proj",
+     "minor": true
+    },
+    {
+     "fanout": [
+      [
+       {
+        "box": "Slots + actions",
+        "id": "seq",
+        "minor": true,
+        "side": "Action a_t"
+       },
+       {
+        "group": [
+         {
+          "residual": [
+           {
+            "box": "Norm",
+            "minor": true
+           },
+           {
+            "box": "Temporal attention (per slot)",
+            "short": "Temporal attention",
+            "id": "tattn",
+            "style": "dark"
+           }
+          ]
+         },
+         {
+          "residual": [
+           {
+            "box": "Norm",
+            "minor": true
+           },
+           {
+            "box": "Relational attention (per step)",
+            "short": "Relational attention",
+            "id": "rattn",
+            "style": "dark"
+           }
+          ]
+         },
+         {
+          "residual": [
+           {
+            "box": "Norm",
+            "minor": true
+           },
+           {
+            "box": "MLP",
+            "id": "mlp"
+           }
+          ]
+         }
+        ],
+        "repeat": "4 ×",
+        "id": "dyn"
+       },
+       {
+        "box": "Next slot set",
+        "id": "pred"
+       }
+      ],
+      [
+       {
+        "group": [
+         {
+          "residual": [
+           {
+            "box": "RMSNorm",
+            "minor": true
+           },
+           {
+            "box": "Causal self-attention",
+            "id": "sattn",
+            "style": "dark"
+           }
+          ]
+         },
+         {
+          "residual": [
+           {
+            "box": "RMSNorm",
+            "minor": true
+           },
+           {
+            "box": "MLP",
+            "id": "smlp"
+           }
+          ]
+         }
+        ],
+        "repeat": "4 ×",
+        "id": "sat"
+       },
+       {
+        "box": "Reward, value, actor heads",
+        "short": "Reward, value, actor",
+        "id": "heads",
+        "terminal": true
+       }
+      ]
+     ]
+    }
+   ],
+   "above": [
+    {
+     "box": "SAVi spatial-broadcast decoder",
+     "short": "SAVi broadcast decoder",
+     "id": "dec",
+     "style": "teal"
+    },
+    {
+     "text": "Next frame (loss only)"
+    }
+   ],
+   "insets": [
+    {
+     "for": "heads",
+     "label": "MLP heads on [out]",
+     "stack": [
+      {
+       "box": "SAT [out] token"
+      },
+      {
+       "fanout": [
+        [
+         {
+          "box": "Reward head"
+         }
+        ],
+        [
+         {
+          "box": "Value head"
+         }
+        ],
+        [
+         {
+          "box": "Actor head"
+         }
+        ]
+       ]
+      }
+     ]
+    }
+   ],
+   "annotations": [
+    {
+     "at": "enc",
+     "text": "SAVi (fine-tuned); *N* = *2–10* slots of *128*-d per frame, projected to *256*-d tokens",
+     "side": "left",
+     "key": true
+    },
+    {
+     "at": "proj",
+     "text": "*3* Slot Attention iterations on the first frame, *1* after; learned slot initialisation",
+     "side": "left"
+    },
+    {
+     "at": "tattn",
+     "text": "OCVP-Seq pattern: temporal attention (each slot over its own history), then relational attention (all slots of one step)",
+     "side": "left"
+    },
+    {
+     "at": "dyn",
+     "text": "*4* layers, *8* heads, width *256*, FFN *512*; actions a_0:t (*4*-D) enter with the slot history, embedding not spelled out; norm and activation not disclosed",
+     "side": "left"
+    },
+    {
+     "at": "pred",
+     "text": "dynamics transformer (left): *4* layers, *8* heads, width *256*; *1* pass predicts all *N* next slots; *15* imagined steps, no teacher forcing",
+     "side": "left",
+     "key": true
+    },
+    {
+     "at": "sat",
+     "text": "Slot Aggregation Transformer (right): *4* causal layers, ALiBi, RMSNorm; [out] + *4* [reg] tokens per step; *12M* parameters in all",
+     "side": "right",
+     "key": true
+    },
+    {
+     "at": "heads",
+     "text": "MLP heads on the [out] tokens: reward and value as symlog two-hot bins, actor as a Gaussian (μ, σ); both transformers re-read the slot history each step",
+     "side": "right"
+    },
+    {
+     "at": "dec",
+     "text": "per-slot RGB + alpha, composited; dynamics loss and visualisation only, not used by the actor; no speed figure (one A100 40 GB)",
+     "side": "right"
+    }
+   ],
+   "feedback": "next step"
   }
  },
  {
@@ -1993,6 +4484,145 @@
     "none": "planning by CEM in feature space: 100 samples × 10 iterations; decoder only for visualization"
    },
    "loop": "CEM rollout"
+  },
+  "flow": {
+   "below": [
+    {
+     "text": "Frame 196×196 + action + proprio"
+    }
+   ],
+   "stack": [
+    {
+     "box": "DINOv2 encoder (frozen)",
+     "short": "DINOv2 encoder",
+     "id": "enc",
+     "style": "teal"
+    },
+    {
+     "box": "Patch features",
+     "id": "feat",
+     "minor": true
+    },
+    {
+     "box": "Concatenate action + proprio",
+     "short": "Concat action + proprio",
+     "id": "cat",
+     "style": "orange",
+     "side": "Action + proprio emb."
+    },
+    {
+     "group": [
+      {
+       "residual": [
+        {
+         "box": "LayerNorm",
+         "minor": true
+        },
+        {
+         "box": "Frame-causal self-attention",
+         "short": "Frame-causal attention",
+         "id": "attn",
+         "style": "dark"
+        }
+       ]
+      },
+      {
+       "residual": [
+        {
+         "box": "LayerNorm",
+         "minor": true
+        },
+        {
+         "box": "MLP",
+         "id": "mlp"
+        }
+       ]
+      }
+     ],
+     "repeat": "6 ×",
+     "id": "block"
+    },
+    {
+     "box": "Predicted next-frame features",
+     "short": "Next-frame features",
+     "id": "pred"
+    }
+   ],
+   "above": [
+    {
+     "text": "MSE distance to the goal features"
+    }
+   ],
+   "insets": [
+    {
+     "for": "mlp",
+     "stack": [
+      {
+       "box": "Linear"
+      },
+      {
+       "box": "GELU"
+      },
+      {
+       "box": "Linear"
+      }
+     ]
+    },
+    {
+     "for": "pred",
+     "label": "planning loop",
+     "stack": [
+      {
+       "box": "Sample 100 action sequences"
+      },
+      {
+       "box": "Roll the predictor out"
+      },
+      {
+       "box": "MSE to the goal features"
+      },
+      {
+       "box": "Refit the Gaussian, ×10"
+      }
+     ]
+    }
+   ],
+   "annotations": [
+    {
+     "at": "enc",
+     "text": "frozen DINOv2; *196* patch features of width *384* per frame",
+     "side": "left",
+     "key": true
+    },
+    {
+     "at": "cat",
+     "text": "an MLP maps the action to a *10*-d embedding that is concatenated to every patch vector (channels, not tokens); proprio enters the same way",
+     "side": "left"
+    },
+    {
+     "at": "attn",
+     "text": "*16* heads; frame-level causal mask over H = *3* frames = *588* tokens",
+     "side": "left",
+     "key": true
+    },
+    {
+     "at": "block",
+     "text": "*6* layers, MLP *2,048*, ~*19M* parameters",
+     "side": "right",
+     "key": true
+    },
+    {
+     "at": "block",
+     "text": "ViT block with the patch-embedding layer removed; positional encoding not disclosed",
+     "side": "right"
+    },
+    {
+     "at": "pred",
+     "text": "one pass regresses the next features (MSE); *0.014* s per batch-32 step and *53* s per CEM plan on one A6000 (authors); the transposed-conv decoder is for visualisation only",
+     "side": "left"
+    }
+   ],
+   "feedback": "CEM rollout"
   }
  },
  {
@@ -2111,6 +4741,160 @@
     "short": "SD VAE decoder → frame"
    },
    "loop": "CEM rollout"
+  },
+  "flow": {
+   "below": [
+    {
+     "text": "Frame + navigation action (u, yaw) + time shift k"
+    }
+   ],
+   "stack": [
+    {
+     "box": "Stable Diffusion VAE encoder",
+     "short": "SD VAE encoder",
+     "id": "vae",
+     "style": "teal"
+    },
+    {
+     "box": "Patchify",
+     "id": "patch",
+     "minor": true
+    },
+    {
+     "group": [
+      {
+       "box": "Noisy target-frame latents",
+       "id": "noisy",
+       "style": "soft",
+       "minor": true
+      },
+      {
+       "group": [
+        {
+         "residual": [
+          {
+           "box": "AdaLN (scale, shift, gate)",
+           "short": "AdaLN",
+           "id": "ada",
+           "side": "Action + k + t emb."
+          },
+          {
+           "box": "Self-attention (target frame)",
+           "short": "Target self-attention",
+           "id": "attn",
+           "style": "dark"
+          }
+         ]
+        },
+        {
+         "residual": [
+          {
+           "box": "AdaLN",
+           "minor": true
+          },
+          {
+           "box": "Cross-attention",
+           "id": "xattn",
+           "side": "Context frames (K, V)"
+          }
+         ]
+        },
+        {
+         "residual": [
+          {
+           "box": "AdaLN",
+           "minor": true
+          },
+          {
+           "box": "MLP",
+           "id": "mlp"
+          }
+         ]
+        }
+       ],
+       "repeat": "N ×",
+       "id": "block"
+      },
+      {
+       "box": "Predicted noise + covariance",
+       "id": "eps",
+       "minor": true
+      },
+      {
+       "box": "DDPM update",
+       "id": "upd",
+       "minor": true
+      }
+     ],
+     "loop": "250 DDPM steps (6 distilled)",
+     "tint": "grey",
+     "id": "denoise"
+    }
+   ],
+   "above": [
+    {
+     "box": "SD VAE decoder",
+     "id": "dec",
+     "style": "teal"
+    },
+    {
+     "text": "Next frame (LPIPS goal scoring)"
+    }
+   ],
+   "insets": [
+    {
+     "for": "ada",
+     "label": "conditioning",
+     "stack": [
+      {
+       "box": "Sine-cosine features"
+      },
+      {
+       "box": "2-layer MLP"
+      },
+      {
+       "box": "Sum a, k, t → ξ"
+      }
+     ]
+    }
+   ],
+   "annotations": [
+    {
+     "at": "vae",
+     "text": "SD VAE latents 'as in DiT'; input resolution and tokens per frame not stated",
+     "side": "left",
+     "key": true
+    },
+    {
+     "at": "attn",
+     "text": "self-attention over the tokens of the target frame only",
+     "side": "left",
+     "key": true
+    },
+    {
+     "at": "xattn",
+     "text": "queries from the target, keys and values from m = *4* context frames: cost O(m·n²·d), linear in context; re-encoded every step, no KV cache",
+     "side": "left"
+    },
+    {
+     "at": "block",
+     "text": "CDiT-XL, *1B* parameters; depth, width and heads not stated",
+     "side": "right",
+     "key": true
+    },
+    {
+     "at": "upd",
+     "text": "*250* steps by default → *6* with distillation; ≈*7–8* ms per pass on an RTX 6000 Ada [D]",
+     "side": "right"
+    },
+    {
+     "at": "dec",
+     "text": "*4* s trajectory of *16* states: *30.3* s → *0.4* s with Time Skip + *6* steps (authors, Table 8)",
+     "side": "right",
+     "key": true
+    }
+   ],
+   "feedback": "CEM planning rollout"
   }
  },
  {
@@ -2223,6 +5007,196 @@
     "tag": "frozen"
    },
    "loop": "AR rollout"
+  },
+  "flow": {
+   "below": [
+    {
+     "text": "Video 640×1024 (+ text prompt)"
+    }
+   ],
+   "stack": [
+    {
+     "box": "Cosmos-Tokenize1 DV8×16×16",
+     "short": "Video tokenizer (FSQ)",
+     "id": "tok",
+     "style": "teal"
+    },
+    {
+     "box": "FSQ quantization",
+     "id": "fsq",
+     "minor": true
+    },
+    {
+     "box": "Token embedding",
+     "id": "emb",
+     "minor": true
+    },
+    {
+     "group": [
+      {
+       "box": "Add 3D absolute positions",
+       "id": "ape",
+       "minor": true
+      },
+      {
+       "residual": [
+        {
+         "box": "Norm",
+         "minor": true
+        },
+        {
+         "box": "Masked self-attention",
+         "id": "attn",
+         "style": "dark",
+         "side": "3D RoPE"
+        }
+       ]
+      },
+      {
+       "residual": [
+        {
+         "box": "Norm",
+         "minor": true
+        },
+        {
+         "box": "Cross-attention",
+         "id": "xattn",
+         "side": "T5-XXL text"
+        }
+       ]
+      },
+      {
+       "residual": [
+        {
+         "box": "Norm",
+         "minor": true
+        },
+        {
+         "box": "SwiGLU feed forward",
+         "short": "SwiGLU FFN",
+         "id": "ffn"
+        }
+       ]
+      }
+     ],
+     "repeat": "16 ×",
+     "id": "block"
+    },
+    {
+     "fanout": [
+      [
+       {
+        "box": "Output layer",
+        "id": "out",
+        "minor": true
+       },
+       {
+        "box": "Sample next token",
+        "id": "sample"
+       }
+      ],
+      [
+       {
+        "box": "Medusa heads",
+        "id": "medusa",
+        "terminal": true
+       }
+      ]
+     ]
+    }
+   ],
+   "above": [
+    {
+     "box": "Tokenizer decoder",
+     "id": "dec",
+     "style": "teal"
+    },
+    {
+     "text": "Frames 640×1024 (33 video frames)"
+    }
+   ],
+   "insets": [
+    {
+     "for": "ffn",
+     "stack": [
+      {
+       "fanout": [
+        [
+         {
+          "box": "Linear"
+         }
+        ],
+        [
+         {
+          "box": "Linear"
+         },
+         {
+          "box": "SiLU"
+         }
+        ]
+       ]
+      },
+      {
+       "merge": "x"
+      },
+      {
+       "box": "Linear"
+      }
+     ]
+    }
+   ],
+   "annotations": [
+    {
+     "at": "tok",
+     "text": "FSQ vocabulary *64,000*; *2,560* tokens per latent frame of *8* video frames [D]",
+     "side": "left",
+     "key": true
+    },
+    {
+     "at": "fsq",
+     "text": "FSQ levels (*8, 8, 8, 5, 5, 5*); no language pretraining",
+     "side": "left"
+    },
+    {
+     "at": "attn",
+     "text": "*32* heads, width *4,096*, QK-norm; dense causal over *12,800* tokens = *5* latent frames",
+     "side": "left",
+     "key": true
+    },
+    {
+     "at": "ape",
+     "text": "a learnable 3D absolute positional embedding per block; *8* KV heads in the config table although the text says no MQA/GQA",
+     "side": "left"
+    },
+    {
+     "at": "xattn",
+     "text": "Video2World *5B*/*13B* only; the ActionCond robot post-train injects a *7*-D action the same way; Llama3-style, norm type not stated",
+     "side": "left"
+    },
+    {
+     "at": "block",
+     "text": "*4B*: *16* layers, FFN *14,336*; *12B*: *40* layers, width *5,120*",
+     "side": "right",
+     "key": true
+    },
+    {
+     "at": "sample",
+     "text": "*2,560* passes per latent frame; *4B* on one H100: *32* frames in *31* s (NVIDIA)",
+     "side": "right",
+     "key": true
+    },
+    {
+     "at": "medusa",
+     "text": "*9* single-layer FFN heads, no tree attention: *4.6×* fewer passes, *2.0×* token throughput for *4B*",
+     "side": "right"
+    },
+    {
+     "at": "dec",
+     "text": "optional *7B* diffusion decoder roughly doubles the time (*31* → *61* s)",
+     "side": "right"
+    }
+   ],
+   "feedback": "next latent frame"
   }
  },
  {
@@ -2456,6 +5430,140 @@
     "tag": "frozen"
    },
    "loop": "AR rollout"
+  },
+  "flow": {
+   "below": [
+    {
+     "text": "Frame 300×180 + controller action"
+    }
+   ],
+   "stack": [
+    {
+     "box": "ViT-VQGAN encoder",
+     "id": "enc",
+     "style": "teal"
+    },
+    {
+     "box": "Nearest codebook entry",
+     "short": "Codebook lookup",
+     "id": "vq",
+     "minor": true
+    },
+    {
+     "box": "Interleave image and action tokens",
+     "short": "Interleave tokens",
+     "id": "seq",
+     "side": "Controller tokens"
+    },
+    {
+     "box": "Token + learned position emb.",
+     "id": "emb",
+     "minor": true
+    },
+    {
+     "group": [
+      {
+       "residual": [
+        {
+         "box": "LayerNorm",
+         "minor": true
+        },
+        {
+         "box": "Masked self-attention",
+         "id": "attn",
+         "style": "dark"
+        }
+       ]
+      },
+      {
+       "residual": [
+        {
+         "box": "LayerNorm",
+         "minor": true
+        },
+        {
+         "box": "Feed forward",
+         "id": "ffn"
+        }
+       ]
+      }
+     ],
+     "repeat": "N ×",
+     "id": "block"
+    },
+    {
+     "box": "Final LayerNorm",
+     "id": "ln",
+     "minor": true
+    },
+    {
+     "box": "Sample next token",
+     "id": "sample"
+    }
+   ],
+   "above": [
+    {
+     "box": "ViT-VQGAN decoder",
+     "id": "dec",
+     "style": "teal"
+    },
+    {
+     "text": "Next frame 300×180 + next action"
+    }
+   ],
+   "insets": [
+    {
+     "for": "ffn",
+     "stack": [
+      {
+       "box": "Linear"
+      },
+      {
+       "box": "GELU"
+      },
+      {
+       "box": "Linear"
+      }
+     ]
+    }
+   ],
+   "annotations": [
+    {
+     "at": "enc",
+     "text": "~*300M* ViT-VQGAN; *540* tokens per frame, vocabulary *16,384*",
+     "side": "left",
+     "key": true
+    },
+    {
+     "at": "seq",
+     "text": "*540* image + *16* controller tokens per step; context *1* s = *10* frames = *5,560* tokens",
+     "side": "left",
+     "key": true
+    },
+    {
+     "at": "vq",
+     "text": "controller: *12* buttons + both sticks' x, y in *11* buckets; no delimiter token, the learned positions tell the modalities apart",
+     "side": "left"
+    },
+    {
+     "at": "block",
+     "text": "*1.6B* GPT-2 block as in nanoGPT; layers and heads only in Extended Data Fig. 2c",
+     "side": "right",
+     "key": true
+    },
+    {
+     "at": "sample",
+     "text": "≥ *540* serial passes per frame; actions are predicted too",
+     "side": "right",
+     "key": true
+    },
+    {
+     "at": "dec",
+     "text": "~*1* fps vs *10+* fps for the MaskGIT variant WHAMM (Microsoft Research blog)",
+     "side": "right"
+    }
+   ],
+   "feedback": "next step"
   }
  },
  {
@@ -2576,6 +5684,164 @@
     "short": "Decoder (200M) → 24 frames"
    },
    "loop": "AR rollout"
+  },
+  "flow": {
+   "below": [
+    {
+     "text": "5 cameras 448×960 + ego action + agents, map, metadata"
+    }
+   ],
+   "stack": [
+    {
+     "box": "Video tokenizer encoder (transformer)",
+     "short": "Video tokenizer encoder",
+     "id": "tok",
+     "style": "teal"
+    },
+    {
+     "group": [
+      {
+       "box": "Noisy future + context latents",
+       "id": "noisy",
+       "style": "soft",
+       "minor": true
+      },
+      {
+       "box": "Add positional + camera encodings",
+       "id": "pos",
+       "minor": true
+      },
+      {
+       "group": [
+        {
+         "residual": [
+          {
+           "box": "Adaptive LayerNorm",
+           "id": "ada",
+           "side": "Ego action + flow time"
+          },
+          {
+           "box": "Spatial attention (space + cameras)",
+           "short": "Spatial attention",
+           "id": "sattn",
+           "style": "dark"
+          }
+         ]
+        },
+        {
+         "residual": [
+          {
+           "box": "Adaptive LayerNorm",
+           "minor": true
+          },
+          {
+           "box": "Temporal attention",
+           "id": "tattn",
+           "style": "dark"
+          }
+         ]
+        },
+        {
+         "residual": [
+          {
+           "box": "Adaptive LayerNorm",
+           "minor": true
+          },
+          {
+           "box": "Cross-attention",
+           "id": "xattn",
+           "side": "Agents, map, metadata"
+          }
+         ]
+        },
+        {
+         "residual": [
+          {
+           "box": "Adaptive LayerNorm",
+           "minor": true
+          },
+          {
+           "box": "MLP",
+           "id": "mlp",
+           "minor": true
+          }
+         ]
+        }
+       ],
+       "repeat": "22 ×",
+       "id": "block"
+      },
+      {
+       "box": "Predicted velocity",
+       "id": "vel",
+       "minor": true
+      },
+      {
+       "box": "Update latents",
+       "id": "upd",
+       "minor": true
+      }
+     ],
+     "loop": "50 denoising steps",
+     "tint": "grey",
+     "id": "denoise"
+    }
+   ],
+   "above": [
+    {
+     "box": "Video tokenizer decoder",
+     "id": "dec",
+     "style": "teal"
+    },
+    {
+     "text": "24 frames × 5 cameras at 448×960"
+    }
+   ],
+   "annotations": [
+    {
+     "at": "tok",
+     "text": "*85M* encoder: *8*× temporal, *32*× spatial, *64* channels; *420* latents per camera per latent step, *2,100* over *5* cameras [D]",
+     "short": "*2,100* latents per step over *5* cameras [D]",
+     "side": "left",
+     "key": true
+    },
+    {
+     "at": "pos",
+     "text": "sinusoidal space and timestamp encodings + learned camera geometry, re-added at the start of every block",
+     "side": "left"
+    },
+    {
+     "at": "ada",
+     "text": "ego action and flow time via adaptive LayerNorm (found more accurate than cross-attention)",
+     "side": "left"
+    },
+    {
+     "at": "sattn",
+     "text": "*32* heads, width *4,096*; QK-norm before each attention; spatial over *2,100* tokens, temporal over *6* latent steps",
+     "short": "*32* heads, width *4,096*",
+     "side": "left",
+     "key": true
+    },
+    {
+     "at": "block",
+     "text": "*22* layers, *8.4B* parameters, trained from scratch",
+     "side": "right",
+     "key": true
+    },
+    {
+     "at": "upd",
+     "text": "flow matching, *50* steps, linear-quadratic schedule, no distillation; k = *3* context latents, sliding window, no KV cache",
+     "side": "right"
+    },
+    {
+     "at": "dec",
+     "text": "*200M* decoder with full spatiotemporal attention; inference speed not disclosed",
+     "short": "inference speed not disclosed",
+     "side": "right",
+     "key": true
+    }
+   ],
+   "feedback": "next latent step"
   }
  },
  {
@@ -2689,6 +5955,176 @@
     "none": "actor-critic uses {h_t, z_t}; the CNN decoder only trains the VAE"
    },
    "loop": "AR rollout"
+  },
+  "flow": {
+   "below": [
+    {
+     "text": "Frame 64×64 + action"
+    }
+   ],
+   "stack": [
+    {
+     "box": "CNN categorical VAE encoder",
+     "short": "CNN VAE encoder",
+     "id": "enc",
+     "style": "teal"
+    },
+    {
+     "box": "Action mixer (MLP)",
+     "id": "mix",
+     "style": "orange",
+     "side": "One-hot action"
+    },
+    {
+     "group": [
+      {
+       "residual": [
+        {
+         "box": "Masked self-attention",
+         "id": "attn",
+         "style": "dark",
+         "side": "Relative positions"
+        }
+       ]
+      },
+      {
+       "box": "LayerNorm",
+       "minor": true
+      },
+      {
+       "residual": [
+        {
+         "box": "Feed forward",
+         "id": "ffn"
+        }
+       ]
+      },
+      {
+       "box": "LayerNorm",
+       "minor": true
+      }
+     ],
+     "repeat": "4 ×",
+     "id": "block"
+    },
+    {
+     "box": "Cache hidden states",
+     "id": "cache",
+     "minor": true
+    },
+    {
+     "fanout": [
+      [
+       {
+        "box": "Dynamics predictor (MLP)",
+        "short": "Dynamics predictor",
+        "id": "dyn"
+       },
+       {
+        "box": "Sample next state",
+        "id": "sample"
+       }
+      ],
+      [
+       {
+        "box": "Reward head",
+        "terminal": true,
+        "minor": true
+       }
+      ],
+      [
+       {
+        "box": "Continue head",
+        "id": "cont",
+        "terminal": true,
+        "minor": true
+       }
+      ],
+      [
+       {
+        "box": "AC-CPC head",
+        "id": "cpc",
+        "terminal": true,
+        "minor": true
+       }
+      ]
+     ]
+    }
+   ],
+   "above": [
+    {
+     "text": "Next z → actor-critic, no decoding"
+    }
+   ],
+   "insets": [
+    {
+     "for": "mix",
+     "stack": [
+      {
+       "box": "Linear + LN + SiLU"
+      },
+      {
+       "box": "Linear + LN"
+      }
+     ]
+    },
+    {
+     "for": "ffn",
+     "stack": [
+      {
+       "box": "Linear"
+      },
+      {
+       "box": "ReLU"
+      },
+      {
+       "box": "Linear"
+      }
+     ]
+    }
+   ],
+   "annotations": [
+    {
+     "at": "enc",
+     "text": "*32* categoricals × *32* classes per *64×64* RGB frame",
+     "side": "left",
+     "key": true
+    },
+    {
+     "at": "mix",
+     "text": "flattened state + one-hot action → *1* token of width *512*",
+     "side": "left",
+     "key": true
+    },
+    {
+     "at": "attn",
+     "text": "*8* heads; Transformer-XL relative positions; attention context *8* steps",
+     "side": "left"
+    },
+    {
+     "at": "block",
+     "text": "*4* blocks, FFN *1,024*, post-LN; ~*8–9M* transformer parameters",
+     "side": "right",
+     "key": true
+    },
+    {
+     "at": "cache",
+     "text": "hidden states of the previous segment are cached and reused; capped at *8* steps in the released code",
+     "side": "right"
+    },
+    {
+     "at": "sample",
+     "text": "*1* pass per imagined step; horizon *15*",
+     "side": "right",
+     "key": true
+    },
+    {
+     "at": "cpc",
+     "text": "AC-CPC: InfoNCE prediction of features *10* steps ahead given future actions (training only)",
+     "side": "right"
+    }
+   ],
+   "feedback": "next step"
   }
  },
  {
@@ -2801,6 +6237,126 @@
     "tag": "frozen"
    },
    "loop": "AR rollout"
+  },
+  "flow": {
+   "below": [
+    {
+     "text": "Frame 224×384 + action tokens"
+    }
+   ],
+   "stack": [
+    {
+     "box": "VQ-VAE encoder",
+     "id": "enc",
+     "style": "teal"
+    },
+    {
+     "box": "Nearest codebook entry",
+     "short": "Codebook lookup",
+     "id": "vq",
+     "minor": true
+    },
+    {
+     "box": "Interleave frame and action tokens",
+     "short": "Interleave tokens",
+     "id": "seq",
+     "side": "Action tokens"
+    },
+    {
+     "box": "Token embedding",
+     "id": "emb",
+     "minor": true
+    },
+    {
+     "group": [
+      {
+       "residual": [
+        {
+         "box": "RMSNorm",
+         "minor": true
+        },
+        {
+         "box": "Masked self-attention",
+         "id": "attn",
+         "style": "dark",
+         "side": "RoPE"
+        }
+       ]
+      },
+      {
+       "residual": [
+        {
+         "box": "RMSNorm",
+         "minor": true
+        },
+        {
+         "box": "Feed forward",
+         "id": "ffn"
+        }
+       ]
+      }
+     ],
+     "repeat": "20 ×",
+     "id": "block"
+    },
+    {
+     "box": "Sample next anti-diagonal",
+     "short": "Sample next diagonal",
+     "id": "sample"
+    }
+   ],
+   "above": [
+    {
+     "box": "VQ-VAE decoder",
+     "id": "dec",
+     "style": "teal"
+    },
+    {
+     "text": "Next frame 224×384"
+    }
+   ],
+   "annotations": [
+    {
+     "at": "enc",
+     "text": "*16×* compression: *336* tokens per frame (14×24), codebook *8,192*",
+     "side": "left",
+     "key": true
+    },
+    {
+     "at": "seq",
+     "text": "*11* action tokens after each frame; *16* frames = *5,552* tokens [D]",
+     "side": "left",
+     "key": true
+    },
+    {
+     "at": "emb",
+     "text": "[aBOS], *9* action tokens incl. *2* camera bins, [aEOS]; vocabulary *8,192* + *70* = *8,262*",
+     "side": "left"
+    },
+    {
+     "at": "attn",
+     "text": "*32* heads; the causal mask is replaced by a parallel mask when fine-tuned for diagonal decoding; activation not disclosed",
+     "side": "left"
+    },
+    {
+     "at": "block",
+     "text": "LLaMA-style: *20* layers, width *2,048*, MLP *8,192*; *1.2B* (also *300M*, *700M*)",
+     "side": "right",
+     "key": true
+    },
+    {
+     "at": "sample",
+     "text": "diagonal decoding: *37* passes per frame instead of *336*; *0.89* → *3.01* FPS for *1.2B* (authors)",
+     "side": "right",
+     "key": true
+    },
+    {
+     "at": "dec",
+     "text": "tokens (i, j+1) and (i+1, j) are released together; the inference GPU is not stated",
+     "side": "right"
+    }
+   ],
+   "feedback": "next frame"
   }
  },
  {
@@ -3045,6 +6601,163 @@
     "tag": "pretrained"
    },
    "loop": "AR rollout"
+  },
+  "flow": {
+   "below": [
+    {
+     "text": "Past frames + action (camera pose or keys)"
+    }
+   ],
+   "stack": [
+    {
+     "box": "Video VAE encoder",
+     "id": "vae",
+     "style": "teal"
+    },
+    {
+     "box": "Flatten, spatial-major order",
+     "short": "Spatial-major tokens",
+     "id": "order",
+     "minor": true
+    },
+    {
+     "group": [
+      {
+       "box": "Noisy latent frame",
+       "id": "noisy",
+       "style": "soft",
+       "minor": true
+      },
+      {
+       "group": [
+        {
+         "residual": [
+          {
+           "box": "AdaLN (scale, shift)",
+           "minor": true,
+           "side": "Noise level + action"
+          },
+          {
+           "box": "Block-wise Mamba scan",
+           "id": "ssm",
+           "style": "soft"
+          }
+         ]
+        },
+        {
+         "residual": [
+          {
+           "box": "AdaLN (scale, shift)",
+           "minor": true
+          },
+          {
+           "box": "Frame-local attention",
+           "id": "attn",
+           "style": "dark"
+          }
+         ]
+        },
+        {
+         "residual": [
+          {
+           "box": "AdaLN (scale, shift)",
+           "minor": true
+          },
+          {
+           "box": "Feed forward",
+           "id": "ffn"
+          }
+         ]
+        }
+       ],
+       "repeat": "N ×",
+       "id": "block"
+      },
+      {
+       "box": "Denoising update",
+       "id": "upd",
+       "minor": true
+      }
+     ],
+     "loop": "denoising steps",
+     "tint": "grey",
+     "id": "denoise"
+    },
+    {
+     "box": "Update KV cache and SSM states",
+     "short": "Update caches",
+     "id": "state",
+     "minor": true
+    }
+   ],
+   "above": [
+    {
+     "box": "VAE decoder",
+     "id": "dec",
+     "style": "teal"
+    },
+    {
+     "text": "Next frame"
+    }
+   ],
+   "insets": [
+    {
+     "for": "ssm",
+     "label": "block-wise scan",
+     "stack": [
+      {
+       "box": "Split the frame into blocks"
+      },
+      {
+       "box": "Scan each block over time"
+      },
+      {
+       "box": "One SSM state per block"
+      }
+     ]
+    }
+   ],
+   "annotations": [
+    {
+     "at": "vae",
+     "text": "VAE latents per frame (spatio-temporal VAE or DFoT image VAE); resolution not stated",
+     "side": "left",
+     "key": true
+    },
+    {
+     "at": "ssm",
+     "text": "one Mamba scan per spatial block (b_h, b_w) over time; a fixed-size state per block keeps memory from *400+* frames back",
+     "side": "left",
+     "key": true
+    },
+    {
+     "at": "attn",
+     "text": "bidirectional inside a *5*-frame chunk and causal to the previous chunk: window *10* frames (FlexAttention); block size (b_h, b_w) differs by layer",
+     "side": "left"
+    },
+    {
+     "at": "block",
+     "text": "*200M* parameters, CogVideoX-style blocks; layers not disclosed; per layer a *10*-frame KV cache + one SSM state per block",
+     "side": "right",
+     "key": true
+    },
+    {
+     "at": "upd",
+     "text": "diffusion forcing: *1* frame per AR step, clean past frames as context; denoising steps not disclosed; actions: a small MLP added to the noise-level embedding, injected by AdaLN",
+     "side": "right"
+    },
+    {
+     "at": "state",
+     "text": "memory and time per frame are constant in rollout length, unlike a growing KV cache",
+     "side": "right"
+    },
+    {
+     "at": "dec",
+     "text": "no timing numbers in the text (Fig. 8 plots flat per-frame time and memory); hardware not stated",
+     "side": "right"
+    }
+   ],
+   "feedback": "next frame"
   }
  },
  {
@@ -3165,6 +6878,142 @@
     "short": "Light VAE decoder → 4 frames"
    },
    "loop": "AR rollout"
+  },
+  "flow": {
+   "below": [
+    {
+     "text": "Previous frame + camera rays or human pose + text"
+    }
+   ],
+   "stack": [
+    {
+     "box": "Causal 3D conv VAE encoder (4×8×8)",
+     "short": "Causal 3D VAE encoder",
+     "id": "vae",
+     "style": "teal"
+    },
+    {
+     "box": "Patchify (size not stated)",
+     "short": "Patchify",
+     "id": "patch",
+     "minor": true
+    },
+    {
+     "box": "Concat previous frame + condition channels",
+     "short": "Concat prev. frame + condition",
+     "id": "cond",
+     "style": "orange",
+     "side": "Camera rays or pose"
+    },
+    {
+     "group": [
+      {
+       "box": "Noise input",
+       "id": "noisy",
+       "style": "soft",
+       "minor": true
+      },
+      {
+       "group": [
+        {
+         "residual": [
+          {
+           "box": "Norm",
+           "minor": true
+          },
+          {
+           "box": "Block-causal joint attention (video + text)",
+           "short": "Block-causal joint attention",
+           "id": "attn",
+           "style": "dark",
+           "side": "3D RoPE"
+          }
+         ]
+        },
+        {
+         "residual": [
+          {
+           "box": "Norm",
+           "minor": true
+          },
+          {
+           "box": "Feed forward",
+           "id": "ffn"
+          }
+         ]
+        }
+       ],
+       "repeat": "36 ×",
+       "id": "block"
+      },
+      {
+       "box": "Predicted clean latent frame",
+       "id": "out",
+       "minor": true
+      }
+     ],
+     "label": "1 NFE per latent frame",
+     "tint": "grey",
+     "id": "onepass"
+    },
+    {
+     "box": "Write frame to KV cache",
+     "id": "kv",
+     "minor": true
+    }
+   ],
+   "above": [
+    {
+     "box": "Lightweight VAE decoder",
+     "id": "dec",
+     "style": "teal"
+    },
+    {
+     "text": "4 frames at 736×416"
+    }
+   ],
+   "annotations": [
+    {
+     "at": "vae",
+     "text": "*4*× temporal, *8*× spatial: one latent frame = *4* video frames, latent grid 92×52 at 736×416 [D]; patch size not stated",
+     "side": "left",
+     "key": true
+    },
+    {
+     "at": "cond",
+     "text": "previous generated frame recycled by channel concatenation; per-frame camera or pose as new input channels with a randomly initialized projection",
+     "side": "left"
+    },
+    {
+     "at": "attn",
+     "text": "text tokens attend only to themselves; visual tokens attend to text, the first frame and a window of *30* latent frames (5 s); FlashAttention-3",
+     "side": "left",
+     "key": true
+    },
+    {
+     "at": "block",
+     "text": "*36* MM-DiT-style blocks, *8B* parameters; width, heads, norm and FFN details not disclosed",
+     "side": "right",
+     "key": true
+    },
+    {
+     "at": "out",
+     "text": "adversarial post-training with student forcing: *1* pass from noise per latent frame, no denoising loop",
+     "side": "right"
+    },
+    {
+     "at": "kv",
+     "text": "sliding window of *30* latent frames in the KV cache: constant speed and memory",
+     "side": "right"
+    },
+    {
+     "at": "dec",
+     "text": "pruned decoder ≈*3*× faster; *24* fps at 736×416 on one H100, *0.16* s latency (authors)",
+     "side": "right",
+     "key": true
+    }
+   ],
+   "feedback": "next latent frame"
   }
  },
  {
@@ -3286,6 +7135,194 @@
     "short": "VAE decoder → 33 frames"
    },
    "loop": "AR rollout"
+  },
+  "flow": {
+   "below": [
+    {
+     "text": "Reference image or history frames + keys/mouse + text"
+    }
+   ],
+   "stack": [
+    {
+     "box": "HunyuanVideo 3D causal VAE encoder",
+     "short": "HunyuanVideo VAE encoder",
+     "id": "vae",
+     "style": "teal"
+    },
+    {
+     "box": "Patchify",
+     "id": "patch",
+     "minor": true
+    },
+    {
+     "box": "Add camera Plücker embedding",
+     "id": "act",
+     "style": "orange",
+     "side": "Keys + mouse → camera"
+    },
+    {
+     "box": "Concat clean history latents + mask",
+     "id": "hist",
+     "minor": true
+    },
+    {
+     "group": [
+      {
+       "box": "Noisy chunk + history latents",
+       "id": "noisy",
+       "style": "soft",
+       "minor": true
+      },
+      {
+       "group": [
+        {
+         "fanout": [
+          [
+           {
+            "box": "Text stream (AdaLN, QKV)",
+            "short": "Text stream",
+            "side": "Text emb."
+           }
+          ],
+          [
+           {
+            "box": "Video stream (AdaLN, QKV)",
+            "short": "Video stream"
+           }
+          ]
+         ]
+        },
+        {
+         "box": "Joint full attention over chunk + history",
+         "short": "Joint full attention",
+         "id": "attn",
+         "style": "dark",
+         "side": "3D RoPE"
+        },
+        {
+         "fanout": [
+          [
+           {
+            "box": "Text feed forward",
+            "minor": true
+           }
+          ],
+          [
+           {
+            "box": "Video feed forward",
+            "id": "vffn",
+            "minor": true
+           }
+          ]
+         ]
+        }
+       ],
+       "repeat": "N ×",
+       "label": "double-stream MM-DiT",
+       "id": "dblock"
+      },
+      {
+       "group": [
+        {
+         "residual": [
+          {
+           "box": "AdaLN",
+           "minor": true
+          },
+          {
+           "box": "Full self-attention (video + text)",
+           "id": "sattn",
+           "style": "dark",
+           "minor": true
+          }
+         ]
+        },
+        {
+         "residual": [
+          {
+           "box": "AdaLN",
+           "minor": true
+          },
+          {
+           "box": "Feed forward",
+           "id": "ffn",
+           "minor": true
+          }
+         ]
+        }
+       ],
+       "repeat": "M ×",
+       "label": "single-stream",
+       "id": "sblock"
+      },
+      {
+       "box": "Predicted velocity",
+       "id": "vel",
+       "minor": true
+      },
+      {
+       "box": "Consistency update",
+       "id": "upd",
+       "minor": true
+      }
+     ],
+     "loop": "8 steps (PCM-distilled)",
+     "tint": "grey",
+     "id": "denoise"
+    }
+   ],
+   "above": [
+    {
+     "box": "HunyuanVideo VAE decoder",
+     "id": "dec",
+     "style": "teal"
+    },
+    {
+     "text": "33 frames at 720p per chunk"
+    }
+   ],
+   "annotations": [
+    {
+     "at": "vae",
+     "text": "strides not restated; HunyuanVideo's 4×8×8 VAE and 1×2×2 patch give *3,600* tokens per latent frame, ≈*32,400* per 33-frame chunk of *9* latent frames [D]",
+     "side": "left",
+     "key": true
+    },
+    {
+     "at": "act",
+     "text": "W/A/S/D, arrows, mouse → continuous camera (translation, rotation, speed) → Plücker map → light conv + pooling encoder, added to the video tokens with a learnable scale",
+     "side": "left"
+    },
+    {
+     "at": "hist",
+     "text": "binary mask: *1* = history latents, *0* = predicted; history re-processed at every step, no KV cache",
+     "side": "right"
+    },
+    {
+     "at": "attn",
+     "text": "bidirectional over the chunk + concatenated clean history latents (one image, the last chunk or several chunks), re-processed at every step; no KV cache",
+     "side": "left",
+     "key": true
+    },
+    {
+     "at": "dblock",
+     "text": "HunyuanVideo MM-DiT (double-stream, then single-stream blocks), full-parameter fine-tuned; block counts and widths not restated (*13B* in HunyuanVideo's report)",
+     "side": "right",
+     "key": true
+    },
+    {
+     "at": "upd",
+     "text": "flow matching → Phased Consistency Model + CFG distillation, *8* steps per chunk; pre-distillation step count not stated",
+     "side": "right"
+    },
+    {
+     "at": "dec",
+     "text": "*0.25* FPS undistilled → *6.6* FPS with PCM (authors; GPU not stated): ≈*5.0* s per 33-frame chunk [D]",
+     "side": "right",
+     "key": true
+    }
+   ],
+   "feedback": "next chunk"
   }
  },
  {
@@ -3405,6 +7442,164 @@
     "short": "Wan VAE decoder → 12 frames"
    },
    "loop": "AR rollout"
+  },
+  "flow": {
+   "below": [
+    {
+     "text": "Text prompt + previous chunks (no action input)"
+    }
+   ],
+   "stack": [
+    {
+     "box": "Wan2.1 3D causal VAE encoder",
+     "short": "Wan2.1 VAE encoder",
+     "id": "vae",
+     "style": "teal"
+    },
+    {
+     "box": "Patchify 1×2×2",
+     "id": "patch",
+     "minor": true
+    },
+    {
+     "group": [
+      {
+       "box": "Noisy latent chunk",
+       "id": "noisy",
+       "style": "soft",
+       "minor": true
+      },
+      {
+       "group": [
+        {
+         "residual": [
+          {
+           "box": "AdaLN (scale, shift)",
+           "minor": true,
+           "side": "Timestep emb."
+          },
+          {
+           "box": "Block-causal self-attention",
+           "id": "attn",
+           "style": "dark",
+           "side": "3D RoPE"
+          }
+         ]
+        },
+        {
+         "residual": [
+          {
+           "box": "Cross-attention",
+           "id": "xattn",
+           "side": "umT5 text"
+          }
+         ]
+        },
+        {
+         "residual": [
+          {
+           "box": "AdaLN (scale, shift)",
+           "minor": true
+          },
+          {
+           "box": "Feed forward",
+           "id": "ffn"
+          }
+         ]
+        }
+       ],
+       "repeat": "30 ×",
+       "id": "block"
+      },
+      {
+       "box": "Predicted velocity",
+       "id": "vel",
+       "minor": true
+      },
+      {
+       "box": "Update latents",
+       "id": "upd",
+       "minor": true
+      }
+     ],
+     "loop": "4 denoising steps (DMD)",
+     "tint": "grey",
+     "id": "denoise"
+    },
+    {
+     "box": "KV-refresh pass, write cache",
+     "id": "kv",
+     "minor": true
+    }
+   ],
+   "above": [
+    {
+     "box": "Wan2.1 VAE decoder",
+     "id": "dec",
+     "style": "teal"
+    },
+    {
+     "text": "12 frames at 832×480"
+    }
+   ],
+   "insets": [
+    {
+     "for": "ffn",
+     "stack": [
+      {
+       "box": "Linear"
+      },
+      {
+       "box": "GELU"
+      },
+      {
+       "box": "Linear"
+      }
+     ]
+    }
+   ],
+   "annotations": [
+    {
+     "at": "vae",
+     "text": "*1,560* latents per 30×52 latent frame; a chunk of *3* latent frames = *4,680* tokens [D]",
+     "side": "left",
+     "key": true
+    },
+    {
+     "at": "attn",
+     "text": "*12* heads of *128*, width *1,536*; dense within the chunk, causal over a rolling cache of *21* latent frames = *32,760* tokens",
+     "side": "left",
+     "key": true
+    },
+    {
+     "at": "xattn",
+     "text": "no action input: text-to-video only; *512*-token text KV per layer",
+     "side": "left"
+    },
+    {
+     "at": "block",
+     "text": "*30* layers, *1.3B* parameters, FFN *8,960* (Wan2.1-T2V-1.3B, unchanged)",
+     "side": "right",
+     "key": true
+    },
+    {
+     "at": "upd",
+     "text": "timesteps *1000, 750, 500, 250* (shift *5*); distilled with DMD from the frozen *14B* teacher",
+     "side": "right"
+    },
+    {
+     "at": "kv",
+     "text": "*1* extra pass at timestep *0* writes clean KV: *5* passes per chunk; the rolling cache (≈*6.0 GB* BF16 [D]) evicts the oldest frames",
+     "side": "right"
+    },
+    {
+     "at": "dec",
+     "text": "*17.0* fps at 832×480 on one H100, *0.69* s first-chunk latency (authors, Table 1)",
+     "side": "right",
+     "key": true
+    }
+   ],
+   "feedback": "next chunk"
   }
  },
  {
@@ -3517,6 +7712,138 @@
     "none": "planning by CEM in feature space: 800 samples × 10 iterations"
    },
    "loop": "CEM rollout"
+  },
+  "flow": {
+   "below": [
+    {
+     "text": "Frame 256×256 + end-effector state + action"
+    }
+   ],
+   "stack": [
+    {
+     "box": "V-JEPA 2 encoder, ViT-g",
+     "id": "enc",
+     "style": "teal"
+    },
+    {
+     "box": "Patch features",
+     "id": "feat",
+     "minor": true
+    },
+    {
+     "box": "Interleave (action, state, frame) tokens",
+     "short": "Interleave a, s, frame",
+     "id": "seq",
+     "side": "Affine a, s → 1024"
+    },
+    {
+     "group": [
+      {
+       "residual": [
+        {
+         "box": "LayerNorm",
+         "minor": true
+        },
+        {
+         "box": "Block-causal self-attention",
+         "id": "attn",
+         "style": "dark",
+         "side": "3D-RoPE"
+        }
+       ]
+      },
+      {
+       "residual": [
+        {
+         "box": "LayerNorm",
+         "minor": true
+        },
+        {
+         "box": "MLP",
+         "id": "mlp"
+        }
+       ]
+      }
+     ],
+     "repeat": "24 ×",
+     "id": "block"
+    },
+    {
+     "box": "Predicted next-frame features",
+     "id": "pred"
+    }
+   ],
+   "above": [
+    {
+     "text": "L1 distance to the goal embedding"
+    }
+   ],
+   "insets": [
+    {
+     "for": "mlp",
+     "stack": [
+      {
+       "box": "Linear"
+      },
+      {
+       "box": "GELU"
+      },
+      {
+       "box": "Linear"
+      }
+     ]
+    },
+    {
+     "for": "pred",
+     "label": "planning loop",
+     "stack": [
+      {
+       "box": "Sample 800 action sequences"
+      },
+      {
+       "box": "Roll the predictor out"
+      },
+      {
+       "box": "L1 energy to goal"
+      },
+      {
+       "box": "Refit the Gaussian, ×10"
+      }
+     ]
+    }
+   ],
+   "annotations": [
+    {
+     "at": "enc",
+     "text": "frozen, *1B* parameters; *256* patch features of width *1,408* per frame",
+     "side": "left",
+     "key": true
+    },
+    {
+     "at": "seq",
+     "text": "*258* tokens per step; training clips of *16* frames at *4* fps",
+     "side": "left"
+    },
+    {
+     "at": "attn",
+     "text": "*16* heads, width *1,024*; frame t attends to its action, state and frames ≤ t",
+     "short": "*16* heads, width *1,024*",
+     "side": "left",
+     "key": true
+    },
+    {
+     "at": "block",
+     "text": "*24* layers, ~*300M* parameters",
+     "side": "right",
+     "key": true
+    },
+    {
+     "at": "pred",
+     "text": "*8,000* predictor calls per executed action: *16* s on one RTX 4090 (authors)",
+     "side": "left"
+    }
+   ],
+   "feedback": "CEM rollout"
   }
  },
  {
@@ -3753,6 +8080,212 @@
     "none": "actor-critic in latent space; the CNN decoder only trains the VAE"
    },
    "loop": "AR rollout"
+  },
+  "flow": {
+   "below": [
+    {
+     "text": "Frame 64×64 + action"
+    }
+   ],
+   "stack": [
+    {
+     "box": "CNN categorical VAE encoder",
+     "short": "CNN VAE encoder",
+     "id": "enc",
+     "style": "teal"
+    },
+    {
+     "box": "Latent encoder (conv, flatten)",
+     "id": "flat",
+     "minor": true
+    },
+    {
+     "box": "Action mixer (MLP)",
+     "id": "mix",
+     "style": "orange",
+     "side": "One-hot action"
+    },
+    {
+     "group": [
+      {
+       "residual": [
+        {
+         "box": "LayerNorm",
+         "minor": true
+        },
+        {
+         "box": "Masked temporal self-attention",
+         "short": "Temporal attention",
+         "id": "tattn",
+         "style": "dark",
+         "side": "Relative positions"
+        }
+       ]
+      },
+      {
+       "residual": [
+        {
+         "box": "LayerNorm",
+         "minor": true
+        },
+        {
+         "box": "Feed forward",
+         "id": "tffn"
+        }
+       ]
+      }
+     ],
+     "repeat": "4 ×",
+     "id": "tgroup"
+    },
+    {
+     "fanout": [
+      [
+       {
+        "box": "Hidden state h",
+        "id": "h",
+        "minor": true
+       }
+      ],
+      [
+       {
+        "box": "Reward head",
+        "terminal": true,
+        "minor": true
+       }
+      ],
+      [
+       {
+        "box": "Continue head",
+        "id": "cont",
+        "terminal": true,
+        "minor": true
+       }
+      ]
+     ]
+    },
+    {
+     "group": [
+      {
+       "box": "Masked tokens + h",
+       "id": "masked",
+       "style": "soft",
+       "minor": true
+      },
+      {
+       "box": "Linear + positions",
+       "id": "pe",
+       "minor": true
+      },
+      {
+       "group": [
+        {
+         "residual": [
+          {
+           "box": "LayerNorm",
+           "minor": true
+          },
+          {
+           "box": "Spatial attention (bidirectional)",
+           "short": "Spatial attention",
+           "id": "sattn",
+           "style": "dark"
+          }
+         ]
+        },
+        {
+         "residual": [
+          {
+           "box": "LayerNorm",
+           "minor": true
+          },
+          {
+           "box": "Feed forward",
+           "id": "sffn",
+           "minor": true
+          }
+         ]
+        }
+       ],
+       "repeat": "2 ×",
+       "id": "sgroup"
+      },
+      {
+       "box": "Sample, keep confident tokens",
+       "short": "Sample, keep confident",
+       "id": "sample"
+      }
+     ],
+     "loop": "3 MaskGIT passes",
+     "tint": "grey",
+     "id": "maskgit"
+    },
+    {
+     "box": "Next 4×4 latent grid",
+     "id": "next",
+     "minor": true
+    }
+   ],
+   "above": [
+    {
+     "text": "Next z → actor-critic, no decoding"
+    }
+   ],
+   "insets": [
+    {
+     "for": "mix",
+     "stack": [
+      {
+       "box": "Linear + LN + SiLU"
+      },
+      {
+       "box": "Linear + LN"
+      }
+     ]
+    }
+   ],
+   "annotations": [
+    {
+     "at": "enc",
+     "text": "*4×4* grid × *32* groups × *32* classes = *16* spatial tokens per frame",
+     "side": "left",
+     "key": true
+    },
+    {
+     "at": "mix",
+     "text": "grid conv-encoded to *512* and concatenated with the one-hot action → *1* token per step",
+     "side": "left"
+    },
+    {
+     "at": "tattn",
+     "text": "*8* heads; relative positions; context *64* steps with cached K, V",
+     "side": "left",
+     "key": true
+    },
+    {
+     "at": "cont",
+     "text": "reward and continue read [z, h]; *27* collected frames/s on one RTX 3090 (authors)",
+     "side": "left"
+    },
+    {
+     "at": "sgroup",
+     "text": "*2* blocks, width *256*, bidirectional over the *16* tokens of the next grid",
+     "side": "left"
+    },
+    {
+     "at": "sample",
+     "text": "*3* passes per imagined step (cosine mask schedule) instead of *16* serial decodes",
+     "side": "left",
+     "key": true
+    },
+    {
+     "at": "tgroup",
+     "text": "*4* blocks, width *512*; *30M* parameters in total; block internals not disclosed",
+     "side": "right",
+     "key": true
+    }
+   ],
+   "feedback": "next step"
   }
  },
  {
@@ -3997,6 +8530,176 @@
     "short": "Wan VAE decoder → 12 frames"
    },
    "loop": "AR rollout"
+  },
+  "flow": {
+   "below": [
+    {
+     "text": "Previous frames + key/mouse actions"
+    }
+   ],
+   "stack": [
+    {
+     "box": "Wan2.1 3D causal VAE encoder",
+     "short": "Wan2.1 VAE encoder",
+     "id": "vae",
+     "style": "teal"
+    },
+    {
+     "box": "Patchify 1×2×2",
+     "id": "patch",
+     "minor": true
+    },
+    {
+     "box": "Noisy latent chunk",
+     "id": "noisy",
+     "style": "soft",
+     "minor": true
+    },
+    {
+     "group": [
+      {
+       "group": [
+        {
+         "residual": [
+          {
+           "box": "AdaLN (scale, shift)",
+           "minor": true,
+           "side": "Timestep emb."
+          },
+          {
+           "box": "Block-causal self-attention",
+           "id": "attn",
+           "style": "dark",
+           "side": "3D RoPE"
+          }
+         ]
+        },
+        {
+         "residual": [
+          {
+           "box": "Cross-attention",
+           "id": "xattn",
+           "side": "First-frame CLIP"
+          }
+         ]
+        },
+        {
+         "residual": [
+          {
+           "box": "Action module",
+           "id": "act",
+           "style": "orange",
+           "side": "Keys + mouse"
+          }
+         ]
+        },
+        {
+         "residual": [
+          {
+           "box": "AdaLN (scale, shift)",
+           "minor": true
+          },
+          {
+           "box": "Feed forward",
+           "id": "ffn"
+          }
+         ]
+        }
+       ],
+       "repeat": "30 ×",
+       "id": "block"
+      },
+      {
+       "box": "Predicted velocity",
+       "id": "vel",
+       "minor": true
+      },
+      {
+       "box": "Update latents",
+       "id": "upd",
+       "minor": true
+      }
+     ],
+     "loop": "3 denoising steps (DMD)",
+     "tint": "grey",
+     "id": "denoise"
+    },
+    {
+     "box": "Write chunk to KV cache",
+     "id": "kv",
+     "minor": true
+    }
+   ],
+   "above": [
+    {
+     "box": "Wan2.1 VAE decoder",
+     "id": "dec",
+     "style": "teal"
+    },
+    {
+     "text": "12 frames at 352×640"
+    }
+   ],
+   "insets": [
+    {
+     "for": "ffn",
+     "stack": [
+      {
+       "box": "Linear"
+      },
+      {
+       "box": "GELU"
+      },
+      {
+       "box": "Linear"
+      }
+     ]
+    }
+   ],
+   "annotations": [
+    {
+     "at": "vae",
+     "text": "*880* latents per 44×80 latent frame; a chunk of *3* latent frames = *2,640* tokens",
+     "short": "*2,640* tokens per *3*-latent-frame chunk",
+     "side": "left",
+     "key": true
+    },
+    {
+     "at": "attn",
+     "text": "*12* heads of *128*, width *1,536* · attends to the chunk and a window of *6* latent frames = *5,280* tokens",
+     "short": "*12* heads; window of *6* latent frames = *5,280* tokens",
+     "side": "left",
+     "key": true
+    },
+    {
+     "at": "act",
+     "text": "action modules only in blocks *1–15* in the fast configuration",
+     "side": "left"
+    },
+    {
+     "at": "block",
+     "text": "*30* layers, *1.3B* parameters (~*1.8B* with action modules)",
+     "side": "right",
+     "key": true
+    },
+    {
+     "at": "upd",
+     "text": "distilled from a bidirectional teacher with DMD Self-Forcing; timesteps *1000, 666, 333*",
+     "side": "right"
+    },
+    {
+     "at": "kv",
+     "text": "rolling cache of *6* latent frames, oldest evicted; ~*0.97 GB* [D]",
+     "side": "right"
+    },
+    {
+     "at": "dec",
+     "text": "*25* fps at 352×640 on one H100 (company claim)",
+     "side": "right",
+     "key": true
+    }
+   ],
+   "feedback": "next chunk"
   }
  },
  {
@@ -4113,6 +8816,167 @@
     "none": "output is text: trace frames, code, tool calls"
    },
    "loop": "AR rollout"
+  },
+  "flow": {
+   "below": [
+    {
+     "text": "Trace text: locals JSON (observation) + Python line (action)"
+    }
+   ],
+   "stack": [
+    {
+     "box": "Llama 3 BPE tokenizer",
+     "id": "tok",
+     "style": "teal"
+    },
+    {
+     "box": "Token embedding",
+     "id": "emb",
+     "minor": true
+    },
+    {
+     "group": [
+      {
+       "residual": [
+        {
+         "box": "RMSNorm",
+         "minor": true
+        },
+        {
+         "fanout": [
+          [
+           {
+            "box": "Local-window attention (GQA)",
+            "short": "Local-window attention",
+            "id": "local",
+            "style": "dark",
+            "side": "Scaled RoPE"
+           }
+          ],
+          [
+           {
+            "box": "Global-window attention (GQA)",
+            "short": "Global-window attention",
+            "id": "global",
+            "style": "dark"
+           }
+          ]
+         ]
+        },
+        {
+         "merge": "or"
+        }
+       ]
+      },
+      {
+       "residual": [
+        {
+         "box": "RMSNorm",
+         "minor": true
+        },
+        {
+         "box": "SwiGLU feed forward",
+         "id": "ffn"
+        }
+       ]
+      }
+     ],
+     "repeat": "64 ×",
+     "id": "block"
+    },
+    {
+     "box": "Final RMSNorm",
+     "minor": true
+    },
+    {
+     "box": "Linear output layer",
+     "id": "out",
+     "minor": true
+    },
+    {
+     "box": "Sample next token",
+     "id": "sample"
+    }
+   ],
+   "above": [
+    {
+     "text": "Next observation as text: JSON frame, code, tool call"
+    }
+   ],
+   "insets": [
+    {
+     "for": "ffn",
+     "stack": [
+      {
+       "fanout": [
+        [
+         {
+          "box": "Linear"
+         }
+        ],
+        [
+         {
+          "box": "Linear"
+         },
+         {
+          "box": "SiLU"
+         }
+        ]
+       ]
+      },
+      {
+       "merge": "x"
+      },
+      {
+       "box": "Linear"
+      }
+     ]
+    }
+   ],
+   "annotations": [
+    {
+     "at": "tok",
+     "text": "vocabulary *128,256*; observations are stack-frame locals as JSON, actions are the Python lines executed",
+     "short": "vocabulary *128,256*; traces as JSON",
+     "side": "left",
+     "key": true
+    },
+    {
+     "at": "emb",
+     "text": "width *6,144*",
+     "side": "left"
+    },
+    {
+     "at": "global",
+     "text": "*48* query heads, *8* KV heads; windows of *8,192* (local) and *131,072* (global) tokens, interleaved *3:1*",
+     "short": "windows of *8,192* and *131,072*, *3:1*",
+     "side": "right",
+     "key": true
+    },
+    {
+     "at": "block",
+     "text": "*64* layers, *32B* parameters; KV cache ≈ *9.5 GiB* at *131k* context [D]",
+     "short": "*64* layers, *32B*; KV ≈ *9.5 GiB* at *131k* [D]",
+     "side": "right",
+     "key": true
+    },
+    {
+     "at": "ffn",
+     "text": "FFN width *21,504*; document-causal mask; scaled RoPE θ *1M*, scale factor *16*; *48* local + *16* global layers [D]",
+     "side": "right"
+    },
+    {
+     "at": "sample",
+     "text": "*1* pass per token over the *128k* vocabulary: a trace step costs as many passes as its JSON frame has tokens",
+     "side": "left"
+    },
+    {
+     "at": "out",
+     "text": "inference fits one 80 GB H100 with quantization (authors); no decode-throughput figure",
+     "side": "right"
+    }
+   ],
+   "feedback": "next token"
   }
  },
  {
@@ -4241,6 +9105,199 @@
     "tag": "frozen"
    },
    "loop": "AR rollout"
+  },
+  "flow": {
+   "below": [
+    {
+     "text": "Frame 360×640 + action"
+    }
+   ],
+   "stack": [
+    {
+     "box": "Causal tokenizer (block-causal transformer)",
+     "short": "Causal tokenizer",
+     "id": "tok",
+     "style": "teal"
+    },
+    {
+     "box": "tanh bottleneck → 256 latent tokens",
+     "id": "lat",
+     "minor": true
+    },
+    {
+     "box": "Add register, shortcut and action tokens",
+     "short": "Add action tokens",
+     "id": "tokens",
+     "side": "Action emb."
+    },
+    {
+     "group": [
+      {
+       "group": [
+        {
+         "residual": [
+          {
+           "box": "RMSNorm",
+           "minor": true
+          },
+          {
+           "box": "Space attention (within frame)",
+           "short": "Space attention",
+           "id": "sattn",
+           "style": "dark"
+          }
+         ]
+        },
+        {
+         "residual": [
+          {
+           "box": "RMSNorm",
+           "minor": true
+          },
+          {
+           "box": "Time attention (causal, GQA)",
+           "short": "Time attention (causal)",
+           "id": "tattn",
+           "style": "dark",
+           "side": "RoPE"
+          }
+         ]
+        },
+        {
+         "residual": [
+          {
+           "box": "RMSNorm",
+           "minor": true
+          },
+          {
+           "box": "SwiGLU MLP",
+           "id": "mlp"
+          }
+         ]
+        }
+       ],
+       "repeat": "N ×",
+       "id": "block"
+      },
+      {
+       "box": "x-prediction (clean latents)",
+       "id": "xpred",
+       "minor": true
+      },
+      {
+       "box": "Shortcut update",
+       "id": "upd",
+       "minor": true
+      }
+     ],
+     "loop": "4 shortcut steps",
+     "tint": "grey",
+     "id": "denoise"
+    },
+    {
+     "fanout": [
+      [
+       {
+        "box": "Next-frame latents",
+        "id": "out",
+        "minor": true
+       }
+      ],
+      [
+       {
+        "box": "Policy head",
+        "terminal": true,
+        "minor": true
+       }
+      ],
+      [
+       {
+        "box": "Value head",
+        "id": "val",
+        "terminal": true,
+        "minor": true
+       }
+      ]
+     ]
+    }
+   ],
+   "above": [
+    {
+     "box": "Tokenizer decoder",
+     "id": "dec",
+     "style": "teal"
+    },
+    {
+     "text": "Next frame 360×640"
+    }
+   ],
+   "insets": [
+    {
+     "for": "mlp",
+     "stack": [
+      {
+       "fanout": [
+        [
+         {
+          "box": "Linear"
+         }
+        ],
+        [
+         {
+          "box": "Linear"
+         },
+         {
+          "box": "SiLU"
+         }
+        ]
+       ]
+      },
+      {
+       "merge": "x"
+      },
+      {
+       "box": "Linear"
+      }
+     ]
+    }
+   ],
+   "annotations": [
+    {
+     "at": "tok",
+     "text": "*400M*, MAE-trained; *960* patches of 16×16 → *256* tokens × *32* channels",
+     "side": "left",
+     "key": true
+    },
+    {
+     "at": "tattn",
+     "text": "long-context time attention only in every *4th* layer; context *192* frames (9.6 s) ≈ *49k* tokens [D]",
+     "short": "long context in every *4th* layer; *192* frames",
+     "side": "left",
+     "key": true
+    },
+    {
+     "at": "block",
+     "text": "*1.6B* dynamics transformer; layers and heads not disclosed",
+     "side": "right",
+     "key": true
+    },
+    {
+     "at": "upd",
+     "text": "shortcut forcing: *4* passes per frame instead of *64*; past frames re-noised at τ = *0.1*",
+     "side": "right"
+    },
+    {
+     "at": "val",
+     "text": "policy and value share the dynamics trunk",
+     "side": "right"
+    },
+    {
+     "at": "dec",
+     "text": "*21* fps on one H100 (authors, Table 1)",
+     "side": "right"
+    }
+   ],
+   "feedback": "next frame"
   }
  },
  {
@@ -4357,6 +9414,162 @@
     "tag": "frozen",
     "short": "Wan2.1 VAE decoder → 93 frames"
    }
+  },
+  "flow": {
+   "below": [
+    {
+     "text": "Text prompt + 1 or 5 conditioning frames (no action input)"
+    }
+   ],
+   "stack": [
+    {
+     "box": "Wan2.1 causal VAE encoder",
+     "id": "vae",
+     "style": "teal"
+    },
+    {
+     "box": "Patchify 1×2×2 + mask-token flag",
+     "short": "Patchify + mask flag",
+     "id": "patch",
+     "minor": true
+    },
+    {
+     "group": [
+      {
+       "box": "Noisy clip latents",
+       "id": "noisy",
+       "style": "soft",
+       "minor": true
+      },
+      {
+       "group": [
+        {
+         "residual": [
+          {
+           "box": "AdaLN-LoRA (scale, shift, gate)",
+           "minor": true,
+           "side": "Timestep emb."
+          },
+          {
+           "box": "Full self-attention",
+           "id": "attn",
+           "style": "dark",
+           "side": "3D RoPE"
+          }
+         ]
+        },
+        {
+         "residual": [
+          {
+           "box": "AdaLN-LoRA",
+           "minor": true
+          },
+          {
+           "box": "Cross-attention",
+           "id": "xattn",
+           "side": "Cosmos-Reason1 text"
+          }
+         ]
+        },
+        {
+         "residual": [
+          {
+           "box": "AdaLN-LoRA",
+           "minor": true
+          },
+          {
+           "box": "Feed forward",
+           "id": "ffn"
+          }
+         ]
+        }
+       ],
+       "repeat": "32 ×",
+       "id": "block"
+      },
+      {
+       "box": "Predicted velocity",
+       "id": "vel",
+       "minor": true
+      },
+      {
+       "box": "Update latents",
+       "id": "upd",
+       "minor": true
+      }
+     ],
+     "loop": "4 denoising steps (rCM)",
+     "tint": "grey",
+     "id": "denoise"
+    }
+   ],
+   "above": [
+    {
+     "box": "Wan2.1 VAE decoder",
+     "id": "dec",
+     "style": "teal"
+    },
+    {
+     "text": "93 frames at 1280×704 (5.8 s)"
+    }
+   ],
+   "insets": [
+    {
+     "for": "ffn",
+     "stack": [
+      {
+       "box": "Linear"
+      },
+      {
+       "box": "GELU"
+      },
+      {
+       "box": "Linear"
+      }
+     ]
+    }
+   ],
+   "annotations": [
+    {
+     "at": "vae",
+     "text": "*3,520* tokens per 44×80 latent frame; *84,480* tokens per 93-frame clip of *24* latent frames [D]",
+     "side": "left",
+     "key": true
+    },
+    {
+     "at": "patch",
+     "text": "conditioning frames replace noisy frames in the sequence, flagged by a mask token",
+     "side": "left"
+    },
+    {
+     "at": "attn",
+     "text": "*16* heads of *128*, width *2,048*; bidirectional over the whole clip, no KV cache",
+     "side": "left",
+     "key": true
+    },
+    {
+     "at": "xattn",
+     "text": "no action input in the base model; text = Cosmos-Reason1 multi-block activations projected to *1,024*-d",
+     "side": "left"
+    },
+    {
+     "at": "block",
+     "text": "2B: *32* layers, FFN *8,192*, AdaLN-LoRA rank *256*; 14B: *36* layers, width *5,120*, *40* heads",
+     "side": "right",
+     "key": true
+    },
+    {
+     "at": "upd",
+     "text": "flow matching distilled with rCM to *4* steps (score *0.768* → *0.764*, Table 7); teacher step count not located",
+     "side": "right"
+    },
+    {
+     "at": "dec",
+     "text": "inference speed not disclosed; ≈*3.4e14* dense FLOPs per 2B pass before attention [D]",
+     "side": "right",
+     "key": true
+    }
+   ]
   }
  },
  {
@@ -4479,6 +9692,166 @@
     "short": "HY-1.5 VAE decoder → 16 frames"
    },
    "loop": "AR rollout"
+  },
+  "flow": {
+   "below": [
+    {
+     "text": "Previous frames + keys + camera pose + text"
+    }
+   ],
+   "stack": [
+    {
+     "box": "HunyuanVideo-1.5 3D causal VAE encoder",
+     "short": "HY-1.5 VAE encoder",
+     "id": "vae",
+     "style": "teal"
+    },
+    {
+     "box": "Patchify 1×1×1",
+     "id": "patch",
+     "minor": true
+    },
+    {
+     "box": "Rebuild context memory (retrieve, reframe)",
+     "id": "mem",
+     "minor": true,
+     "side": "FOV overlap + camera distance"
+    },
+    {
+     "group": [
+      {
+       "box": "Noisy latent chunk",
+       "id": "noisy",
+       "style": "soft",
+       "minor": true
+      },
+      {
+       "group": [
+        {
+         "residual": [
+          {
+           "box": "AdaLN (timestep + keys)",
+           "short": "AdaLN",
+           "id": "ada",
+           "side": "Keys → PE + MLP"
+          },
+          {
+           "box": "Block-causal 3D self-attention",
+           "short": "Block-causal attention",
+           "id": "attn",
+           "style": "dark",
+           "side": "Memory chunks + PRoPE"
+          }
+         ]
+        },
+        {
+         "residual": [
+          {
+           "box": "Cross-attention",
+           "id": "xattn",
+           "side": "Text emb."
+          }
+         ]
+        },
+        {
+         "residual": [
+          {
+           "box": "AdaLN",
+           "minor": true
+          },
+          {
+           "box": "Feed forward",
+           "id": "ffn"
+          }
+         ]
+        }
+       ],
+       "repeat": "54 ×",
+       "id": "block"
+      },
+      {
+       "box": "Predicted velocity",
+       "id": "vel",
+       "minor": true
+      },
+      {
+       "box": "Update latents",
+       "id": "upd",
+       "minor": true
+      }
+     ],
+     "loop": "4 denoising steps (Context Forcing)",
+     "tint": "grey",
+     "id": "denoise"
+    },
+    {
+     "box": "Write chunk to KV cache",
+     "id": "kv",
+     "minor": true
+    }
+   ],
+   "above": [
+    {
+     "box": "HY-1.5 VAE decoder (streaming)",
+     "short": "HY-1.5 VAE decoder",
+     "id": "dec",
+     "style": "teal"
+    },
+    {
+     "text": "16 frames per chunk at 720p"
+    }
+   ],
+   "annotations": [
+    {
+     "at": "vae",
+     "text": "*16*× spatial, *4*× temporal, *32* channels; *3,600* tokens per latent frame at 720p, *14,400* per 4-latent chunk of *16* frames [D]",
+     "short": "*14,400* tokens per *16*-frame chunk at 720p [D]",
+     "side": "left",
+     "key": true
+    },
+    {
+     "at": "mem",
+     "text": "memory = *3* most recent chunks + *1* chunk retrieved by FOV overlap and camera distance = *57,600* tokens [D]; temporal reframing re-assigns its RoPE indices; first chunk kept as attention sink",
+     "side": "left"
+    },
+    {
+     "at": "ada",
+     "text": "discrete keys → PE + zero-initialized MLP, added to the timestep embedding",
+     "side": "left"
+    },
+    {
+     "at": "attn",
+     "text": "*16* heads, width *2,048*; attends to a memory of *3* recent + *1* retrieved chunk = *57,600* tokens [D]; camera pose via PRoPE in a second attention term, output = Attn1 + zero_init(Attn2)",
+     "short": "memory of *3* recent + *1* retrieved chunk = *57,600* tokens [D]",
+     "side": "left",
+     "key": true
+    },
+    {
+     "at": "block",
+     "text": "*54* blocks, *8B* (HunyuanVideo-1.5; HF config: double-stream MM-DiT, MLP ratio *4*; activation not disclosed)",
+     "short": "*54* MM-DiT blocks, *8B*",
+     "side": "right",
+     "key": true
+    },
+    {
+     "at": "upd",
+     "text": "Context Forcing (DMD from a memory-augmented bidirectional teacher): *100* → *4* NFE per chunk",
+     "side": "right"
+    },
+    {
+     "at": "kv",
+     "text": "KV ≈*25.5 GB* BF16 for the memory context, ≈*3.2 GB* per GPU split 8 ways [D]; real time needs DiT/VAE token parallelism, quantization and streaming decode",
+     "side": "right"
+    },
+    {
+     "at": "dec",
+     "text": "*24* FPS at 720p on 8×H800 (company claim); *4.95* FPS on 4×H200 (WorldKV)",
+     "short": "*24* fps at 720p on *8* H800 (company claim)",
+     "side": "right",
+     "key": true
+    }
+   ],
+   "feedback": "next chunk"
   }
  },
  {
@@ -4851,6 +10224,172 @@
     "short": "Wan VAE decoder → 12 frames"
    },
    "loop": "AR rollout"
+  },
+  "flow": {
+   "below": [
+    {
+     "text": "Previous frames + camera rotation + W/A/S/D keys + text"
+    }
+   ],
+   "stack": [
+    {
+     "box": "Wan 3D causal VAE encoder",
+     "short": "Wan VAE encoder",
+     "id": "vae",
+     "style": "teal"
+    },
+    {
+     "box": "Patchify 1×2×2",
+     "id": "patch",
+     "minor": true
+    },
+    {
+     "group": [
+      {
+       "box": "Noisy latent chunk",
+       "id": "noisy",
+       "style": "soft",
+       "minor": true
+      },
+      {
+       "group": [
+        {
+         "residual": [
+          {
+           "box": "AdaLN (scale, shift)",
+           "minor": true,
+           "side": "Timestep emb."
+          },
+          {
+           "box": "Block-causal self-attention",
+           "short": "Block-causal attention",
+           "id": "attn",
+           "style": "dark",
+           "side": "3D RoPE"
+          }
+         ]
+        },
+        {
+         "box": "Action AdaLN adapter (scale, shift)",
+         "short": "Action AdaLN adapter",
+         "id": "act",
+         "style": "orange",
+         "side": "Plücker camera + keys"
+        },
+        {
+         "residual": [
+          {
+           "box": "Cross-attention",
+           "id": "xattn",
+           "side": "umT5 text"
+          }
+         ]
+        },
+        {
+         "residual": [
+          {
+           "box": "AdaLN (scale, shift)",
+           "minor": true
+          },
+          {
+           "box": "Feed forward",
+           "id": "ffn"
+          }
+         ]
+        }
+       ],
+       "repeat": "40 ×",
+       "id": "block"
+      },
+      {
+       "box": "Predicted velocity",
+       "id": "vel",
+       "minor": true
+      },
+      {
+       "box": "Update latents",
+       "id": "upd",
+       "minor": true
+      }
+     ],
+     "loop": "4 denoising steps (DMD + adversarial)",
+     "tint": "grey",
+     "id": "denoise"
+    },
+    {
+     "box": "Write chunk to KV cache",
+     "id": "kv",
+     "minor": true
+    }
+   ],
+   "above": [
+    {
+     "box": "Wan VAE decoder",
+     "id": "dec",
+     "style": "teal"
+    },
+    {
+     "text": "12 frames at 480×832"
+    }
+   ],
+   "insets": [
+    {
+     "for": "ffn",
+     "stack": [
+      {
+       "box": "Linear"
+      },
+      {
+       "box": "GELU"
+      },
+      {
+       "box": "Linear"
+      }
+     ]
+    }
+   ],
+   "annotations": [
+    {
+     "at": "vae",
+     "text": "*1,560* latents per 30×52 latent frame; a chunk of *3* latent frames = *4,680* tokens = *12* output frames [D]",
+     "side": "left",
+     "key": true
+    },
+    {
+     "at": "attn",
+     "text": "*40* heads, width *5,120*; bidirectional within the chunk, causal over the full-rollout KV cache (no window, no sink by default)",
+     "side": "left",
+     "key": true
+    },
+    {
+     "at": "act",
+     "text": "Plücker camera embeddings + multi-hot W/A/S/D keys → Plücker encoder → scale and shift; only these adapters and the AdaLN parameters are trained in that stage",
+     "side": "left"
+    },
+    {
+     "at": "block",
+     "text": "*40* layers, *14B* dense: the high-noise expert of Wan2.2 I2V A14B (*28B* in total)",
+     "side": "right",
+     "key": true
+    },
+    {
+     "at": "upd",
+     "text": "timestep indices *0, 179, 358, 679* with shift *5*; the bidirectional base samples *70* steps",
+     "side": "right"
+    },
+    {
+     "at": "kv",
+     "text": "full KV ≈*3.4 GB* per chunk, >*200 GB* per minute (WorldKV); *8.87* → *3.61* FPS over a one-minute rollout on 4×B200",
+     "side": "right"
+    },
+    {
+     "at": "dec",
+     "text": "*16* fps at 480p, <*1* s latency on one 8-GPU node (company claim; GPU type not stated)",
+     "side": "right",
+     "key": true
+    }
+   ],
+   "feedback": "next chunk"
   }
  },
  {
@@ -4979,6 +10518,191 @@
     "short": "Wan VAE decoder (optional)"
    },
    "loop": "closed loop with real frames"
+  },
+  "flow": {
+   "below": [
+    {
+     "text": "Frames (views tiled) + text + state"
+    }
+   ],
+   "stack": [
+    {
+     "box": "Wan2.1 VAE encoder (frozen)",
+     "short": "Wan2.1 VAE encoder",
+     "id": "vae",
+     "style": "teal"
+    },
+    {
+     "box": "Noisy video + action chunk",
+     "id": "noisy",
+     "style": "soft",
+     "minor": true,
+     "side": "State + action enc."
+    },
+    {
+     "group": [
+      {
+       "group": [
+        {
+         "residual": [
+          {
+           "box": "AdaLN (scale, shift)",
+           "minor": true,
+           "side": "Timestep emb."
+          },
+          {
+           "box": "Chunk-causal self-attention",
+           "short": "Chunk-causal attention",
+           "id": "attn",
+           "style": "dark",
+           "side": "RoPE"
+          }
+         ]
+        },
+        {
+         "residual": [
+          {
+           "box": "Cross-attention",
+           "id": "xattn",
+           "side": "Text + image features"
+          }
+         ]
+        },
+        {
+         "residual": [
+          {
+           "box": "AdaLN (scale, shift)",
+           "minor": true
+          },
+          {
+           "box": "Feed forward",
+           "id": "ffn"
+          }
+         ]
+        }
+       ],
+       "repeat": "40 ×",
+       "id": "block"
+      },
+      {
+       "box": "Joint velocity (video, action)",
+       "id": "vel",
+       "minor": true
+      },
+      {
+       "box": "Update latents",
+       "id": "upd",
+       "minor": true
+      }
+     ],
+     "loop": "16 → 4 → 1 flow steps",
+     "tint": "grey",
+     "id": "denoise"
+    },
+    {
+     "box": "Write clean chunk to KV cache",
+     "id": "kv",
+     "minor": true
+    },
+    {
+     "fanout": [
+      [
+       {
+        "box": "Next-chunk video latents",
+        "short": "Video latents",
+        "id": "vid"
+       }
+      ],
+      [
+       {
+        "box": "Action decoder",
+        "id": "act",
+        "style": "orange",
+        "terminal": true
+       }
+      ]
+     ]
+    }
+   ],
+   "above": [
+    {
+     "box": "Wan2.1 VAE decoder",
+     "id": "dec",
+     "style": "teal"
+    },
+    {
+     "text": "Predicted frames (optional)"
+    }
+   ],
+   "annotations": [
+    {
+     "at": "vae",
+     "text": "frozen Wan2.1 VAE, *4×* temporal; tokens per latent frame not disclosed",
+     "short": "frozen Wan2.1 VAE, *4×* temporal",
+     "side": "left",
+     "key": true
+    },
+    {
+     "at": "vae",
+     "text": "*8* latent frames = *33* raw frames; multi-view inputs are tiled into one frame",
+     "side": "left"
+    },
+    {
+     "at": "noisy",
+     "text": "a chunk = *2* latent frames + *48* actions at *30* Hz (*1.6* s), one shared timestep; proprio through a state encoder (entry point not detailed)",
+     "side": "left"
+    },
+    {
+     "at": "attn",
+     "text": "*40* heads, width *5,120*; the noisy chunk attends to ≤ *8* cached latent frames",
+     "short": "attends to ≤ *8* cached latent frames",
+     "side": "left",
+     "key": true
+    },
+    {
+     "at": "attn",
+     "text": "clean context of at most *4* chunks = *8* latent frames (*6.6* s)",
+     "side": "left"
+    },
+    {
+     "at": "block",
+     "text": "*40* layers, *14B*, all blocks fine-tuned (Wan2.1-I2V)",
+     "side": "right",
+     "key": true
+    },
+    {
+     "at": "block",
+     "text": "FFN *13,824*; text and image encoders frozen; LayerNorm and RoPE named in the quantization notes",
+     "side": "right"
+    },
+    {
+     "at": "upd",
+     "text": "*16* flow steps naive; velocity caching → *4* effective; DreamZero-Flash → *1* step (video t = 1 − Beta(7,1), action t uniform)",
+     "side": "right"
+    },
+    {
+     "at": "kv",
+     "text": "KV cache of at most *8* latent frames, refreshed with VAE-encoded real frames after every chunk",
+     "side": "right"
+    },
+    {
+     "at": "act",
+     "text": "*5.7* s per chunk naive → *150* ms on *2* GB200 (company claim)",
+     "side": "right",
+     "key": true
+    },
+    {
+     "at": "act",
+     "text": "CFG split over the *2* GPUs, NVFP4, Flash; ~*0.59* s on one H100 [D]",
+     "side": "right"
+    },
+    {
+     "at": "dec",
+     "text": "optional: predicted frames are replaced by real ones, so control needs no decoding",
+     "side": "right"
+    }
+   ],
+   "feedback": "next chunk, real frames"
   }
  },
  {
@@ -5089,6 +10813,142 @@
     "short": "ViT decoder → 2 views"
    },
    "loop": "AR rollout"
+  },
+  "flow": {
+   "below": [
+    {
+     "text": "2 camera views 128×256 + 6-DoF relative pose"
+    }
+   ],
+   "stack": [
+    {
+     "box": "ViT frame compressor (encoder)",
+     "short": "ViT compressor",
+     "id": "enc",
+     "style": "teal"
+    },
+    {
+     "box": "Latent 32×16×32",
+     "id": "lat",
+     "minor": true
+    },
+    {
+     "group": [
+      {
+       "box": "Noisy frame latent + context",
+       "id": "noisy",
+       "style": "soft",
+       "minor": true
+      },
+      {
+       "group": [
+        {
+         "residual": [
+          {
+           "box": "AdaLN-single",
+           "id": "ada",
+           "side": "Pose + noise level + frame index"
+          },
+          {
+           "box": "Block-causal self-attention",
+           "id": "attn",
+           "style": "dark"
+          }
+         ]
+        },
+        {
+         "residual": [
+          {
+           "box": "AdaLN-single",
+           "minor": true
+          },
+          {
+           "box": "MLP",
+           "id": "mlp"
+          }
+         ]
+        }
+       ],
+       "repeat": "48 ×",
+       "id": "block"
+      },
+      {
+       "box": "Predicted velocity",
+       "id": "vel",
+       "minor": true
+      },
+      {
+       "box": "Euler update with CFG",
+       "id": "upd",
+       "minor": true
+      }
+     ],
+     "loop": "15 Euler steps",
+     "tint": "grey",
+     "id": "denoise"
+    },
+    {
+     "box": "Write frame to KV cache",
+     "id": "kv",
+     "minor": true
+    }
+   ],
+   "above": [
+    {
+     "box": "ViT decoder",
+     "id": "dec",
+     "style": "teal"
+    },
+    {
+     "text": "Next frame, 2 views at 128×256"
+    }
+   ],
+   "annotations": [
+    {
+     "at": "enc",
+     "text": "*50M* encoder: narrow + wide views → one *32×16×32* latent per frame at *5* fps; tokens per frame not stated",
+     "short": "one *32×16×32* latent per frame at *5* fps",
+     "side": "left",
+     "key": true
+    },
+    {
+     "at": "ada",
+     "text": "*6*-DoF relative positions, noise level and frame index → AdaLN-single (PixArt-α style)",
+     "side": "left"
+    },
+    {
+     "at": "attn",
+     "text": "*25* heads, width *1,600*; tokens attend to their frame and past frames; context *2* s + *1* s of future frames (inverse dynamics)",
+     "short": "*25* heads, width *1,600*; block-causal",
+     "side": "left",
+     "key": true
+    },
+    {
+     "at": "block",
+     "text": "*48* layers, *2B* parameters; norm and MLP details not disclosed",
+     "short": "*48* layers, *2B* parameters",
+     "side": "right",
+     "key": true
+    },
+    {
+     "at": "upd",
+     "text": "rectified flow, *15* Euler steps, CFG *2.0*: up to *30* passes per frame [D]",
+     "side": "right"
+    },
+    {
+     "at": "kv",
+     "text": "KV cache over the block-causal context",
+     "side": "right"
+    },
+    {
+     "at": "dec",
+     "text": "*100M* decoder; *12.2* frames/s per GPU throughput with KV caching (company claim)",
+     "short": "*12.2* frames/s per GPU (company claim)",
+     "side": "right",
+     "key": true
+    }
+   ],
+   "feedback": "next frame"
   }
  },
  {
@@ -5323,6 +11183,158 @@
     "none": "planning by CEM in latent space: 300 samples × ≤30 iterations × horizon 5"
    },
    "loop": "CEM rollout"
+  },
+  "flow": {
+   "below": [
+    {
+     "text": "Frame 224×224 + action block"
+    }
+   ],
+   "stack": [
+    {
+     "box": "ViT-Tiny encoder",
+     "id": "enc",
+     "style": "teal"
+    },
+    {
+     "box": "[CLS] embedding + projector",
+     "short": "[CLS] + projector",
+     "id": "cls"
+    },
+    {
+     "box": "History of frame tokens",
+     "id": "hist",
+     "minor": true
+    },
+    {
+     "group": [
+      {
+       "residual": [
+        {
+         "box": "AdaLN, zero-initialised",
+         "short": "AdaLN (actions)",
+         "id": "ada",
+         "style": "orange",
+         "side": "Action emb."
+        },
+        {
+         "box": "Temporal causal self-attention",
+         "short": "Causal self-attention",
+         "id": "attn",
+         "style": "dark",
+         "side": "Learned positions"
+        }
+       ]
+      },
+      {
+       "residual": [
+        {
+         "box": "AdaLN",
+         "minor": true
+        },
+        {
+         "box": "MLP",
+         "id": "mlp"
+        }
+       ]
+      }
+     ],
+     "repeat": "6 ×",
+     "id": "block"
+    },
+    {
+     "box": "Projector",
+     "id": "proj",
+     "minor": true
+    },
+    {
+     "box": "Predicted next-frame embedding",
+     "short": "Next-frame embedding",
+     "id": "pred"
+    }
+   ],
+   "above": [
+    {
+     "text": "MSE distance to the goal embedding"
+    }
+   ],
+   "insets": [
+    {
+     "for": "mlp",
+     "stack": [
+      {
+       "box": "Linear"
+      },
+      {
+       "box": "GELU"
+      },
+      {
+       "box": "Linear"
+      }
+     ]
+    },
+    {
+     "for": "pred",
+     "label": "planning loop",
+     "stack": [
+      {
+       "box": "Sample 300 action sequences"
+      },
+      {
+       "box": "Roll out 5 latent steps"
+      },
+      {
+       "box": "MSE to the goal embedding"
+      },
+      {
+       "box": "Refit the Gaussian, ≤30×"
+      }
+     ]
+    }
+   ],
+   "annotations": [
+    {
+     "at": "enc",
+     "text": "ViT-Tiny, ~*5M*, trained jointly with the predictor: patch *14*, *12* layers, *3* heads, width *192*; the projector is a 1-layer MLP with BatchNorm",
+     "side": "left"
+    },
+    {
+     "at": "cls",
+     "text": "*1* token of width *192* per frame: the [CLS] embedding + projector",
+     "side": "left",
+     "key": true
+    },
+    {
+     "at": "ada",
+     "text": "zero-initialised AdaLN at every layer; the *5* actions between frames form one *10*-d action block embedded to width *192*",
+     "side": "left"
+    },
+    {
+     "at": "attn",
+     "text": "*16* heads of *64*; causal over N = *3* frame embeddings = *3* tokens",
+     "side": "left",
+     "key": true
+    },
+    {
+     "at": "block",
+     "text": "*6* layers, MLP *2,048*, dropout *0.1*, ~*10M* parameters",
+     "side": "right",
+     "key": true
+    },
+    {
+     "at": "pred",
+     "text": "CEM plan (*300* samples × ≤*30* iterations × horizon *5*): *0.98* s vs *47* s for DINO-WM",
+     "short": "CEM plan: *0.98* s vs *47* s for DINO-WM",
+     "side": "left",
+     "key": true
+    },
+    {
+     "at": "pred",
+     "text": "one pass regresses the next embedding (MSE + SIGReg); no decoder in training or planning; *196×* fewer tokens per frame than DINO-WM [D]; GPU for the timing not stated (authors)",
+     "side": "right"
+    }
+   ],
+   "feedback": "CEM rollout"
   }
  },
  {
@@ -5446,6 +11458,180 @@
     "short": "MG-LightVAE decoder → 720p"
    },
    "loop": "AR rollout"
+  },
+  "flow": {
+   "below": [
+    {
+     "text": "Previous frames + keyboard/mouse actions + text"
+    }
+   ],
+   "stack": [
+    {
+     "box": "Wan2.2 VAE encoder (4×16×16)",
+     "short": "Wan2.2 VAE encoder",
+     "id": "vae",
+     "style": "teal"
+    },
+    {
+     "box": "Patchify 2×2",
+     "id": "patch",
+     "minor": true
+    },
+    {
+     "box": "Camera-aware memory retrieval",
+     "id": "mem",
+     "minor": true,
+     "side": "Camera poses"
+    },
+    {
+     "group": [
+      {
+       "box": "Noisy + past + memory latents",
+       "id": "seq",
+       "style": "soft",
+       "minor": true
+      },
+      {
+       "group": [
+        {
+         "residual": [
+          {
+           "box": "AdaLN (scale, shift)",
+           "minor": true,
+           "side": "Timestep emb."
+          },
+          {
+           "box": "Bidirectional self-attention",
+           "short": "Bidirectional attention",
+           "id": "attn",
+           "style": "dark",
+           "side": "Perturbed RoPE"
+          }
+         ]
+        },
+        {
+         "residual": [
+          {
+           "box": "Cross-attention",
+           "id": "xattn",
+           "side": "Text emb."
+          }
+         ]
+        },
+        {
+         "residual": [
+          {
+           "box": "Action module",
+           "id": "act",
+           "style": "orange",
+           "side": "Keys + mouse"
+          }
+         ]
+        },
+        {
+         "residual": [
+          {
+           "box": "AdaLN (scale, shift)",
+           "minor": true
+          },
+          {
+           "box": "Feed forward",
+           "id": "ffn"
+          }
+         ]
+        }
+       ],
+       "repeat": "30 ×",
+       "id": "block"
+      },
+      {
+       "box": "Predicted velocity",
+       "id": "vel",
+       "minor": true
+      },
+      {
+       "box": "Update latents",
+       "id": "upd",
+       "minor": true
+      }
+     ],
+     "loop": "3 denoising steps (DMD)",
+     "tint": "grey",
+     "id": "denoise"
+    }
+   ],
+   "above": [
+    {
+     "box": "MG-LightVAE decoder (own GPU)",
+     "short": "MG-LightVAE decoder",
+     "id": "dec",
+     "style": "teal"
+    },
+    {
+     "text": "≈40 frames at 704×1280 per segment [D]"
+    }
+   ],
+   "insets": [
+    {
+     "for": "act",
+     "label": "action module",
+     "stack": [
+      {
+       "box": "Keys → cross-attention"
+      },
+      {
+       "box": "Mouse → self-attention"
+      }
+     ]
+    }
+   ],
+   "annotations": [
+    {
+     "at": "vae",
+     "text": "*880* tokens per 22×40 latent frame at 704×1280 if the patch is (1,2,2) as in Wan2.2 [D, assumption]",
+     "side": "left",
+     "key": true
+    },
+    {
+     "at": "mem",
+     "text": "each query view takes the past frame with the highest frustum-overlap score (GPU retrieval ≈*6.1*× faster than CPU); relative Plücker cues encode target-to-memory camera geometry",
+     "side": "left"
+    },
+    {
+     "at": "seq",
+     "text": "*5* memory + *4* past + *10* noisy latents in one sequence ≈ *16,720* tokens per segment [D]; re-processed every step, no KV cache",
+     "side": "right"
+    },
+    {
+     "at": "attn",
+     "text": "*24* heads, width *3,072*; one sequence of *5* memory + *4* past + *10* noisy latents ≈ *16,720* tokens, no KV cache; head-wise perturbed RoPE bases",
+     "side": "left",
+     "key": true
+    },
+    {
+     "at": "act",
+     "text": "keys via a dedicated cross-attention, mouse via self-attention, in blocks *1–15* only (Matrix-Game 2.0 design)",
+     "side": "left"
+    },
+    {
+     "at": "block",
+     "text": "*30* layers, *5B* parameters (Wan2.2-TI2V-5B), INT8 on the attention projections; a *28B* MoE scale-up is also trained",
+     "side": "right",
+     "key": true
+    },
+    {
+     "at": "upd",
+     "text": "multi-segment self-rollout DMD (*1–6* segments) → *3* steps; error injection trains on imperfect histories; GELU FFN *14,336*",
+     "side": "right"
+    },
+    {
+     "at": "dec",
+     "text": "~*40* FPS at 720p on 8 DiT GPUs + 1 VAE GPU (company claim); *0.13* s per 17-frame clip",
+     "side": "right",
+     "key": true
+    }
+   ],
+   "feedback": "next segment"
   }
  },
  {
@@ -5567,6 +11753,186 @@
     "short": "LTX2 VAE decoder → 720p"
    },
    "loop": "AR rollout"
+  },
+  "flow": {
+   "below": [
+    {
+     "text": "First frame + text + 6-DoF camera trajectory"
+    }
+   ],
+   "stack": [
+    {
+     "box": "LTX2 VAE encoder (8 frames per latent)",
+     "short": "LTX2 VAE encoder",
+     "id": "vae",
+     "style": "teal"
+    },
+    {
+     "box": "Patchify",
+     "id": "patch",
+     "minor": true
+    },
+    {
+     "group": [
+      {
+       "box": "Noisy latent chunk",
+       "id": "noisy",
+       "style": "soft",
+       "minor": true
+      },
+      {
+       "group": [
+        {
+         "residual": [
+          {
+           "box": "Norm",
+           "minor": true,
+           "side": "Timestep emb."
+          },
+          {
+           "fanout": [
+            [
+             {
+              "box": "Frame-wise Gated DeltaNet",
+              "short": "Gated DeltaNet",
+              "id": "gdn",
+              "style": "dark"
+             }
+            ],
+            [
+             {
+              "box": "Softmax attention (sink + window)",
+              "short": "Softmax attention",
+              "id": "sattn",
+              "style": "dark"
+             }
+            ]
+           ]
+          },
+          {
+           "box": "Add Plücker mixing",
+           "id": "pl",
+           "style": "orange",
+           "minor": true,
+           "side": "Raw-frame Plücker rays"
+          }
+         ]
+        },
+        {
+         "residual": [
+          {
+           "box": "UCPE camera attention",
+           "id": "ucpe",
+           "style": "orange",
+           "side": "6-DoF poses"
+          }
+         ]
+        },
+        {
+         "residual": [
+          {
+           "box": "Cross-attention",
+           "id": "xattn",
+           "minor": true,
+           "side": "Text tokens"
+          }
+         ]
+        },
+        {
+         "residual": [
+          {
+           "box": "Norm",
+           "minor": true
+          },
+          {
+           "box": "Mix-FFN",
+           "id": "ffn"
+          }
+         ]
+        }
+       ],
+       "repeat": "20 ×",
+       "id": "block"
+      },
+      {
+       "box": "Predicted velocity",
+       "id": "vel",
+       "minor": true
+      },
+      {
+       "box": "Update latents",
+       "id": "upd",
+       "minor": true
+      }
+     ],
+     "loop": "4 denoising steps (Self Forcing)",
+     "tint": "grey",
+     "id": "denoise"
+    }
+   ],
+   "above": [
+    {
+     "box": "LTX2 VAE decoder",
+     "id": "dec",
+     "style": "teal"
+    },
+    {
+     "text": "720p at 16 fps, up to 60 s"
+    }
+   ],
+   "annotations": [
+    {
+     "at": "vae",
+     "text": "*128* latent channels, one latent frame per *8* raw frames (*8*× smaller than Wan2.1-VAE); spatial stride and tokens per frame not stated",
+     "short": "one latent frame per *8* raw frames",
+     "side": "left",
+     "key": true
+    },
+    {
+     "at": "gdn",
+     "text": "in *15* of *20* blocks: a D×D recurrent state per head (D = *112*), updated once per latent frame from all spatial tokens; ≈*7.5 MB* for all 15 layers [D]",
+     "short": "*15* of *20* blocks; fixed state ≈ *7.5 MB* [D]",
+     "side": "left",
+     "key": true
+    },
+    {
+     "at": "sattn",
+     "text": "in *5* of *20* blocks (layers *3, 7, 11, 15, 19*); first latent frame as sink + local temporal window at deployment",
+     "short": "*5* of *20* blocks; sink + local window",
+     "side": "right",
+     "key": true
+    },
+    {
+     "at": "pl",
+     "text": "*8* raw-frame raymaps per VAE stride packed into *48* channels → zero-init 3D patch embedder, added after each attention output",
+     "side": "left"
+    },
+    {
+     "at": "ucpe",
+     "text": "relative camera encoding on the geometric channels of the camera-branch heads, RoPE on the rest; in every block",
+     "side": "left"
+    },
+    {
+     "at": "block",
+     "text": "*20* blocks, width *2,240*, *20* heads, *2.6B* parameters; text via cross-attention; norm and modulation type not disclosed",
+     "short": "*20* blocks, width *2,240*, *2.6B*",
+     "side": "right",
+     "key": true
+    },
+    {
+     "at": "upd",
+     "text": "*60*-step chunk-causal generator distilled with Self Forcing to *4* steps: DiT time per minute of 720p *43* s, *29* s with the sink (one H100); chunk size not stated",
+     "side": "right"
+    },
+    {
+     "at": "dec",
+     "text": "*60* s of 720p in *34* s on one RTX 5090 with NVFP4 (authors); optional *17B* refiner, *3* Euler steps",
+     "short": "*60* s of 720p in *34* s on one RTX 5090",
+     "side": "right",
+     "key": true
+    }
+   ],
+   "feedback": "next chunk"
   }
  },
  {
@@ -5822,6 +12188,186 @@
     "short": "MG-LightVAE → 12 frames"
    },
    "loop": "AR rollout"
+  },
+  "flow": {
+   "below": [
+    {
+     "text": "Previous frames + camera trajectory (from keys/mouse) + text"
+    }
+   ],
+   "stack": [
+    {
+     "box": "Wan2.2 VAE encoder (4×16×16)",
+     "short": "Wan2.2 VAE encoder",
+     "id": "vae",
+     "style": "teal"
+    },
+    {
+     "box": "Patchify 2×2",
+     "id": "patch",
+     "minor": true
+    },
+    {
+     "box": "Patch memory: lift to 3D, re-project",
+     "id": "mem",
+     "minor": true,
+     "side": "Metric depth + poses"
+    },
+    {
+     "group": [
+      {
+       "box": "Pose-aware token sequence",
+       "short": "Pose-aware sequence",
+       "id": "seq",
+       "style": "soft"
+      },
+      {
+       "group": [
+        {
+         "residual": [
+          {
+           "box": "AdaLN (scale, shift)",
+           "minor": true,
+           "side": "Timestep emb."
+          },
+          {
+           "box": "Block-causal self-attention",
+           "short": "Block-causal attention",
+           "id": "attn",
+           "style": "dark",
+           "side": "RoPE + tiled PRoPE"
+          }
+         ]
+        },
+        {
+         "residual": [
+          {
+           "box": "Cross-attention",
+           "id": "xattn",
+           "side": "umT5 text"
+          }
+         ]
+        },
+        {
+         "residual": [
+          {
+           "box": "AdaLN (scale, shift)",
+           "minor": true
+          },
+          {
+           "box": "Feed forward",
+           "id": "ffn"
+          }
+         ]
+        }
+       ],
+       "repeat": "30 ×",
+       "id": "block"
+      },
+      {
+       "box": "Predicted velocity",
+       "id": "vel",
+       "minor": true
+      },
+      {
+       "box": "Update latents",
+       "id": "upd",
+       "minor": true
+      }
+     ],
+     "loop": "3 denoising steps (DMD)",
+     "tint": "grey",
+     "id": "denoise"
+    }
+   ],
+   "above": [
+    {
+     "box": "MG-LightVAE decoder (75% pruned)",
+     "short": "MG-LightVAE decoder",
+     "id": "dec",
+     "style": "teal"
+    },
+    {
+     "text": "12 frames at 1280×704"
+    }
+   ],
+   "insets": [
+    {
+     "for": "ffn",
+     "stack": [
+      {
+       "box": "Linear"
+      },
+      {
+       "box": "GELU"
+      },
+      {
+       "box": "Linear"
+      }
+     ]
+    },
+    {
+     "for": "attn",
+     "label": "tiled PRoPE",
+     "stack": [
+      {
+       "box": "RoPE"
+      },
+      {
+       "box": "q × P-transpose; k, v × P-inverse"
+      },
+      {
+       "box": "Attention"
+      },
+      {
+       "box": "out × P"
+      }
+     ]
+    }
+   ],
+   "annotations": [
+    {
+     "at": "vae",
+     "text": "*880* tokens per 22×40 latent frame; a chunk of *3* latent frames = *2,640* target tokens = *12* frames [D]",
+     "side": "left",
+     "key": true
+    },
+    {
+     "at": "mem",
+     "text": "patch memory: ≤*1* token per target cell, frustum-queried and z-buffered; retrieval once per segment, off the per-frame loop",
+     "side": "left"
+    },
+    {
+     "at": "seq",
+     "text": "noisy targets + clean anchor + context frames + re-projected memory patches + reference prefix: ≤≈*7,900* tokens per chunk [D], bounded in rollout length",
+     "side": "right",
+     "key": true
+    },
+    {
+     "at": "attn",
+     "text": "*24* heads, width *3,072*; camera pose via tiled PRoPE in every block, no new parameters",
+     "side": "left",
+     "key": true
+    },
+    {
+     "at": "block",
+     "text": "*30* layers, *5B* (Wan2.2-TI2V-5B); INT8 DiT at inference",
+     "side": "right",
+     "key": true
+    },
+    {
+     "at": "upd",
+     "text": "PFM causal adaptation, then self-rollout DMD → *3* steps; prefix and context held at the next noise level each substep (HiAR), not cached",
+     "side": "right"
+    },
+    {
+     "at": "dec",
+     "text": "up to *20* fps at 1280×704 on one H100 incl. retrieval and decode (company claim)",
+     "side": "right",
+     "key": true
+    }
+   ],
+   "feedback": "next chunk"
   }
  }
 ]
