@@ -39,4 +39,30 @@ MODEL = {
         "decoder": {"none": "planning by CEM in feature space: 800 samples × 10 iterations"},
         "loop": "CEM rollout",
     },
+    "flow": {
+        "below": [{"text": "Frame 256×256 + end-effector state + action"}],
+        "stack": [
+            {"box": "V-JEPA 2 encoder, ViT-g", "id": "enc", "style": "teal"},
+            {"box": "Patch features", "id": "feat", "minor": True},
+            {"box": "Interleave (action, state, frame) tokens", "short": "Interleave a, s, frame", "id": "seq", "side": "Affine a, s → 1024"},
+            {"group": [
+                {"residual": [{"box": "LayerNorm", "minor": True},
+                              {"box": "Block-causal self-attention", "id": "attn", "style": "dark", "side": "3D-RoPE"}]},
+                {"residual": [{"box": "LayerNorm", "minor": True}, {"box": "MLP", "id": "mlp"}]},
+            ], "repeat": "24 ×", "id": "block"},
+            {"box": "Predicted next-frame features", "id": "pred"},
+        ],
+        "above": [{"text": "L1 distance to the goal embedding"}],
+        "insets": [{"for": "mlp", "stack": [{"box": "Linear"}, {"box": "GELU"}, {"box": "Linear"}]},
+                   {"for": "pred", "label": "planning loop", "stack": [{"box": "Sample 800 action sequences"}, {"box": "Roll the predictor out"},
+                                                                       {"box": "L1 energy to goal"}, {"box": "Refit the Gaussian, ×10"}]}],
+        "annotations": [
+            {"at": "enc", "text": "frozen, *1B* parameters; *256* patch features of width *1,408* per frame", "side": "left", "key": True},
+            {"at": "seq", "text": "*258* tokens per step; training clips of *16* frames at *4* fps", "side": "left"},
+            {"at": "attn", "text": "*16* heads, width *1,024*; frame t attends to its action, state and frames ≤ t", "side": "left", "key": True},
+            {"at": "block", "text": "*24* layers, ~*300M* parameters", "side": "right", "key": True},
+            {"at": "pred", "text": "*8,000* predictor calls per executed action: *16* s on one RTX 4090 (authors)", "side": "left"},
+        ],
+        "feedback": "CEM rollout",
+    },
 }

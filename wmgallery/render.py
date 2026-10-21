@@ -54,6 +54,8 @@ def main(argv=None):
     ap.add_argument("--row", action="store_true", help="compose the given slugs side by side into one PNG")
     ap.add_argument("--gap", type=int, default=24)
     ap.add_argument("--compact", action="store_true", help="compact mode (slides): main text only")
+    ap.add_argument("--stack", action="store_true", help="render the Raschka-style stack diagram (MODEL['flow'])")
+    ap.add_argument("--condensed", action="store_true", help="with --stack: the condensed slide version")
     a = ap.parse_args(argv)
 
     specs = R.load_models(only=set(a.slugs) or None)
@@ -68,6 +70,40 @@ def main(argv=None):
             print("INVALID %s: %s" % (m["slug"], "; ".join(errs)))
     if bad:
         sys.exit(1)
+    if a.stack:
+        from . import stack as S
+        out_dir = a.out or os.path.join(R.ROOT, "docs")
+        sub = "stack_condensed" if a.condensed else "stack"
+        if a.row:
+            svg, warns, size = S.compose_stacks(specs, condensed=a.condensed, gap=a.gap)
+            out = a.out or "row.png"
+            D.svg_to_png(svg, out, a.scale) if not out.endswith(".svg") else open(out, "w").write(svg)
+            for w in warns:
+                print("WARN", w)
+            print("wrote %s (%d x %d units)" % (out, size[0], size[1]))
+            return
+        pngs = []
+        for m in specs:
+            if "flow" not in m:
+                print("%-28s no flow spec" % m["slug"])
+                continue
+            svg, warns, size = S.render_stack_svg(m, condensed=a.condensed)
+            os.makedirs(os.path.join(out_dir, "svg", sub), exist_ok=True)
+            os.makedirs(os.path.join(out_dir, "png", sub), exist_ok=True)
+            with open(os.path.join(out_dir, "svg", sub, m["slug"] + ".svg"), "w") as f:
+                f.write(svg)
+            png = os.path.join(out_dir, "png", sub, m["slug"] + ".png")
+            if not a.no_png:
+                D.svg_to_png(svg, png, a.scale)
+                pngs.append(png)
+            for w in warns:
+                print("WARN", w)
+            flag = "" if size[1] <= 430 or not a.condensed else "  (taller than 430: mark more boxes minor/short)"
+            print("%-28s %4d x %4d  %s%s" % (m["slug"], size[0], size[1], png, flag))
+        if a.sheet and pngs:
+            contact_sheet(pngs, a.sheet, cols=3, thumb_w=480)
+            print("sheet:", a.sheet)
+        return
     if a.row:
         svg, warns, size = D.compose_row(specs, width=a.width, gap=a.gap, compact=a.compact)
         out = a.out or "row.png"

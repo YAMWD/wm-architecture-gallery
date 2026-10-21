@@ -41,4 +41,31 @@ MODEL = {
         "decoder": {"text": "VQ decoder (CNN) → 64x64 frame", "sub": "decoded frames feed the actor-critic"},
         "loop": "AR rollout",
     },
+    "flow": {
+        "below": [{"text": "Atari frame 64×64 + action"}],
+        "stack": [
+            {"box": "VQ-VAE encoder (CNN)", "id": "enc", "style": "teal"},
+            {"box": "Nearest codebook entry", "id": "vq"},
+            {"box": "Token embedding", "id": "emb", "minor": True},
+            {"group": [
+                {"residual": [{"box": "LayerNorm", "minor": True},
+                              {"box": "Masked self-attention", "id": "attn", "style": "dark", "side": "Learned positions"}]},
+                {"residual": [{"box": "LayerNorm", "minor": True}, {"box": "Feed forward", "id": "ffn"}]},
+            ], "repeat": "10 ×", "id": "block"},
+            {"box": "Final LayerNorm", "minor": True},
+            {"fanout": [[{"box": "Linear output layer", "id": "out"}, {"box": "Sample next code", "id": "sample"}],
+                        [{"box": "Reward head", "id": "rew", "terminal": True}], [{"box": "Done head", "terminal": True}]]},
+        ],
+        "above": [{"box": "VQ-VAE decoder (CNN)", "id": "dec", "style": "teal"}, {"text": "Next frame 64×64"}],
+        "insets": [{"for": "ffn", "stack": [{"box": "Linear"}, {"box": "GELU"}, {"box": "Linear"}]}],
+        "annotations": [
+            {"at": "vq", "text": "*16* codes per frame, vocabulary of *512*", "side": "left", "key": True},
+            {"at": "emb", "text": "Embedding dimension of *256*", "side": "right"},
+            {"at": "attn", "text": "*4* heads · context of *20* steps = *340* tokens", "side": "left", "key": True},
+            {"at": "block", "text": "*10* layers, ~*30M* parameters", "side": "right", "key": True},
+            {"at": "sample", "text": "*17* serial passes per frame", "side": "left"},
+            {"at": "rew", "text": "read from the action token", "side": "right"},
+        ],
+        "feedback": "next step",
+    },
 }

@@ -12,6 +12,7 @@ import datetime
 
 from . import diagram as D
 from . import registry as R
+from . import stack as S
 
 ROOT = R.ROOT
 SITE_TITLE = "World Model Architecture Gallery"
@@ -45,7 +46,7 @@ def read_changelog():
     return "\n".join(out)
 
 
-def card_html(m, svg, artifact=False):
+def card_html(m, svg, artifact=False, stack_svg=None):
     links = " · ".join('<a href="%s" target="_blank" rel="noopener">%s</a>' % (h(u), h(k)) for k, u in m.get("links", {}).items())
     facts = "".join("<tr><th>%s</th><td>%s</td></tr>" % (h(k), h(v)) for k, v in m["facts"])
     sources = "; ".join(h(s) for s in m.get("sources", []))
@@ -67,14 +68,15 @@ def card_html(m, svg, artifact=False):
       <span class="badge open">{h(m.get("open", ""))}</span>
     </div>
   </header>
-  <div class="card-body">
-    <div class="fig">{svg}</div>
+  <div class="card-body{' has-stack' if stack_svg else ''}">
+    <div class="fig">{stack_svg or svg}</div>
     <div class="text">
       <p class="status"><b>{h(m["status"])}</b>{(" · " + links) if links else ""}</p>
       <p class="summary">{h(m["summary"])}</p>
       <table class="facts">{facts}</table>
       <p class="sources"><b>Sources:</b> {sources}</p>
-      <p class="tools"><a href="svg/{h(m["slug"])}.svg"{"" if artifact else " download"} target="_blank" rel="noopener">{"Open" if artifact else "Download"} SVG</a> · <button class="cmp" data-slug="{h(m["slug"])}">Compare</button></p>
+      {('<details class="summarycard"><summary>Summary card (compact view)</summary><div class="fig small">' + svg + '</div></details>') if stack_svg else ''}
+      <p class="tools"><a href="svg/{'stack/' if stack_svg else ''}{h(m["slug"])}.svg"{"" if artifact else " download"} target="_blank" rel="noopener">{"Open" if artifact else "Download"} SVG</a> · <button class="cmp" data-slug="{h(m["slug"])}">Compare</button></p>
     </div>
   </div>
 </article>'''
@@ -118,6 +120,17 @@ button.primary{background:var(--navy);color:#fff;border-color:var(--navy)}
 .badge{font-size:12px;padding:2px 8px;border-radius:999px;background:var(--badge);color:var(--ink);white-space:nowrap}
 .badge.ev-verified{background:#dcf2f1;color:#055e5c}.badge.ev-read{background:#e4eaf4;color:#1D3E72}.badge.ev-claim{background:#fde8d4;color:#8a4a07}
 .card-body{display:grid;grid-template-columns:320px minmax(0,1fr);gap:16px;padding:14px 16px}
+.card-body.has-stack{grid-template-columns:minmax(0,1.15fr) minmax(0,1fr)}
+@media (max-width:900px){.card-body.has-stack{grid-template-columns:1fr}}
+.fig.small{max-width:300px;margin-top:8px}
+.summarycard summary{font-size:13px}
+.legend-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:6px 14px;font-size:13.5px;margin:0;padding:0;list-style:none}
+.legend-list li{display:flex;align-items:center;gap:8px}
+.sw{display:inline-block;width:34px;height:18px;border-radius:5px;border:1px solid #1E2A3B;background:#fff;flex:none}
+.sw.dark{background:#1D3E72;border-color:#1D3E72}.sw.teal{background:#DCF2F1;border-color:#00A8A4}.sw.orange{background:#FDE8D4;border-color:#F58F2D}
+.sw.group{background:#E4EAF4;border-color:#1D3E72;border-radius:8px}.sw.inset{background:#EEF1F5;border-style:dashed;border-color:#5E6B80}
+.sw.plus{border-radius:50%;width:18px;text-align:center;line-height:16px;font-weight:700}
+.sw.acc{border:none;color:#B95A08;font-weight:700;width:auto}
 .text{min-width:0}
 @media (max-width:760px){.card-body{grid-template-columns:1fr}}
 .fig{background:#fff;border:1px solid var(--line);border-radius:8px;padding:6px;align-self:start}
@@ -225,18 +238,29 @@ def build(out_dir=DEFAULT_OUT, png=False, width=300, artifact=None):
     cards = []
     acards = []
     data = []
+    os.makedirs(os.path.join(out_dir, "svg", "stack"), exist_ok=True)
+    n_stack = 0
     for m in specs:
         svg, warns, size = D.render_svg(m, width)
         for w in warns:
             print("WARN", w)
         with open(os.path.join(out_dir, "svg", m["slug"] + ".svg"), "w", encoding="utf-8") as f:
             f.write(svg)
+        stack_svg = None
+        if "flow" in m:
+            stack_svg, swarns, ssize = S.render_stack_svg(m)
+            for w in swarns:
+                print("WARN", w)
+            with open(os.path.join(out_dir, "svg", "stack", m["slug"] + ".svg"), "w", encoding="utf-8") as f:
+                f.write(stack_svg)
+            stack_svg = stack_svg.replace(D.FONT_IMPORT, "")
+            n_stack += 1
         if png:
             D.svg_to_png(svg, os.path.join(out_dir, "png", m["slug"] + ".png")) if os.makedirs(os.path.join(out_dir, "png"), exist_ok=True) is None else None
         inline = svg.replace(D.FONT_IMPORT, "")  # the page loads the fonts once
-        cards.append(card_html(m, inline, artifact=False))
+        cards.append(card_html(m, inline, artifact=False, stack_svg=stack_svg))
         if artifact:
-            acards.append(card_html(m, inline, artifact=True))
+            acards.append(card_html(m, inline, artifact=True, stack_svg=stack_svg))
         d = {k: v for k, v in m.items() if not k.startswith("_")}
         d["facts"] = [list(f) for f in m["facts"]]
         data.append(d)
@@ -266,11 +290,24 @@ def build(out_dir=DEFAULT_OUT, png=False, width=300, artifact=None):
 <section class="intro">
   <div class="panel">
     <h2>How to read a card</h2>
-    <p>Each card is read from the bottom up: the <b>encoder</b> turns observations into the sequence, the <b>token row</b> shows what one step of the sequence contains, the <b>transformer box</b> lists its blocks (attention masks, where actions enter), the <b>sampling box</b> says how the next state is produced and how many passes that costs, and the <b>decoder</b> turns the prediction back into observations. The dashed orange arrow is the autoregressive or planning loop.</p>
+    <p>Each diagram is read from the bottom up, in the style of the <a href="https://sebastianraschka.com/llm-architecture-gallery/" target="_blank" rel="noopener">LLM Architecture Gallery</a>: the input, the <b>encoder or tokenizer</b>, the <b>transformer block</b> with its norms, attention operators, modulation and feed-forward (repeated N ×, residuals drawn as skip lines into ⊕), the <b>sampling loop</b> where there is one, the output heads and the <b>decoder</b>. Side boxes show what enters a block from outside (positions, timesteps, actions, text); dashed insets open a box; the numbers sit in the annotations.</p>
     <p>Scope: models whose dynamics model or generative backbone is a transformer. U-Net diffusion models, RNN world models and MLP latent models are out of scope. Cards mark their evidence level: <span class="badge ev-verified">verified</span> facts survived a 3-vote adversarial check, <span class="badge ev-read">read</span> facts were read from the paper or code, <span class="badge ev-claim">claim</span> facts come from a developer page only. Numbers marked [D] are our own arithmetic.</p>
     <p>Maintained in the open: send corrections and new cards as issues or pull requests (see <code>CONTRIBUTING</code> in the repository). Every card has a permalink and a downloadable SVG.</p>
   </div>
-  <div class="panel legend"><h2>Legend</h2>{legend}</div>
+  <div class="panel legend"><h2>Legend</h2>
+    <ul class="legend-list">
+      <li><span class="sw"></span> one operation; data flows bottom → top</li>
+      <li><span class="sw dark"></span> the attention operator (mask in the label)</li>
+      <li><span class="sw teal"></span> encoder, tokenizer or decoder</li>
+      <li><span class="sw orange"></span> action or conditioning module</li>
+      <li><span class="sw group"></span> repeated block, with its N × marker</li>
+      <li><span class="sw plus">+</span> residual add; the skip line starts below the block</li>
+      <li><span class="sw inset"></span> zoom-in on one box (dashed, to the right)</li>
+      <li><span class="sw acc">12</span> numbers live in the annotations, never in boxes</li>
+      <li><span class="sw" style="border:none;border-top:2px dashed #B95A08;height:0"></span> sampling or rollout loop</li>
+    </ul>
+    <details style="margin-top:8px"><summary>Compact summary cards (token squares)</summary>{legend}</details>
+  </div>
 </section>
 
 <div class="controls">
@@ -312,7 +349,7 @@ def build(out_dir=DEFAULT_OUT, png=False, width=300, artifact=None):
             % (SITE_TITLE, h(desc), fonts, CSS, body(cards)))
     with open(os.path.join(out_dir, "index.html"), "w", encoding="utf-8") as f:
         f.write(page)
-    print("built %s with %d cards -> %s" % (SITE_TITLE, n_models, os.path.join(out_dir, "index.html")))
+    print("built %s with %d cards (%d with stack diagrams) -> %s" % (SITE_TITLE, n_models, n_stack, os.path.join(out_dir, "index.html")))
     if artifact:
         # fragment for publishing as a claude.ai artifact: the host adds the document skeleton
         frag = "<title>%s</title>\n%s<style>%s</style>\n%s" % (SITE_TITLE, fonts, CSS, body(acards))
