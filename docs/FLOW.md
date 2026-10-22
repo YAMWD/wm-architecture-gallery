@@ -13,6 +13,7 @@ Render and check (from the repository root):
 ```bash
 python3 -m wmgallery.render <slug> --stack              # docs/png/stack/<slug>.png   (web version)
 python3 -m wmgallery.render <slug> --stack --condensed  # docs/png/stack_condensed/<slug>.png (slide version)
+python3 -m wmgallery.render <slug> --stack --mini       # docs/png/stack_mini/<slug>.png (card thumbnail)
 ```
 
 Open both PNGs. A flow is done when the full version prints no WARN lines, no label is cut, and the condensed
@@ -86,3 +87,26 @@ most six or seven boxes and stays under 430 units tall.
 Say what is not disclosed in an annotation (`layers and heads not disclosed`) rather than guessing a block
 structure; when the paper gives no block details, draw the standard pre-norm block and annotate it as
 `block details not disclosed`.
+
+## Concision rules (checked by the renderer)
+
+The detailed diagram is read like a figure, not a paragraph. The renderer warns when a flow breaks a limit.
+
+| element | limit | example |
+|---|---|---|
+| annotations per diagram | at most 6; mark the 3–4 most important `key: True` | |
+| one annotation | at most 44 characters, a number and what it counts | `*16* codes per frame`, `Vocabulary of *512*`, `*4* heads · width *256*`, `Context of *340* tokens`, `*10* layers · ~*30M*` |
+| box label | at most 24 characters | `Block-causal attention`, `Wan2.1 VAE encoder` |
+| side box label | at most 18 characters | `Keys + mouse`, `3D RoPE` |
+| input or output text | at most 34 characters | `Frame 64×64 + action` |
+| loop label | at most 20 characters | `3 steps (DMD)`, `25 MaskGIT passes` |
+| group label | at most 16 characters | `single-stream` |
+| `tagline` (card) | at most 52 characters, plain words | `GPT over VQ codes, one token at a time` |
+
+No caveats in the figure: sources, "[D]", "company claim", hardware and quality notes belong in `facts`, which
+the page shows on request. "not disclosed" is fine in an annotation (`Layers not disclosed`). An annotation
+does not need a `short` text once it fits the limit.
+
+The card thumbnail (`--stack --mini`) draws only the boxes: no annotations, side boxes, insets or input and
+output text; a loop shows as "N steps" (set `loop_short` on the group to override). Mark boxes `minor` until
+the thumbnail is at most 330 units tall.

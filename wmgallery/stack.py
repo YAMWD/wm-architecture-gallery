@@ -48,10 +48,15 @@ GROUP_STYLE = {"navy": (C["navy_t"], C["navy"]), "orange": (C["orange_t"], C["or
                "teal": (C["teal_t"], C["teal"]), "grey": (C["slate_t"], C["slate"])}
 
 
+LIMITS = {"annotations": 6, "ann_chars": 44, "box_chars": 24, "side_chars": 18, "text_chars": 34,
+          "loop_chars": 20, "label_chars": 16}
+
+
 class P:
     """Layout parameters for one mode."""
-    def __init__(self, condensed):
+    def __init__(self, condensed, mini=False):
         self.condensed = condensed
+        self.mini = mini
         self.box = 14.0 if condensed else 11.0        # box text size
         self.ann = 12.5 if condensed else 11.0        # annotation text size
         self.mono = 12.0 if condensed else 10.5
@@ -64,6 +69,9 @@ class P:
         self.ann_w = 140 if condensed else 130        # annotation text width
         self.margin = 28                              # container -> annotation gap
         self.side_gap = 14                            # side box -> node arrow length
+        if mini:                                      # card thumbnail: boxes only
+            self.box, self.gap, self.pad, self.cont_pad, self.title_h = 11.5, 10, 7, 9, 14
+            self.minw, self.maxw = 64, 136
 
 
 class Node:
@@ -143,10 +151,12 @@ def parse_markup(raw):
 
 
 class StackLayout:
-    def __init__(self, spec, condensed=False):
+    def __init__(self, spec, condensed=False, mini=False):
         self.spec = spec
         self.flow = spec["flow"]
-        self.p = P(condensed)
+        self.mini = mini
+        condensed = condensed or mini
+        self.p = P(condensed, mini)
         self.condensed = condensed
         self.warnings = []
         self.below = [Node(s) for s in self.flow.get("below", [])]
@@ -154,11 +164,28 @@ class StackLayout:
         self.above = [Node(s) for s in self.flow.get("above", [])]
         if condensed:
             self.below, self.stack, self.above = condense(self.below), condense(self.stack), condense(self.above)
+        if mini:
+            def strip(nodes):
+                out = []
+                for n in nodes:
+                    if n.kind == "text":
+                        continue
+                    if n.kind == "fanout":
+                        n.children = [b for b in (strip(br) for br in n.children) if b]
+                        if not n.children:
+                            continue
+                        if len(n.children) == 1:
+                            out.extend(n.children[0]); continue
+                    out.append(n)
+                return out
+            self.below, self.above = strip(self.below), strip(self.above)
         self.insets = [] if condensed else self.flow.get("insets", [])
         anns = self.flow.get("annotations", [])
         if condensed:
             keyed = [a for a in anns if a.get("key")]
             anns = [dict(a, side="right") for a in (keyed or anns[:3])]   # one column keeps the slide figure narrow
+        if mini:
+            anns = []
         self.annotations = anns
         self.by_id = {}
         for n in _flatten(self.below + self.stack + self.above, []):
@@ -184,7 +211,7 @@ class StackLayout:
             n.lines = n.lines[:2]
         n.w = w if fixed else max(p.minw, min(p.maxw, max(text_width(l, "body", p.box) for l in n.lines) + 18))
         n.h = len(n.lines) * p.box * 1.3 + 9
-        if n.spec.get("side"):
+        if n.spec.get("side") and not self.mini:
             s = n.spec["side"]
             sw = max(56, text_width(s, "body", p.box - 1) + 14)
             n.side = [s, sw, p.box * 1.3 + 8, 0.0]
@@ -210,9 +237,10 @@ class StackLayout:
             n.w = inner_w + 2 * p.pad
             # header strip: group label (left) and loop label (right) sit above the children,
             # so leader lines from the children never cross them
-            hs = p.ann - 0.5
-            wl = text_width(n.spec["label"], "body", p.box - 1) if n.spec.get("label") else 0
-            wr = text_width(n.spec["loop"], "body", hs) if n.spec.get("loop") else 0
+            hs = p.ann - 0.5 if not self.mini else p.box - 1
+            gl, lt = self._group_label(n), self._loop_text(n)
+            wl = text_width(gl, "body", p.box - 1) if gl else 0
+            wr = text_width(lt, "body", hs) if lt else 0
             n.strip = (hs * 1.3 + 8) if (wl or wr) else 0
             if wl and wr:
                 n.w = max(n.w, wl + wr + 36)
@@ -301,7 +329,9 @@ class StackLayout:
         extra = max(0, max(self.below_w, self.above_w) - self.cont_w)
         self.W = 10 + self.left_w + self.cont_w + extra + self.right_w + self.fb_w + 10
         self.H = (self.title_h + self.above_h + (p.gap if self.above else 0) + self.cont_h
-                  + (p.gap if self.below else 0) + self.below_h + 12)
+                  + (p.gap if self.below else 0) + self.below_h + (16 if (self.mini and not self.below) else 12))
+        if not self.condensed:
+            self._lint()
         right_items = ([i["h"] + (14 if i["spec"].get("label") else 0) for i in self.inset_layouts]
                        + [a["h"] for a in self.ann_layouts if a["side"] == "right"])
         left_items = [a["h"] for a in self.ann_layouts if a["side"] == "left"]
@@ -314,6 +344,40 @@ class StackLayout:
             if col:
                 need = floor + sum(col) + 8 * (len(col) - 1) + 12
                 self.H = max(self.H, need)
+
+    def _lint(self):
+        """Concision limits for the detailed diagram (docs/FLOW.md)."""
+        slug, L = self.spec["slug"], LIMITS
+        anns = self.flow.get("annotations", [])
+        if len(anns) > L["annotations"]:
+            self.warnings.append("%s: %d annotations; keep at most %d" % (slug, len(anns), L["annotations"]))
+        for a in anns:
+            plain = a["text"].replace("*", "")
+            if len(plain) > L["ann_chars"]:
+                self.warnings.append("%s: annotation at %r has %d characters (max %d): %r"
+                                     % (slug, a["at"], len(plain), L["ann_chars"], plain))
+        for n in _flatten(self.below + self.stack + self.above, []):
+            if n.kind == "box":
+                if len(n.spec["box"]) > L["box_chars"]:
+                    self.warnings.append("%s: box label %r is longer than %d characters" % (slug, n.spec["box"], L["box_chars"]))
+                if n.spec.get("side") and len(n.spec["side"]) > L["side_chars"]:
+                    self.warnings.append("%s: side label %r is longer than %d characters" % (slug, n.spec["side"], L["side_chars"]))
+            if n.kind == "text" and len(n.spec["text"]) > L["text_chars"]:
+                self.warnings.append("%s: input/output text %r is longer than %d characters" % (slug, n.spec["text"], L["text_chars"]))
+            if n.kind == "group":
+                if n.spec.get("loop") and len(n.spec["loop"]) > L["loop_chars"]:
+                    self.warnings.append("%s: loop label %r is longer than %d characters" % (slug, n.spec["loop"], L["loop_chars"]))
+                if n.spec.get("label") and len(n.spec["label"]) > L["label_chars"]:
+                    self.warnings.append("%s: group label %r is longer than %d characters" % (slug, n.spec["label"], L["label_chars"]))
+        for ins in self.flow.get("insets", []):
+            for n in _flatten([Node(x) for x in ins["stack"]], []):
+                if n.kind == "box" and len(n.spec["box"]) > L["box_chars"]:
+                    self.warnings.append("%s: inset box %r is longer than %d characters" % (slug, n.spec["box"], L["box_chars"]))
+        tl = self.spec.get("tagline")
+        if not tl:
+            self.warnings.append("%s: no tagline" % slug)
+        elif len(tl) > 52:
+            self.warnings.append("%s: tagline has %d characters (max 52)" % (slug, len(tl)))
 
     def _extents(self, nodes):
         lo, hi = 1e9, -1e9
@@ -329,6 +393,23 @@ class StackLayout:
             if n.kind == "group" and n.spec.get("loop"):
                 hi = max(hi, n.x + n.w + 10 + 6)
         return lo, hi
+
+    def _loop_text(self, n):
+        """Loop label: as written, or in the mini thumbnail a short form such as "3 steps"."""
+        lab = n.spec.get("loop")
+        if not lab or not self.mini:
+            return lab
+        if n.spec.get("loop_short"):
+            return n.spec["loop_short"]
+        import re
+        m = re.search(r"(\d[\d,]*(?:\s*(?:→|->)\s*\d[\d,]*)*)\s+(?:[A-Za-z-]+\s+){0,2}?(steps?|passes|iterations|NFE|samples)",
+                      lab)
+        if m:
+            return "%s %s" % (m.group(1), m.group(2))
+        return lab if len(lab) <= 14 else ""
+
+    def _group_label(self, n):
+        return None if self.mini else n.spec.get("label")
 
     def _repeat_x(self, n):
         """Right edge (text-anchor end) of a group's "N ×" label: left of its own border, and left of the
@@ -411,7 +492,9 @@ class StackLayout:
         self.ox, self.oy = ox, oy
         cv.warnings.extend(self.warnings)
         spec = self.spec
-        if self.condensed:
+        if self.mini:
+            pass
+        elif self.condensed:
             cv.text(ox + self.cx, oy + 18, spec["name"], "head", 17, C["navy"])
             sub = " · ".join(str(v) for v in (spec.get("org"), spec.get("year")) if v)
             cv.text(ox + self.cx, oy + 31, sub, "body", 10, C["grey"])
@@ -424,6 +507,14 @@ class StackLayout:
         if self.below:
             self._draw_stack(self.below)
             self._connect(self.below[-1], self.stack[0])
+        elif self.mini:
+            first = self.stack[0]
+            while first.kind in ("group", "residual") and first.children:
+                first = first.children[0]
+            if first.kind == "fanout":
+                first = first.children[0][0]
+            b = self._bottom_point(first)
+            cv.arrow(b[0], oy + self.cont_y + self.cont_h + 12, b[0], b[1], stroke=INK, sw=1.2)
         if self.above:
             self._draw_stack(self.above)
             self._connect(self.stack[-1], self.above[0])
@@ -561,13 +652,14 @@ class StackLayout:
             return
         if n.kind == "group":
             fill, stroke = GROUP_STYLE.get(n.spec.get("tint", "navy"), GROUP_STYLE["navy"])
-            cv.rect(ox + n.x, oy + n.y, n.w, n.h, fill=fill, stroke=stroke, sw=1.0, rx=14)
-            hs = p.ann - 0.5
+            cv.rect(ox + n.x, oy + n.y, n.w, n.h, fill=fill, stroke=stroke, sw=1.0, rx=14 if not self.mini else 10)
+            hs = p.ann - 0.5 if not self.mini else p.box - 1
             base = oy + n.y + 5 + 0.9 * hs
-            if n.spec.get("label"):
-                cv.text(ox + n.x + 10, base, n.spec["label"], "body", p.box - 1, C["grey"], anchor="start")
-            if n.spec.get("loop"):
-                cv.text(ox + n.x + n.w - 12, base, n.spec["loop"], "body", hs, ACCENT, anchor="end")
+            gl, lt = self._group_label(n), self._loop_text(n)
+            if gl:
+                cv.text(ox + n.x + 10, base, gl, "body", p.box - 1, C["grey"], anchor="start")
+            if lt:
+                cv.text(ox + n.x + n.w - 12, base, lt, "body", hs, ACCENT, anchor="end")
             self._draw_stack(n.children)
             if n.spec.get("repeat"):
                 by = oy + self._repeat_y(n)
@@ -761,8 +853,8 @@ class StackLayout:
         cv.text(x + 15, (y_top + y_bot) / 2, self.flow["feedback"], "body", p.ann - 0.5, ACCENT, anchor="middle", rotate=-90)
 
 
-def render_stack_svg(spec, condensed=False, background=True, fonts=True):
-    lay = StackLayout(spec, condensed)
+def render_stack_svg(spec, condensed=False, background=True, fonts=True, mini=False):
+    lay = StackLayout(spec, condensed, mini)
     cv = Canvas()
     if background:
         cv.rect(0, 0, math.ceil(lay.W) + 1, math.ceil(lay.H) + 1, fill=C["white"], rx=0)
