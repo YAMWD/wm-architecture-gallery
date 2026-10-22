@@ -24,7 +24,8 @@ upward; numbers live in annotations outside the model, not inside the boxes.
     }
 
 Node kinds: box (label; id; style = plain|dark|teal|orange|soft; side = label of a side-input box; minor = dropped
-in condensed mode; short = label used in condensed mode; w = fixed width), text (unboxed, monospace), group (children; repeat "N ×"; loop "4 steps";
+in condensed mode; short = label used in condensed mode; w = fixed width; basis = "stated" | "code" | "assumed",
+where "assumed" draws a dashed outline; side_basis likewise for the side box), text (unboxed, monospace), group (children; repeat "N ×"; loop "4 steps";
 tint navy|orange|teal|grey; label; id), residual (children; draws the ⊕ merge and the skip line), fanout (list
 of branches, each a stack; a branch whose top node has "terminal": True ends there), merge ("x" or "+", a circled
 operator joining the branches below it), gap (n). Annotation text: *…* marks numbers (accent colour); "key": True keeps the
@@ -644,20 +645,27 @@ class StackLayout:
             return
         if n.kind == "box":
             fill, stroke, color = BOX_STYLE.get(n.spec.get("style", "plain"), BOX_STYLE["plain"])
-            cv.rect(ox + n.x, oy + n.y, n.w, n.h, fill=fill, stroke=stroke, sw=1.0, rx=6)
+            dash = None
+            if n.spec.get("basis") == "assumed":      # not stated in the sources: dashed outline
+                dash = "3.5 2.5"
+                if n.spec.get("style") == "dark":
+                    fill, stroke, color = C["navy_t"], C["navy"], INK
+            cv.rect(ox + n.x, oy + n.y, n.w, n.h, fill=fill, stroke=stroke, sw=1.1 if dash else 1.0, rx=6, dash=dash)
             th = len(n.lines) * p.box * 1.3
             cv.lines(ox + n.cx, oy + n.y + (n.h - th) / 2, n.lines, "body", p.box, color)
             if n.side:
                 s, sw, sh, sx = n.side
                 sy = oy + n.y + (n.h - sh) / 2
                 self._box(ox + sx, sy, ox + sx + sw, sy + sh, "side box %r" % s)
-                cv.rect(ox + sx, sy, sw, sh, fill=C["white"], stroke=INK, sw=1.0, rx=6)
+                sdash = "3.5 2.5" if n.spec.get("side_basis") == "assumed" else None
+                cv.rect(ox + sx, sy, sw, sh, fill=C["white"], stroke=INK, sw=1.1 if sdash else 1.0, rx=6, dash=sdash)
                 cv.text(ox + sx + sw / 2, sy + sh / 2 + (p.box - 1) * 0.35, s, "body", p.box - 1, INK)
                 cv.arrow(ox + sx + sw + 1, sy + sh / 2, ox + n.x - 1, sy + sh / 2, stroke=INK, sw=1.1)
             return
         if n.kind == "group":
             fill, stroke = GROUP_STYLE.get(n.spec.get("tint", "navy"), GROUP_STYLE["navy"])
-            cv.rect(ox + n.x, oy + n.y, n.w, n.h, fill=fill, stroke=stroke, sw=1.0, rx=14 if not self.mini else 10)
+            gdash = "4 3" if n.spec.get("basis") == "assumed" else None
+            cv.rect(ox + n.x, oy + n.y, n.w, n.h, fill=fill, stroke=stroke, sw=1.0, rx=14 if not self.mini else 10, dash=gdash)
             hs = p.ann - 0.5 if not self.mini else p.box - 1
             base = oy + n.y + 5 + 0.9 * hs
             gl, lt = self._group_label(n), self._loop_text(n)

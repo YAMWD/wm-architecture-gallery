@@ -265,6 +265,7 @@ footer .copy{margin:14px 0 0;font-family:var(--mono);font-size:11px;letter-spaci
 .sw.plus{border-radius:50%;width:18px;text-align:center;line-height:16px;font-weight:700;color:#1E2A3B}
 .sw.acc{border:none;background:none;color:var(--accent-ink);font-weight:700;width:auto;font-family:var(--mono)}
 .sw.loop{border:none;border-top:2px dashed #B95A08;height:0;border-radius:0}
+.sw.dashed{border-style:dashed}
 @media (prefers-reduced-motion: reduce){*{transition:none!important}.card:hover{transform:none}}
 """
 
@@ -390,6 +391,7 @@ Click a card's diagram to open the detailed version; open <i>Details</i> for the
   <li><span class="sw inset"></span> zoom-in on one box</li>
   <li><span class="sw loop"></span> sampling or rollout loop</li>
   <li><span class="sw acc">12</span> numbers sit beside the model</li>
+  <li><span class="sw dashed"></span> dashed: not stated in the source; a standard choice drawn in</li>
 </ul>
 <p style="margin:0;font-size:13.5px">Evidence: <b>verified</b> facts passed a 3-vote adversarial check;
 <b>read</b> facts come from the paper or code; <b>claim</b> facts come from a developer page only.
