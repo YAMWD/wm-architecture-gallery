@@ -151,8 +151,9 @@ def parse_markup(raw):
 
 
 class StackLayout:
-    def __init__(self, spec, condensed=False, mini=False):
+    def __init__(self, spec, condensed=False, mini=False, title=True):
         self.spec = spec
+        self.show_title = title
         self.flow = spec["flow"]
         self.mini = mini
         condensed = condensed or mini
@@ -324,7 +325,7 @@ class StackLayout:
             right_need = max(right_need, max(i["w"] for i in self.inset_layouts) + p.margin)
         self.right_w = right_need
         self.fb_w = 40 if (self.flow.get("feedback") and not self.condensed) else 0
-        self.title_h = p.title_h
+        self.title_h = p.title_h if self.show_title else 14
         # the column may be wider than the container when below/above stacks are wider
         extra = max(0, max(self.below_w, self.above_w) - self.cont_w)
         self.W = 10 + self.left_w + self.cont_w + extra + self.right_w + self.fb_w + 10
@@ -493,7 +494,7 @@ class StackLayout:
         self.ox, self.oy = ox, oy
         cv.warnings.extend(self.warnings)
         spec = self.spec
-        if self.mini:
+        if self.mini or not self.show_title:
             pass
         elif self.condensed:
             cv.text(ox + self.cx, oy + 18, spec["name"], "head", 17, C["navy"])
@@ -857,8 +858,8 @@ class StackLayout:
         cv.text(x + 15, (y_top + y_bot) / 2, self.flow["feedback"], "body", p.ann - 0.5, ACCENT, anchor="middle", rotate=-90)
 
 
-def render_stack_svg(spec, condensed=False, background=True, fonts=True, mini=False):
-    lay = StackLayout(spec, condensed, mini)
+def render_stack_svg(spec, condensed=False, background=True, fonts=True, mini=False, title=True):
+    lay = StackLayout(spec, condensed, mini, title)
     cv = Canvas()
     if background:
         cv.rect(0, 0, math.ceil(lay.W) + 1, math.ceil(lay.H) + 1, fill=C["white"], rx=0)

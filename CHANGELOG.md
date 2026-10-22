@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-22 (version 4)
+- Redesigned page: centered title block with crop marks over a faint engineering grid, monospace labels and figures, diagrams on blueprint-grid tiles, a sticky search and filter bar, more whitespace throughout.
+- The full-page viewer shows each diagram once (no duplicate title) and both models' details when comparing.
+
 ## 2026-10-22 (version 3)
 - New page design: small two-column cards with a compact diagram, name and one-line tagline; facts fold behind *Details*, one fact at a time.
 - Clicking a diagram opens the detailed version full-page, with zoom, previous and next (arrow keys), and a side-by-side compare.
