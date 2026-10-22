@@ -16,9 +16,10 @@ MODEL = {
                "auxiliary CNN), one action token and the 4 delta tokens. At 25M parameters it collects 20 Crafter "
                "frames per second of training on one A100, 10x IRIS-64, while still paying 4 dependent passes and a "
                "decoder call per imagined frame.",
+    "tagline": "IRIS that encodes only what changes between frames",
     "facts": [
         ("Representation", "4 delta tokens per 64x64 frame, vocabulary 1,024, from a CNN autoencoder conditioned on the previous frame and action; plus 1 continuous I-token per step from an auxiliary CNN"),
-        ("Core", "GPT-like causal transformer: 3 layers, d 512, 8 heads; 25M parameters for the whole agent (Table 1)"),
+        ("Core", "GPT-like causal transformer: 3 layers, d 512, 8 heads; 25M parameters for the whole agent (Table 1); block details not disclosed"),
         ("Attention", "Causal over 6 tokens per step (I-token, action, 4 deltas); context 21 timesteps = 126 tokens [D]"),
         ("Actions", "One action token per step from a learned embedding table"),
         ("Prediction", "Next delta token by softmax over 1,024 codes: 4 dependent passes per frame; reward and termination come from the action-token position"),
@@ -50,9 +51,9 @@ MODEL = {
     "flow": {
         "below": [{"text": "Frame 64×64 + action"}],
         "stack": [
-            {"box": "Δ-encoder (CNN)", "id": "enc", "style": "teal", "side": "Prev. frame + action"},
+            {"box": "Δ-encoder (CNN)", "id": "enc", "style": "teal", "side": "Last frame, action"},
             {"box": "Nearest codebook entry", "short": "Codebook lookup", "id": "vq"},
-            {"box": "Interleave I-token, action, Δ-tokens", "short": "Interleave tokens", "id": "seq", "side": "I-token (aux. CNN)"},
+            {"box": "Interleave tokens", "id": "seq", "side": "I-token (aux. CNN)"},
             {"box": "Token embedding", "id": "emb", "minor": True},
             {"group": [
                 {"residual": [{"box": "LayerNorm", "minor": True},
@@ -63,17 +64,15 @@ MODEL = {
                         [{"box": "Reward head", "terminal": True, "minor": True}],
                         [{"box": "Done head", "id": "done", "terminal": True, "minor": True}]]},
         ],
-        "above": [{"box": "Conditioned CNN decoder", "short": "Conditioned decoder", "id": "dec", "style": "teal", "side": "Prev. frame + action"},
+        "above": [{"box": "Conditioned CNN decoder", "short": "Conditioned decoder", "id": "dec", "style": "teal", "side": "Last frame, action"},
                   {"text": "Next frame 64×64 → policy, I-token"}],
         "annotations": [
-            {"at": "enc", "text": "*4* Δ-tokens per frame, vocabulary *1,024*: only the stochastic change", "side": "left", "key": True},
-            {"at": "seq", "text": "*6* tokens per step; context *21* steps = *126* tokens [D]", "side": "left", "key": True},
-            {"at": "attn", "text": "*8* heads, width *512*; the continuous I-token is a frame embedding from an auxiliary CNN", "side": "left"},
-            {"at": "dec", "text": "runs every imagined step: the CNN+LSTM policy sees decoded frames and the next I-token comes from them", "side": "left"},
-            {"at": "block", "text": "*3* layers; *25M* parameters for the whole agent; block details not disclosed", "side": "right", "key": True},
-            {"at": "sample", "text": "*4* serial passes per frame, then a decoder call", "side": "right", "key": True},
-            {"at": "out", "text": "*20* collected frames/s on one A100 (authors), *10×* IRIS-64", "side": "right"},
-            {"at": "done", "text": "reward and termination read from the action token", "side": "right"},
+            {"at": "enc", "text": "*4* Δ-tokens per frame · vocabulary of *1,024*", "side": "left", "key": True},
+            {"at": "seq", "text": "*6* tokens per step · context of *126* tokens", "side": "left", "key": True},
+            {"at": "attn", "text": "*8* heads · width *512*", "side": "left"},
+            {"at": "block", "text": "*3* layers · *25M* parameters", "side": "right", "key": True},
+            {"at": "sample", "text": "*4* passes per frame, plus the decoder", "side": "right", "key": True},
+            {"at": "out", "text": "*20* collected frames/s", "side": "right"},
         ],
         "feedback": "next step",
     },

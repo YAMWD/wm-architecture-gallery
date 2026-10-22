@@ -466,7 +466,8 @@ class StackLayout:
                 x += bw + 14
             for i, br in enumerate(n.children):
                 for c in _flatten(br, []):
-                    c.row = (n.x, n.x + n.w)
+                    lo, hi = c.row if c.row else (c.x, c.x + c.w)
+                    c.row = (min(lo, n.x), max(hi, n.x + n.w))      # keep a branch's own side box in its row
                     c.fan = (i, len(n.children))
 
     def place_all(self):
@@ -500,7 +501,10 @@ class StackLayout:
             cv.text(ox + self.cx, oy + 31, sub, "body", 10, C["grey"])
         else:
             cv.text(ox + self.cx, oy + 22, spec["name"], "head", 18, C["navy"])
-            sub = " · ".join(str(v) for v in (spec.get("org"), spec.get("year"), spec.get("params")) if v)
+            org = str(spec.get("org", "")).split(" (")[0]
+            import re as _re
+            size = _re.sub(r"\s*\[D[^\]]*\]", "", str(spec.get("params", ""))).split(" (")[0].split(",")[0]
+            sub = " · ".join(str(v) for v in (org, spec.get("year"), size) if v)
             cv.text(ox + self.cx, oy + 38, sub, "body", 10.5, C["grey"])
         cv.rect(ox + self.cont_x, oy + self.cont_y, self.cont_w, self.cont_h, fill=C["soft"], stroke=C["slate"], sw=1.0, rx=20)
         self._draw_stack(self.stack)

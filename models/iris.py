@@ -14,12 +14,13 @@ MODEL = {
                "Atari frame into 16 discrete codes, and a small GPT predicts the next frame's codes one token at a "
                "time, together with reward and termination. The agent is trained entirely inside this imagination. "
                "Each imagined frame costs 17 dependent transformer passes, which is the cost later designs attack.",
+    "tagline": "GPT over VQ codes, one token at a time",
     "facts": [
         ("Representation", "16 VQ codes per 64x64 frame, vocabulary 512 (VQGAN autoencoder without the discriminator)"),
         ("Core", "GPT-2-style causal transformer: 10 layers, d 256, 4 heads (minGPT)"),
         ("Attention", "Causal over all tokens; context 20 steps = 340 tokens; KV cache reset at 340 tokens"),
         ("Actions", "One action token between frames"),
-        ("Prediction", "Next-token softmax; 17 single-token passes per frame (1 action + 16 codes)"),
+        ("Prediction", "Next-token softmax; 17 single-token passes per frame (1 action + 16 codes); reward and termination are read from the action token"),
         ("Decoder", "VQ-VAE CNN decoder; the actor-critic reads decoded frames, so it runs during imagination"),
         ("Memory", "Full causal context, ~3.5 MB of KV per sequence in fp16 [D]"),
         ("Speed", "No inference figure reported; ~3.5 A100-days of training per game (authors)"),
@@ -59,12 +60,11 @@ MODEL = {
         "above": [{"box": "VQ-VAE decoder (CNN)", "id": "dec", "style": "teal"}, {"text": "Next frame 64×64"}],
         "insets": [{"for": "ffn", "stack": [{"box": "Linear"}, {"box": "GELU"}, {"box": "Linear"}]}],
         "annotations": [
-            {"at": "vq", "text": "*16* codes per frame, vocabulary of *512*", "side": "left", "key": True},
+            {"at": "vq", "text": "*16* codes per frame · vocabulary of *512*", "side": "left", "key": True},
             {"at": "emb", "text": "Embedding dimension of *256*", "side": "right"},
-            {"at": "attn", "text": "*4* heads · context of *20* steps = *340* tokens", "side": "left", "key": True},
-            {"at": "block", "text": "*10* layers, ~*30M* parameters", "side": "right", "key": True},
-            {"at": "sample", "text": "*17* serial passes per frame", "side": "left"},
-            {"at": "rew", "text": "read from the action token", "side": "right"},
+            {"at": "attn", "text": "*4* heads · context of *340* tokens", "side": "left", "key": True},
+            {"at": "block", "text": "*10* layers · ~*30M* parameters", "side": "right", "key": True},
+            {"at": "sample", "text": "*17* passes per frame for *16* codes + *1* action", "side": "left", "key": True},
         ],
         "feedback": "next step",
     },

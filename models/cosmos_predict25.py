@@ -10,6 +10,7 @@ MODEL = {
     "params_num": 2e9,
     "open": "code + weights",
     "links": {"arXiv": "https://arxiv.org/abs/2511.00062", "code": "https://github.com/nvidia-cosmos/cosmos-predict2.5"},
+    "tagline": "Bidirectional DiT that generates whole video clips",
     "summary": "NVIDIA's physical-AI world foundation model: a flow-matching DiT that generates a whole 93-frame clip (24 latent "
                "frames, 5.8 s at 16 fps) with full self-attention, unifying Text2World, Image2World and Video2World by "
                "replacing conditioning frames in the sequence and flagging them with a mask token. The Cosmos-Reason1 VLM "
@@ -57,33 +58,32 @@ MODEL = {
         "decoder": {"text": "Wan2.1 VAE decoder → 93 frames at 1280x704", "tag": "frozen", "short": "Wan2.1 VAE decoder → 93 frames"},
     },
     "flow": {
-        "below": [{"text": "Text prompt + 1 or 5 conditioning frames (no action input)"}],
+        "below": [{"text": "Text + 1 or 5 frames, no action"}],
         "stack": [
-            {"box": "Wan2.1 causal VAE encoder", "id": "vae", "style": "teal"},
-            {"box": "Patchify 1×2×2 + mask-token flag", "short": "Patchify + mask flag", "id": "patch", "minor": True},
+            {"box": "Wan2.1 VAE encoder", "id": "vae", "style": "teal"},
+            {"box": "Patchify + mask token", "id": "patch", "minor": True},
             {"group": [
                 {"box": "Noisy clip latents", "id": "noisy", "style": "soft", "minor": True},
                 {"group": [
-                    {"residual": [{"box": "AdaLN-LoRA (scale, shift, gate)", "minor": True, "side": "Timestep emb."},
+                    {"residual": [{"box": "AdaLN-LoRA", "minor": True, "side": "Timestep emb."},
                                   {"box": "Full self-attention", "id": "attn", "style": "dark", "side": "3D RoPE"}]},
                     {"residual": [{"box": "AdaLN-LoRA", "minor": True},
-                                  {"box": "Cross-attention", "id": "xattn", "side": "Cosmos-Reason1 text"}]},
+                                  {"box": "Cross-attention", "id": "xattn", "side": "VLM text features"}]},
                     {"residual": [{"box": "AdaLN-LoRA", "minor": True}, {"box": "Feed forward", "id": "ffn"}]},
                 ], "repeat": "32 ×", "id": "block"},
                 {"box": "Predicted velocity", "id": "vel", "minor": True},
                 {"box": "Update latents", "id": "upd", "minor": True},
-            ], "loop": "4 denoising steps (rCM)", "tint": "grey", "id": "denoise"},
+            ], "loop": "4 rCM steps", "tint": "grey", "id": "denoise"},
         ],
         "above": [{"box": "Wan2.1 VAE decoder", "id": "dec", "style": "teal"}, {"text": "93 frames at 1280×704 (5.8 s)"}],
         "insets": [{"for": "ffn", "stack": [{"box": "Linear"}, {"box": "GELU"}, {"box": "Linear"}]}],
         "annotations": [
-            {"at": "vae", "text": "*3,520* tokens per 44×80 latent frame; *84,480* tokens per 93-frame clip of *24* latent frames [D]", "side": "left", "key": True},
-            {"at": "patch", "text": "conditioning frames replace noisy frames in the sequence, flagged by a mask token", "side": "left"},
-            {"at": "attn", "text": "*16* heads of *128*, width *2,048*; bidirectional over the whole clip, no KV cache", "side": "left", "key": True},
-            {"at": "xattn", "text": "no action input in the base model; text = Cosmos-Reason1 multi-block activations projected to *1,024*-d", "side": "left"},
-            {"at": "block", "text": "2B: *32* layers, FFN *8,192*, AdaLN-LoRA rank *256*; 14B: *36* layers, width *5,120*, *40* heads", "side": "right", "key": True},
-            {"at": "upd", "text": "flow matching distilled with rCM to *4* steps (score *0.768* → *0.764*, Table 7); teacher step count not located", "side": "right"},
-            {"at": "dec", "text": "inference speed not disclosed; ≈*3.4e14* dense FLOPs per 2B pass before attention [D]", "side": "right", "key": True},
+            {"at": "vae", "text": "*3,520* tokens per latent frame", "side": "left", "key": True},
+            {"at": "patch", "text": "*1* or *5* conditioning frames", "side": "left"},
+            {"at": "noisy", "text": "*24* latent frames per clip", "side": "left"},
+            {"at": "attn", "text": "*16* heads over *84,480* tokens", "side": "left", "key": True},
+            {"at": "block", "text": "*32* layers, width *2,048*", "side": "right", "key": True},
+            {"at": "dec", "text": "Speed not disclosed", "side": "right", "key": True},
         ],
     },
 }

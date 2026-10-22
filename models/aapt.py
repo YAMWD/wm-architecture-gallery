@@ -10,6 +10,7 @@ MODEL = {
     "params_num": 8e9,
     "open": "closed",
     "links": {"arXiv": "https://arxiv.org/abs/2506.09350", "page": "https://seaweed-apt.com/2"},
+    "tagline": "Causal DiT, one adversarial pass per latent frame",
     "summary": "Autoregressive Adversarial Post-Training, the one-pass-per-frame design: a pre-trained 8B video diffusion transformer is made block-causal and "
                "post-trained adversarially so that each latent frame (4 video frames) is generated with a single network "
                "evaluation from noise, the previous generated frame recycled through channel concatenation, and a KV cache "
@@ -20,7 +21,8 @@ MODEL = {
         ("Representation", "Causal 3D convolution VAE, 4x temporal and 8x spatial; one latent frame = 4 video frames, the first frame its "
                            "own latent; DiT patch size not stated, so tokens per frame are not computed (latent grid 92x52 at 736x416 [D])"),
         ("Core", "8B MMDiT-style diffusion transformer with 36 blocks (base model not named); width and heads not stated; text tokens "
-                 "and visual tokens in one sequence; the discriminator reuses the same causal architecture (16B in training)"),
+                 "and visual tokens in one sequence; the discriminator reuses the same causal architecture (16B in training); "
+                 "norm and FFN details not stated"),
         ("Attention", "Block-causal: text tokens attend only to themselves, visual tokens to the text tokens and to visual tokens of the "
                       "current and previous frames; window N = 30 latent frames (5 s) plus the text tokens and the first frame always; "
                       "FlashAttention-3; 3D RoPE with a fixed temporal interval for arbitrary length"),
@@ -63,31 +65,29 @@ MODEL = {
         "loop": "AR rollout",
     },
     "flow": {
-        "below": [{"text": "Previous frame + camera rays or human pose + text"}],
+        "below": [{"text": "Frame + camera or pose + text"}],
         "stack": [
-            {"box": "Causal 3D conv VAE encoder (4×8×8)", "short": "Causal 3D VAE encoder", "id": "vae", "style": "teal"},
-            {"box": "Patchify (size not stated)", "short": "Patchify", "id": "patch", "minor": True},
-            {"box": "Concat previous frame + condition channels", "short": "Concat prev. frame + condition", "id": "cond", "style": "orange", "side": "Camera rays or pose"},
+            {"box": "Causal 3D VAE encoder", "id": "vae", "style": "teal"},
+            {"box": "Patchify", "id": "patch", "minor": True},
+            {"box": "Concat frame + condition", "id": "cond", "style": "orange", "side": "Camera or pose"},
             {"group": [
                 {"box": "Noise input", "id": "noisy", "style": "soft", "minor": True},
                 {"group": [
                     {"residual": [{"box": "Norm", "minor": True},
-                                  {"box": "Block-causal joint attention (video + text)", "short": "Block-causal joint attention", "id": "attn", "style": "dark", "side": "3D RoPE"}]},
+                                  {"box": "Block-causal attention", "id": "attn", "style": "dark", "side": "3D RoPE"}]},
                     {"residual": [{"box": "Norm", "minor": True}, {"box": "Feed forward", "id": "ffn"}]},
                 ], "repeat": "36 ×", "id": "block"},
-                {"box": "Predicted clean latent frame", "id": "out", "minor": True},
-            ], "label": "1 NFE per latent frame", "tint": "grey", "id": "onepass"},
+                {"box": "Clean latent frame", "id": "out", "minor": True},
+            ], "label": "1 NFE per latent", "tint": "grey", "id": "onepass"},
             {"box": "Write frame to KV cache", "id": "kv", "minor": True},
         ],
         "above": [{"box": "Lightweight VAE decoder", "id": "dec", "style": "teal"}, {"text": "4 frames at 736×416"}],
         "annotations": [
-            {"at": "vae", "text": "*4*× temporal, *8*× spatial: one latent frame = *4* video frames, latent grid 92×52 at 736×416 [D]; patch size not stated", "side": "left", "key": True},
-            {"at": "cond", "text": "previous generated frame recycled by channel concatenation; per-frame camera or pose as new input channels with a randomly initialized projection", "side": "left"},
-            {"at": "attn", "text": "text tokens attend only to themselves; visual tokens attend to text, the first frame and a window of *30* latent frames (5 s); FlashAttention-3", "side": "left", "key": True},
-            {"at": "block", "text": "*36* MM-DiT-style blocks, *8B* parameters; width, heads, norm and FFN details not disclosed", "side": "right", "key": True},
-            {"at": "out", "text": "adversarial post-training with student forcing: *1* pass from noise per latent frame, no denoising loop", "side": "right"},
-            {"at": "kv", "text": "sliding window of *30* latent frames in the KV cache: constant speed and memory", "side": "right"},
-            {"at": "dec", "text": "pruned decoder ≈*3*× faster; *24* fps at 736×416 on one H100, *0.16* s latency (authors)", "side": "right", "key": True},
+            {"at": "vae", "text": "*4* frames per latent; patch not disclosed", "side": "left", "key": True},
+            {"at": "attn", "text": "Window of *30* latent frames = *5* s", "side": "left", "key": True},
+            {"at": "block", "text": "*36* blocks · *8B* · width not disclosed", "side": "right", "key": True},
+            {"at": "dec", "text": "≈*3*× faster pruned decoder", "side": "left"},
+            {"at": "dec", "text": "*24* fps · *0.16* s latency", "side": "right", "key": True},
         ],
         "feedback": "next latent frame",
     },

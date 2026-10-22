@@ -11,6 +11,7 @@ MODEL = {
     "open": "code + weights",
     "links": {"arXiv": "https://arxiv.org/abs/2602.15922", "code": "https://github.com/dreamzero0/dreamzero",
               "page": "https://dreamzero0.github.io"},
+    "tagline": "One 14B DiT denoises video and actions together",
     "summary": "A 14B world-action model: the Wan2.1-I2V-14B image-to-video DiT is fully fine-tuned into a chunk-wise "
                "autoregressive flow-matching model that denoises the next 2 latent frames of video and the matching 1.6 s "
                "action chunk together, with one shared timestep and separate output decoders. Clean context sits in a KV "
@@ -22,12 +23,13 @@ MODEL = {
                            "33 raw frames (4x temporal); tokens per latent frame not disclosed"),
         ("Core", "Wan2.1-I2V-14B-480P DiT with all blocks fine-tuned: 40 layers, d 5120, 40 heads, FFN 13,824 (base "
                  "config.json); only state and action encoders plus an action decoder are added; text encoder, image "
-                 "encoder and VAE stay frozen"),
+                 "encoder and VAE stay frozen; block internals not detailed in the paper (LayerNorm and RoPE named in "
+                 "its quantization notes)"),
         ("Attention", "Chunk-causal: the noisy current chunk (K = 2 latent frames + its action chunk) attends to the clean "
                       "previous chunks; frames inside a chunk share one timestep; max context 8 latent frames (4 chunks) = 6.6 s"),
         ("Actions", "Action latents denoised jointly with the video in the same DiT, same timestep; chunks of 48 actions at "
                     "30 Hz (AgiBot) or 24 at 15 Hz (DROID) = 1.6 s; proprioceptive state through a state encoder; relative "
-                    "joint positions, Savitzky-Golay smoothed"),
+                    "joint positions, Savitzky-Golay smoothed; state-encoder entry point not detailed"),
         ("Prediction", "Flow matching: 16 steps baseline → 4 effective with velocity caching (cached velocity reused when "
                        "cosine similarity exceeds a threshold) → 1 step with DreamZero-Flash (video timesteps biased to high "
                        "noise, t = 1 − Beta(7,1); action timesteps uniform)"),
@@ -63,37 +65,32 @@ MODEL = {
         "loop": "closed loop with real frames",
     },
     "flow": {
-        "below": [{"text": "Frames (views tiled) + text + state"}],
+        "below": [{"text": "Tiled camera views + text + state"}],
         "stack": [
-            {"box": "Wan2.1 VAE encoder (frozen)", "short": "Wan2.1 VAE encoder", "id": "vae", "style": "teal"},
+            {"box": "Wan2.1 VAE encoder", "id": "vae", "style": "teal"},
             {"group": [
-                {"box": "Noisy video + action chunk", "id": "noisy", "style": "soft", "minor": True, "side": "State + action enc."},
+                {"box": "Noisy video + actions", "id": "noisy", "style": "soft", "minor": True, "side": "State/action enc."},
                 {"group": [
                     {"residual": [{"box": "AdaLN (scale, shift)", "minor": True, "side": "Timestep emb."},
-                                  {"box": "Chunk-causal self-attention", "short": "Chunk-causal attention", "id": "attn", "style": "dark", "side": "RoPE"}]},
-                    {"residual": [{"box": "Cross-attention", "id": "xattn", "side": "Text + image features"}]},
+                                  {"box": "Chunk-causal attention", "id": "attn", "style": "dark", "side": "RoPE"}]},
+                    {"residual": [{"box": "Cross-attention", "id": "xattn", "side": "Text + image"}]},
                     {"residual": [{"box": "AdaLN (scale, shift)", "minor": True}, {"box": "Feed forward", "id": "ffn"}]},
                 ], "repeat": "40 ×", "id": "block"},
-                {"box": "Joint velocity (video, action)", "id": "vel", "minor": True},
+                {"box": "Video + action velocity", "id": "vel", "minor": True},
                 {"box": "Update latents", "id": "upd", "minor": True},
-            ], "loop": "16 → 4 → 1 flow steps", "tint": "grey", "id": "denoise"},
-            {"box": "Write clean chunk to KV cache", "id": "kv", "minor": True},
+            ], "loop": "16 → 4 → 1 steps", "tint": "grey", "id": "denoise"},
+            {"box": "Write chunk to KV cache", "id": "kv", "minor": True},
             {"fanout": [[{"box": "Next-chunk video latents", "short": "Video latents", "id": "vid"}],
                         [{"box": "Action decoder", "id": "act", "style": "orange", "terminal": True}]]},
         ],
         "above": [{"box": "Wan2.1 VAE decoder", "id": "dec", "style": "teal"}, {"text": "Predicted frames (optional)"}],
         "annotations": [
-            {"at": "vae", "text": "frozen Wan2.1 VAE, *4×* temporal (*8* latent frames = *33* raw frames); views tiled into one frame; tokens per latent frame not disclosed",
-             "short": "frozen Wan2.1 VAE, *4×* temporal; tokens per frame not disclosed", "side": "left", "key": True},
-            {"at": "noisy", "text": "a chunk = *2* latent frames + *48* actions at *30* Hz (*1.6* s) under one shared timestep; proprio enters through a state encoder (entry point not detailed)", "side": "left"},
-            {"at": "attn", "text": "*40* heads, width *5,120*; the noisy chunk attends to itself and to ≤ *8* clean cached latent frames (*4* chunks, *6.6* s)", "side": "left"},
-            {"at": "block", "text": "*40* layers, *14B*: the Wan2.1-I2V-14B block, all layers fine-tuned; FFN *13,824*; block internals not detailed in the paper (LayerNorm and RoPE named in its quantization notes)",
-             "short": "*40* layers, width *5,120*, *40* heads; *14B* (Wan2.1-I2V)", "side": "left", "key": True},
-            {"at": "upd", "text": "*16* flow steps naive; velocity caching → *4* effective; DreamZero-Flash → *1* (video t = 1 − Beta(7,1), action t uniform)", "side": "right"},
-            {"at": "kv", "text": "KV cache ≤ *8* latent frames, refreshed with VAE-encoded real frames after every chunk", "side": "right"},
-            {"at": "act", "text": "*5.7* s per chunk naive → *150* ms on *2* GB200 with CFG split across the GPUs, NVFP4 and Flash; ~*0.59* s on one H100 [D] (company claims)",
-             "short": "*5.7* s per chunk naive → *150* ms on *2* GB200 (company claim)", "side": "right", "key": True},
-            {"at": "dec", "text": "optional: predicted frames are replaced by real ones, so control needs no decoding", "side": "right"},
+            {"at": "vae", "text": "Tokens per latent frame not disclosed", "side": "left", "key": True},
+            {"at": "attn", "text": "*40* heads · width *5,120*", "side": "left"},
+            {"at": "block", "text": "*40* layers · *14B* parameters", "side": "left", "key": True},
+            {"at": "denoise", "text": "*16* steps, *4* with caching, *1* with Flash", "side": "right", "key": True},
+            {"at": "kv", "text": "Caches ≤ *8* latent frames", "side": "right"},
+            {"at": "act", "text": "*48* actions in *150* ms (naive *5.7* s)", "side": "right", "key": True},
         ],
         "feedback": "next chunk",
     },

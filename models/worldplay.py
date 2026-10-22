@@ -11,6 +11,7 @@ MODEL = {
     "open": "code + weights",
     "links": {"arXiv": "https://arxiv.org/abs/2512.14614", "code": "https://github.com/Tencent-Hunyuan/HY-WorldPlay",
               "weights": "https://huggingface.co/tencent/HY-WorldPlay"},
+    "tagline": "Causal DiT with memory retrieved by camera view",
     "summary": "Tencent's real-time interactive world model: the HunyuanVideo-1.5 MM-DiT made chunk-wise block-causal "
                "(4 latent frames = 16 video frames per chunk) and distilled with Context Forcing to 4 steps. Each chunk "
                "attends to a memory rebuilt from the 3 most recent chunks plus 1 chunk retrieved by field-of-view overlap "
@@ -22,7 +23,7 @@ MODEL = {
                            "per latent frame at 720p, 14,400 per 4-latent chunk of 16 frames [D]"),
         ("Core", "HunyuanVideo-1.5 480P-I2V transformer: 54 double-stream MM-DiT blocks, d 2048, 16 heads, MLP ratio 4 "
                  "(HF config); the paper describes each block as 3D self-attention + cross-attention + FFN with timestep adaLN; "
-                 "8B per the README (a 5B Wan-based variant is lighter but weaker)"),
+                 "8B per the README (a 5B Wan-based variant is lighter but weaker); activation not disclosed"),
         ("Attention", "Block-causal over chunks with a KV cache; context = 3 temporal + 1 spatial memory chunk = 57,600 tokens at "
                       "720p [D]; first chunk kept as an attention sink; temporal reframing re-assigns RoPE indices so a retrieved "
                       "chunk sits at a small relative distance"),
@@ -64,34 +65,32 @@ MODEL = {
         "loop": "AR rollout",
     },
     "flow": {
-        "below": [{"text": "Previous frames + keys + camera pose + text"}],
+        "below": [{"text": "Frames + keys + camera + text"}],
         "stack": [
-            {"box": "HunyuanVideo-1.5 3D causal VAE encoder", "short": "HY-1.5 VAE encoder", "id": "vae", "style": "teal"},
+            {"box": "HY-1.5 VAE encoder", "id": "vae", "style": "teal"},
             {"box": "Patchify 1×1×1", "id": "patch", "minor": True},
-            {"box": "Rebuild context memory (retrieve, reframe)", "id": "mem", "minor": True, "side": "FOV overlap + camera distance"},
+            {"box": "Rebuild memory", "id": "mem", "side": "FOV + distance"},
             {"group": [
                 {"box": "Noisy latent chunk", "id": "noisy", "style": "soft", "minor": True},
                 {"group": [
                     {"residual": [{"box": "AdaLN (timestep + keys)", "short": "AdaLN", "id": "ada", "side": "Keys → PE + MLP"},
-                                  {"box": "Block-causal 3D self-attention", "short": "Block-causal attention", "id": "attn", "style": "dark", "side": "Memory chunks + PRoPE"}]},
-                    {"residual": [{"box": "Cross-attention", "id": "xattn", "side": "Text emb."}]},
+                                  {"box": "Block-causal attention", "id": "attn", "style": "dark", "side": "Memory + PRoPE"}]},
+                    {"residual": [{"box": "Cross-attention", "id": "xattn", "minor": True, "side": "Text emb."}]},
                     {"residual": [{"box": "AdaLN", "minor": True}, {"box": "Feed forward", "id": "ffn"}]},
                 ], "repeat": "54 ×", "id": "block"},
                 {"box": "Predicted velocity", "id": "vel", "minor": True},
                 {"box": "Update latents", "id": "upd", "minor": True},
-            ], "loop": "4 denoising steps (Context Forcing)", "tint": "grey", "id": "denoise"},
+            ], "loop": "4 steps (DMD)", "tint": "grey", "id": "denoise"},
             {"box": "Write chunk to KV cache", "id": "kv", "minor": True},
         ],
-        "above": [{"box": "HY-1.5 VAE decoder (streaming)", "short": "HY-1.5 VAE decoder", "id": "dec", "style": "teal"}, {"text": "16 frames per chunk at 720p"}],
+        "above": [{"box": "HY-1.5 VAE decoder", "id": "dec", "style": "teal"}, {"text": "16 frames per chunk at 720p"}],
         "annotations": [
-            {"at": "vae", "text": "*16*× spatial, *4*× temporal, *32* channels; *3,600* tokens per latent frame at 720p, *14,400* per 4-latent chunk of *16* frames [D]", "short": "*14,400* tokens per *16*-frame chunk at 720p [D]", "side": "left", "key": True},
-            {"at": "mem", "text": "memory = *3* most recent chunks + *1* chunk retrieved by FOV overlap and camera distance = *57,600* tokens [D]; temporal reframing re-assigns its RoPE indices; first chunk kept as attention sink", "side": "left"},
-            {"at": "ada", "text": "discrete keys → PE + zero-initialized MLP, added to the timestep embedding", "side": "left"},
-            {"at": "attn", "text": "*16* heads, width *2,048*; attends to a memory of *3* recent + *1* retrieved chunk = *57,600* tokens [D]; camera pose via PRoPE in a second attention term, output = Attn1 + zero_init(Attn2)", "short": "memory of *3* recent + *1* retrieved chunk = *57,600* tokens [D]", "side": "left", "key": True},
-            {"at": "block", "text": "*54* blocks, *8B* (HunyuanVideo-1.5; HF config: double-stream MM-DiT, MLP ratio *4*; activation not disclosed)", "short": "*54* MM-DiT blocks, *8B*", "side": "right", "key": True},
-            {"at": "upd", "text": "Context Forcing (DMD from a memory-augmented bidirectional teacher): *100* → *4* NFE per chunk", "side": "right"},
-            {"at": "kv", "text": "KV ≈*25.5 GB* BF16 for the memory context, ≈*3.2 GB* per GPU split 8 ways [D]; real time needs DiT/VAE token parallelism, quantization and streaming decode", "side": "right"},
-            {"at": "dec", "text": "*24* FPS at 720p on 8×H800 (company claim); *4.95* FPS on 4×H200 (WorldKV)", "short": "*24* fps at 720p on *8* H800 (company claim)", "side": "right", "key": True},
+            {"at": "vae", "text": "*14,400* tokens per chunk of *16* frames", "side": "left", "key": True},
+            {"at": "mem", "text": "*3* recent + *1* retrieved chunk = *57,600* tokens", "side": "left", "key": True},
+            {"at": "attn", "text": "*16* heads · width *2,048*", "side": "left"},
+            {"at": "block", "text": "*54* blocks · *8B* parameters", "side": "right", "key": True},
+            {"at": "kv", "text": "KV cache ≈*25.5 GB*", "side": "right"},
+            {"at": "dec", "text": "*24* fps at *720p*", "side": "right", "key": True},
         ],
         "feedback": "next chunk",
     },

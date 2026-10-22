@@ -12,6 +12,7 @@ MODEL = {
     "links": {"arXiv": "https://arxiv.org/abs/2601.16163", "code": "https://github.com/NVlabs/cosmos-policy",
               "weights": "https://huggingface.co/collections/nvidia/cosmos-policy",
               "page": "https://research.nvidia.com/labs/dir/cosmos-policy/"},
+    "tagline": "Video DiT predicts actions as extra latent frames",
     "summary": "Cosmos-Predict2-2B Video2World, a latent video diffusion transformer over Wan2.1 VAE latents, fully "
                "fine-tuned into a robot policy with no architectural change. Proprioception, the action chunk and the value "
                "are injected as extra latent frames: blank images are VAE-encoded and their latents overwritten with tiled "
@@ -24,7 +25,8 @@ MODEL = {
                            "views, value) or 11 with 3 cameras; each image is repeated 4x so one latent frame is one timestep; "
                            "LIBERO data at 224 px per the repo config, i.e. ~196 tokens per latent frame with the 2x2 patch [D]"),
         ("Core", "Cosmos-Predict2-2B Video2World DiT, all weights fine-tuned: 28 blocks, d 2048, 16 heads, patch 2x2x1, 3D RoPE, "
-                 "AdaLN-LoRA timestep conditioning (repo net config COSMOS_V1_2B); T5 text via cross-attention; no new modules"),
+                 "AdaLN-LoRA timestep conditioning (repo net config COSMOS_V1_2B); T5 text via cross-attention; no new modules; "
+                 "Predict1 block design with QK RMSNorm"),
         ("Attention", "Bidirectional 3D self-attention over all latent frames; clean conditioning frames (current state) and "
                       "noisy target frames share the sequence"),
         ("Actions", "The action chunk (K x d_act, scaled to [-1, 1], flattened and duplicated to fill H' x W' x C') overwrites "
@@ -67,14 +69,14 @@ MODEL = {
     "flow": {
         "below": [{"text": "Images + blank frames + text"}],
         "stack": [
-            {"box": "Wan2.1 VAE encoder (frozen)", "short": "Wan2.1 VAE encoder", "id": "vae", "style": "teal"},
+            {"box": "Wan2.1 VAE encoder", "id": "vae", "style": "teal"},
             {"box": "Latent frame injection", "id": "inject", "style": "orange", "side": "Proprio vector"},
             {"box": "Patchify 1×2×2", "id": "patch", "minor": True},
             {"group": [
-                {"box": "Noisy target latent frames", "id": "noisy", "style": "soft", "minor": True},
+                {"box": "Noisy target frames", "id": "noisy", "style": "soft", "minor": True},
                 {"group": [
                     {"residual": [{"box": "AdaLN (scale, shift)", "minor": True, "side": "Noise level σ"},
-                                  {"box": "Bidirectional self-attention", "short": "Self-attention", "id": "attn", "style": "dark", "side": "3D RoPE"}]},
+                                  {"box": "Bidirectional attention", "id": "attn", "style": "dark", "side": "3D RoPE"}]},
                     {"residual": [{"box": "AdaLN (scale, shift)", "minor": True},
                                   {"box": "Cross-attention", "id": "xattn", "side": "T5-XXL text"}]},
                     {"residual": [{"box": "AdaLN (scale, shift)", "minor": True}, {"box": "Feed forward", "id": "ffn"}]},
@@ -85,20 +87,15 @@ MODEL = {
                         [{"box": "Value", "id": "val", "terminal": True, "minor": True}],
                         [{"box": "Action chunk", "id": "act", "style": "orange", "terminal": True}]]},
         ],
-        "above": [{"box": "Wan2.1 VAE decoder", "id": "dec", "style": "teal", "minor": True}, {"text": "Future images (visualisation only)"}],
+        "above": [{"box": "Wan2.1 VAE decoder", "id": "dec", "style": "teal", "minor": True}, {"text": "Future images (visualisation only)", "minor": True}],
         "insets": [{"for": "ffn", "stack": [{"box": "Linear"}, {"box": "GELU"}, {"box": "Linear"}]}],
         "annotations": [
-            {"at": "vae", "text": "frozen Wan2.1 VAE (*8×* spatial, *4×* temporal, *16* channels); one latent frame per modality and view: *9* for LIBERO; ~*196* tokens each at 224 px with the 1×2×2 patch [D]",
-             "short": "Wan2.1 VAE; *9* latent frames for LIBERO, ~*196* tokens each [D]", "side": "left", "key": True},
-            {"at": "inject", "text": "blank images are encoded and their latents overwritten with tiled copies of proprio, the action chunk (K × d, scaled to [−1, 1]) and the value; no new modules",
-             "short": "proprio, action chunk and value overwrite blank latent frames", "side": "left", "key": True},
-            {"at": "attn", "text": "*28* blocks, width *2,048*, *16* heads, *2B*, all weights fine-tuned; bidirectional over all latent frames (clean current state + noisy targets); Predict1 block design: AdaLN-LoRA, QK RMSNorm",
-             "short": "*28* blocks, width *2,048*, *16* heads; *2B*, fully fine-tuned", "side": "left", "key": True},
-            {"at": "upd", "text": "EDM, σ from *80* to *4*: *5* steps (LIBERO, RoboCasa) or *10* (ALOHA); action, future state and value denoised in parallel", "side": "left"},
-            {"at": "val", "text": "future state and value are denoised every step, then discarded by the direct policy; planning uses them for best-of-*8* search (*4.9* s on *8* H100)", "side": "left"},
-            {"at": "act", "text": "read back by averaging the tiled copies; *0.61* s per chunk at *5* steps, *0.95* s at *10*, *0.16* s at *1* on one H100 (authors)",
-             "short": "*0.61* s per chunk at *5* steps on one H100 (authors)", "side": "right", "key": True},
-            {"at": "dec", "text": "decodes future images for visualisation only; actions and values are read from the latents", "side": "right"},
+            {"at": "vae", "text": "*9* frames of ~*196* tokens", "side": "left", "key": True},
+            {"at": "inject", "text": "*1* frame each: proprio, actions, value", "side": "left"},
+            {"at": "attn", "text": "*16* heads · width *2,048*", "side": "left", "key": True},
+            {"at": "block", "text": "*28* layers · *2B* parameters", "side": "right", "key": True},
+            {"at": "fut", "text": "Best of *8* plans in *4.9* s", "side": "left"},
+            {"at": "act", "text": "*0.61* s per action chunk", "side": "right", "key": True},
         ],
     },
 }

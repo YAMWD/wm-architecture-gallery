@@ -15,6 +15,7 @@ MODEL = {
                "single d 512 token, and a 2-layer GPT predicts the next latent distribution, reward and continuation. "
                "Imagination draws one categorical sample per step at batch 1024 and decodes no pixels, so a full "
                "Atari 100k run takes 4.3 h on one RTX 3090.",
+    "tagline": "Tiny transformer, one fused token per step",
     "facts": [
         ("Representation", "32 categoricals x 32 classes per 3x64x64 frame from a CNN categorical VAE"),
         ("Core", "GPT-style causal transformer: 2 layers, d 512, 8 heads, FFN 1024, post-LN, learned absolute positions; ~4.2M block parameters, ~16.5M world model (verifier count from the code)"),
@@ -48,10 +49,10 @@ MODEL = {
     "flow": {
         "below": [{"text": "Frame 64×64 + action"}],
         "stack": [
-            {"box": "CNN categorical VAE encoder", "short": "CNN VAE encoder", "id": "enc", "style": "teal"},
+            {"box": "CNN VAE encoder", "id": "enc", "style": "teal"},
             {"box": "Categorical latent z", "id": "lat", "minor": True},
             {"box": "Action mixer (MLP)", "id": "mix", "style": "orange", "side": "Action"},
-            {"box": "Learned positions + LayerNorm", "id": "pos", "minor": True},
+            {"box": "Positions + LayerNorm", "id": "pos", "minor": True},
             {"group": [
                 {"residual": [{"box": "Masked self-attention", "id": "attn", "style": "dark"}]},
                 {"box": "LayerNorm", "minor": True},
@@ -67,11 +68,11 @@ MODEL = {
                    {"for": "ffn", "stack": [{"box": "Linear"}, {"box": "ReLU"}, {"box": "Linear"}]}],
         "annotations": [
             {"at": "enc", "text": "*32* categoricals × *32* classes per frame", "side": "left", "key": True},
-            {"at": "mix", "text": "z and the action fused into *1* token of width *512*", "side": "left", "key": True},
-            {"at": "attn", "text": "*8* heads; imagination at batch *1,024*: *8* context + *16* imagined steps", "side": "left"},
-            {"at": "block", "text": "*2* layers, FFN *1,024*, post-LN; ~*4.2M* block parameters, ~*16.5M* world model", "short": "*2* layers, ~*4.2M* block parameters", "side": "right", "key": True},
-            {"at": "sample", "text": "*1* pass per imagined step, one categorical sample, no iterative decoding", "short": "*1* pass per imagined step", "side": "right", "key": True},
-            {"at": "cont", "text": "*24* cached steps ≈ *50 MB* bf16 as implemented (K and V recomputed each step)", "side": "right"},
+            {"at": "mix", "text": "*1* fused token per step · width *512*", "side": "left", "key": True},
+            {"at": "attn", "text": "*8* heads · *24*-step cache, *1,024* rollouts", "side": "left"},
+            {"at": "ffn", "text": "Hidden layer dimension of *1,024*", "side": "left"},
+            {"at": "block", "text": "*2* layers · ~*4.2M* transformer parameters", "side": "right", "key": True},
+            {"at": "sample", "text": "*1* pass per frame", "side": "right", "key": True},
         ],
         "feedback": "next step",
     },

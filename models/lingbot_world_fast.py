@@ -11,6 +11,7 @@ MODEL = {
     "open": "code + weights",
     "links": {"arXiv": "https://arxiv.org/abs/2601.20540", "code": "https://github.com/robbyant/lingbot-world",
               "weights": "https://huggingface.co/robbyant/lingbot-world-fast"},
+    "tagline": "Causal Wan DiT that keeps the whole rollout in KV",
     "summary": "The largest open real-time world model: the high-noise expert of the Wan2.2 I2V A14B mixture (28B in total, "
                "14B active) is adapted to block-causal attention and distilled with DMD plus an adversarial head to 4 steps. "
                "Camera rotation (Plücker) and W/A/S/D keys enter through adaptive normalization in adapter layers. By default "
@@ -61,34 +62,33 @@ MODEL = {
         "loop": "AR rollout",
     },
     "flow": {
-        "below": [{"text": "Previous frames + camera rotation + W/A/S/D keys + text"}],
+        "below": [{"text": "Frames + camera + keys + text"}],
         "stack": [
-            {"box": "Wan 3D causal VAE encoder", "short": "Wan VAE encoder", "id": "vae", "style": "teal"},
+            {"box": "Wan VAE encoder", "id": "vae", "style": "teal"},
             {"box": "Patchify 1×2×2", "id": "patch", "minor": True},
             {"group": [
                 {"box": "Noisy latent chunk", "id": "noisy", "style": "soft", "minor": True},
                 {"group": [
                     {"residual": [{"box": "AdaLN (scale, shift)", "minor": True, "side": "Timestep emb."},
-                                  {"box": "Block-causal self-attention", "short": "Block-causal attention", "id": "attn", "style": "dark", "side": "3D RoPE"}]},
-                    {"box": "Action AdaLN adapter (scale, shift)", "short": "Action AdaLN adapter", "id": "act", "style": "orange", "side": "Plücker camera + keys"},
+                                  {"box": "Block-causal attention", "id": "attn", "style": "dark", "side": "3D RoPE"}]},
+                    {"box": "Action AdaLN adapter", "id": "act", "style": "orange", "side": "Plücker + keys"},
                     {"residual": [{"box": "Cross-attention", "id": "xattn", "side": "umT5 text"}]},
                     {"residual": [{"box": "AdaLN (scale, shift)", "minor": True}, {"box": "Feed forward", "id": "ffn"}]},
                 ], "repeat": "40 ×", "id": "block"},
                 {"box": "Predicted velocity", "id": "vel", "minor": True},
                 {"box": "Update latents", "id": "upd", "minor": True},
-            ], "loop": "4 denoising steps (DMD + adversarial)", "tint": "grey", "id": "denoise"},
+            ], "loop": "4 steps (DMD + GAN)", "tint": "grey", "id": "denoise"},
             {"box": "Write chunk to KV cache", "id": "kv", "minor": True},
         ],
         "above": [{"box": "Wan VAE decoder", "id": "dec", "style": "teal"}, {"text": "12 frames at 480×832"}],
         "insets": [{"for": "ffn", "stack": [{"box": "Linear"}, {"box": "GELU"}, {"box": "Linear"}]}],
         "annotations": [
-            {"at": "vae", "text": "*1,560* latents per 30×52 latent frame; a chunk of *3* latent frames = *4,680* tokens = *12* output frames [D]", "side": "left", "key": True},
-            {"at": "attn", "text": "*40* heads, width *5,120*; bidirectional within the chunk, causal over the full-rollout KV cache (no window, no sink by default)", "side": "left", "key": True},
-            {"at": "act", "text": "Plücker camera embeddings + multi-hot W/A/S/D keys → Plücker encoder → scale and shift; only these adapters and the AdaLN parameters are trained in that stage", "side": "left"},
-            {"at": "block", "text": "*40* layers, *14B* dense: the high-noise expert of Wan2.2 I2V A14B (*28B* in total)", "side": "right", "key": True},
-            {"at": "upd", "text": "timestep indices *0, 179, 358, 679* with shift *5*; the bidirectional base samples *70* steps", "side": "right"},
-            {"at": "kv", "text": "full KV ≈*3.4 GB* per chunk, >*200 GB* per minute (WorldKV); *8.87* → *3.61* FPS over a one-minute rollout on 4×B200", "side": "right"},
-            {"at": "dec", "text": "*16* fps at 480p, <*1* s latency on one 8-GPU node (company claim; GPU type not stated)", "side": "right", "key": True},
+            {"at": "vae", "text": "*4,680* tokens per chunk of *12* frames", "side": "left", "key": True},
+            {"at": "attn", "text": "*40* heads, full KV of the whole rollout", "side": "left", "key": True},
+            {"at": "block", "text": "*40* layers, width *5,120*, *14B*", "side": "right", "key": True},
+            {"at": "upd", "text": "*4* steps instead of *70*", "side": "right"},
+            {"at": "kv", "text": "≈*3.4 GB* KV per chunk, >*200 GB*/minute", "side": "right"},
+            {"at": "dec", "text": "*16* fps at *480p*, <*1* s latency", "side": "right", "key": True},
         ],
         "feedback": "next chunk",
     },

@@ -11,6 +11,7 @@ MODEL = {
     "open": "code + weights",
     "links": {"arXiv": "https://arxiv.org/abs/2601.21998", "code": "https://github.com/robbyant/lingbot-va",
               "weights": "https://huggingface.co/robbyant/lingbot-va", "page": "https://technology.robbyant.com/lingbot-va"},
+    "tagline": "Interleaves video and actions in one causal sequence",
     "summary": "A causal world-action model that interleaves video latents and actions in one autoregressive sequence with "
                "a KV cache. Two parallel transformer streams of the same depth, a 5B video stream initialised from Wan2.2-5B "
                "(d 3072) and a 0.35B action stream (d 768), are joined by shared attention. Each step denoises the next chunk "
@@ -22,7 +23,8 @@ MODEL = {
                            "192 spatial tokens per latent frame; video at 12.5 Hz with 4 actions per frame (50 Hz)"),
         ("Core", "MoT: video stream from Wan2.2-5B, 30 layers, d 3072 (24 heads, FFN 14,336 per the Wan2.2-TI2V-5B "
                  "config); action stream of the same depth at d 768 (~350M), initialised by interpolating the video weights "
-                 "scaled by sqrt(d_v/d_a); RoPE in both; T5 text through cross-attention"),
+                 "scaled by sqrt(d_v/d_a); RoPE in both; T5 text through cross-attention (which stream reads it is not "
+                 "stated); norms and timestep modulation not detailed"),
         ("Attention", "Causal over the interleaved video-action sequence (teacher forcing), bidirectional inside a chunk; "
                       "action tokens are projected to d 3072 for the joint attention and back; training packs episodes "
                       "into sequences of up to 10K tokens"),
@@ -65,38 +67,32 @@ MODEL = {
     "flow": {
         "below": [{"text": "Frames (views side by side) + text"}],
         "stack": [
-            {"box": "Wan2.2 causal VAE encoder", "short": "Wan2.2 VAE encoder", "id": "vae", "style": "teal"},
+            {"box": "Wan2.2 causal VAE", "id": "vae", "style": "teal"},
             {"box": "Patchify (2× spatial)", "id": "patch", "minor": True},
             {"group": [
-                {"box": "Interleave noisy video + actions", "short": "Interleave tokens", "id": "seq", "style": "soft", "side": "Action MLP enc."},
+                {"box": "Interleave noisy tokens", "short": "Interleave tokens", "id": "seq", "style": "soft", "side": "Action MLP enc."},
                 {"group": [
                     {"fanout": [[{"box": "Video QKV", "id": "vqkv", "minor": True}],
                                 [{"box": "Action QKV", "id": "aqkv", "style": "orange", "minor": True}]]},
-                    {"box": "Shared causal self-attention", "short": "Shared causal attention", "id": "attn", "style": "dark", "side": "RoPE"},
+                    {"box": "Shared causal attention", "id": "attn", "style": "dark", "side": "RoPE"},
                     {"box": "Cross-attention", "id": "xattn", "side": "T5 text", "minor": True},
                     {"fanout": [[{"box": "Video MLP", "id": "vmlp"}],
                                 [{"box": "Action MLP", "id": "amlp", "style": "orange"}]]},
                 ], "repeat": "30 ×", "id": "block"},
                 {"box": "Euler update", "id": "upd", "minor": True},
-            ], "loop": "3 video + 10 action steps", "tint": "grey", "id": "denoise"},
+            ], "loop": "3 + 10 Euler steps", "loop_short": "3 + 10 steps", "tint": "grey", "id": "denoise"},
             {"box": "Append chunk to KV cache", "id": "kv", "minor": True},
             {"fanout": [[{"box": "Partly denoised video", "short": "Video latents", "id": "vid", "terminal": True}],
                         [{"box": "Action decoder (linear)", "short": "Action decoder", "id": "act", "style": "orange"}]]},
         ],
-        "above": [{"text": "16 actions per chunk; video not decoded", "short": "16 actions per chunk"}],
+        "above": [{"text": "16 actions; video not decoded"}],
         "annotations": [
-            {"at": "vae", "text": "Wan2.2 causal VAE (*4×16×16*) + *2×* patchify; all views side by side = *192* tokens per latent frame; video at *12.5* Hz",
-             "short": "*192* tokens per latent frame, all views together", "side": "left", "key": True},
-            {"at": "seq", "text": "each latent frame is followed by its *4* actions (*50* Hz); a chunk of K = *4* frames adds *768* video tokens [D]; single-layer MLP action encoder (hidden *256*)", "side": "left"},
-            {"at": "attn", "text": "causal over chunks (teacher forcing), bidirectional inside a chunk; action tokens are projected to d *3,072* for the joint attention and back; training sequences up to *10K* tokens",
-             "short": "causal over chunks, bidirectional inside one", "side": "left", "key": True},
-            {"at": "xattn", "text": "frozen T5 text through cross-attention (the paper does not say which stream); norms and timestep modulation not detailed", "side": "left"},
-            {"at": "amlp", "text": "*30* layers; video stream from Wan2.2-5B (d *3,072*, *24* heads, FFN *14,336*); action stream of the same depth at d *768* (~*350M*), initialised from the video weights; *5.3B* total",
-             "short": "*30* layers: video d *3,072* (*5B*) + action d *768* (~*0.35B*)", "side": "right", "key": True},
-            {"at": "upd", "text": "Euler flow matching: video *3* steps only to s = *0.6* at CFG *5.0* (*6* passes of the 5B stream [D]), then actions *10* steps to s = *1.0* at CFG *1.0*", "side": "left"},
-            {"at": "kv", "text": "causal KV cache over the interleaved history; a forward-dynamics pass re-grounds it on the latest real frame", "side": "right"},
-            {"at": "act", "text": "inverse dynamics: actions decoded from the predicted visual transition; latency, control rate and GPU not disclosed (video denoising named as the bottleneck)",
-             "short": "*16* actions per chunk [D]; latency not disclosed", "side": "right", "key": True},
+            {"at": "vae", "text": "*192* tokens per frame at *12.5* Hz", "side": "left", "key": True},
+            {"at": "seq", "text": "*4* actions per frame", "side": "left"},
+            {"at": "attn", "text": "*24* heads · width *3,072* (actions *768*)", "side": "left"},
+            {"at": "block", "text": "*30* layers · *5.3B* parameters", "side": "right", "key": True},
+            {"at": "denoise", "text": "Video *3* steps to s = *0.6*, actions *10* steps", "side": "right", "key": True},
+            {"at": "act", "text": "Latency not disclosed", "side": "right", "key": True},
         ],
         "feedback": "next chunk",
     },

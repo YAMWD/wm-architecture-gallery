@@ -10,6 +10,7 @@ MODEL = {
     "params_num": 5e9,
     "open": "code + weights",
     "links": {"arXiv": "https://arxiv.org/abs/2604.08995", "code": "https://github.com/SkyworkAI/Matrix-Game"},
+    "tagline": "Bidirectional segment DiT with retrieved memory",
     "summary": "Skywork's 720p successor to Matrix-Game 2.0, built on Wan2.2-TI2V-5B. Unlike its predecessor it keeps a "
                "bidirectional DiT: each streaming segment denoises 10 new latent frames jointly with 4 past latents and 5 "
                "memory latents retrieved by camera pose and frustum overlap, all in one self-attention sequence with no KV "
@@ -17,7 +18,7 @@ MODEL = {
                "1 for the VAE, INT8 attention projections, a 75%-pruned decoder and GPU-side retrieval (company claim).",
     "facts": [
         ("Representation", "Wan2.2 VAE (4x16x16) + patchify; 880 tokens per 22x40 latent frame at 704x1280 if the patch is (1,2,2) "
-                           "as in Wan2.2 [D, assumption]; one latent frame = 4 video frames"),
+                           "as in Wan2.2 [D, assumption]; one latent frame = 4 video frames; 10 latent frames per segment ≈ 40 video frames [D]"),
         ("Core", "Wan2.2-TI2V-5B DiT (30 layers, d 3072, 24 heads, FFN 14336 per the HF config); action modules in the first 15 blocks "
                  "as in Matrix-Game 2.0; teacher and student share one bidirectional architecture; a 28B MoE scale-up is also trained"),
         ("Attention", "Bidirectional within a segment: 5 retrieved memory latents + 4 past latents + 10 noisy current latents in one "
@@ -34,7 +35,8 @@ MODEL = {
                    "are re-processed at every step"),
         ("Speed", "~40 FPS at 720p on an asynchronous 8+1 pipeline (8 DiT GPUs + 1 VAE GPU), GPU model not named (H-series with "
                   "FlashAttention 3); leave-one-out Table 1: 27.38 FPS without INT8, 25.79 without MG-LightVAE, 6.60 with CPU retrieval; "
-                  "single-node 7+1 'slightly lower' (company claim); 3.1 one-minute videos/hour on 8 H100s in SANA-WM's benchmark (third party, config unstated)"),
+                  "single-node 7+1 'slightly lower' (company claim); 3.1 one-minute videos/hour on 8 H100s in SANA-WM's benchmark (third party, config unstated); "
+                  "the ~40 FPS figure is a company claim"),
         ("Key detail", "Real time is a systems result: 9 GPUs, INT8 on the attention projections only (+46%), a 5.85x faster decoder (+55%) "
                        "and GPU retrieval (≈6.1x); the authors say VAE decode is the bottleneck once the DiT is optimized"),
     ],
@@ -64,35 +66,33 @@ MODEL = {
         "loop": "AR rollout",
     },
     "flow": {
-        "below": [{"text": "Previous frames + keyboard/mouse actions + text"}],
+        "below": [{"text": "Frames + keys/mouse + text"}],
         "stack": [
-            {"box": "Wan2.2 VAE encoder (4×16×16)", "short": "Wan2.2 VAE encoder", "id": "vae", "style": "teal"},
+            {"box": "Wan2.2 VAE encoder", "id": "vae", "style": "teal"},
             {"box": "Patchify 2×2", "id": "patch", "minor": True},
-            {"box": "Camera-aware memory retrieval", "id": "mem", "minor": True, "side": "Camera poses"},
+            {"box": "Camera-aware retrieval", "id": "mem", "minor": True, "side": "Camera poses"},
             {"group": [
-                {"box": "Noisy + past + memory latents", "id": "seq", "style": "soft", "minor": True},
+                {"box": "Noisy + past + memory", "id": "seq", "style": "soft", "minor": True},
                 {"group": [
                     {"residual": [{"box": "AdaLN (scale, shift)", "minor": True, "side": "Timestep emb."},
-                                  {"box": "Bidirectional self-attention", "short": "Bidirectional attention", "id": "attn", "style": "dark", "side": "Perturbed RoPE"}]},
+                                  {"box": "Bidirectional attention", "id": "attn", "style": "dark", "side": "Perturbed RoPE"}]},
                     {"residual": [{"box": "Cross-attention", "id": "xattn", "side": "Text emb."}]},
                     {"residual": [{"box": "Action module", "id": "act", "style": "orange", "side": "Keys + mouse"}]},
                     {"residual": [{"box": "AdaLN (scale, shift)", "minor": True}, {"box": "Feed forward", "id": "ffn"}]},
                 ], "repeat": "30 ×", "id": "block"},
                 {"box": "Predicted velocity", "id": "vel", "minor": True},
                 {"box": "Update latents", "id": "upd", "minor": True},
-            ], "loop": "3 denoising steps (DMD)", "tint": "grey", "id": "denoise"},
+            ], "loop": "3 steps (DMD)", "tint": "grey", "id": "denoise"},
         ],
-        "above": [{"box": "MG-LightVAE decoder (own GPU)", "short": "MG-LightVAE decoder", "id": "dec", "style": "teal"}, {"text": "≈40 frames at 704×1280 per segment [D]"}],
+        "above": [{"box": "MG-LightVAE decoder", "id": "dec", "style": "teal"}, {"text": "≈40 frames per segment at 720p"}],
         "insets": [{"for": "act", "label": "action module", "stack": [{"box": "Keys → cross-attention"}, {"box": "Mouse → self-attention"}]}],
         "annotations": [
-            {"at": "vae", "text": "*880* tokens per 22×40 latent frame at 704×1280 if the patch is (1,2,2) as in Wan2.2 [D, assumption]", "side": "left", "key": True},
-            {"at": "mem", "text": "each query view takes the past frame with the highest frustum-overlap score (GPU retrieval ≈*6.1*× faster than CPU); relative Plücker cues encode target-to-memory camera geometry", "side": "left"},
-            {"at": "seq", "text": "*5* memory + *4* past + *10* noisy latents in one sequence ≈ *16,720* tokens per segment [D]; re-processed every step, no KV cache", "side": "right"},
-            {"at": "attn", "text": "*24* heads, width *3,072*; one sequence of *5* memory + *4* past + *10* noisy latents ≈ *16,720* tokens, no KV cache; head-wise perturbed RoPE bases", "side": "left", "key": True},
-            {"at": "act", "text": "keys via a dedicated cross-attention, mouse via self-attention, in blocks *1–15* only (Matrix-Game 2.0 design)", "side": "left"},
-            {"at": "block", "text": "*30* layers, *5B* parameters (Wan2.2-TI2V-5B), INT8 on the attention projections; a *28B* MoE scale-up is also trained", "side": "right", "key": True},
-            {"at": "upd", "text": "multi-segment self-rollout DMD (*1–6* segments) → *3* steps; error injection trains on imperfect histories; GELU FFN *14,336*", "side": "right"},
-            {"at": "dec", "text": "~*40* FPS at 720p on 8 DiT GPUs + 1 VAE GPU (company claim); *0.13* s per 17-frame clip", "side": "right", "key": True},
+            {"at": "seq", "text": "*16,720* tokens, re-run every step", "side": "right"},
+            {"at": "attn", "text": "*5* memory + *4* past + *10* noisy latents", "side": "left", "key": True},
+            {"at": "act", "text": "Action modules in *15* of *30* blocks", "side": "left"},
+            {"at": "ffn", "text": "Width *3,072*, hidden *14,336*", "side": "left"},
+            {"at": "block", "text": "*30* layers · *24* heads · *5B*", "side": "right", "key": True},
+            {"at": "dec", "text": "~*40* fps at *720p*", "side": "right", "key": True},
         ],
         "feedback": "next segment",
     },

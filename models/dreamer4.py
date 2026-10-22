@@ -10,6 +10,7 @@ MODEL = {
     "params_num": 1.6e9,
     "open": "closed",
     "links": {"arXiv": "https://arxiv.org/abs/2509.24527", "page": "https://danijar.com/project/dreamer4"},
+    "tagline": "Few-step space-time transformer with agent heads",
     "summary": "A scalable world model that trains a Minecraft agent entirely offline inside its own imagination. A 400M "
                "block-causal transformer tokenizer (masked autoencoding, continuous tanh bottleneck) turns each 360x640 "
                "frame into 256 spatial tokens of 32 channels, and a 1.6B block-causal dynamics transformer, factorized "
@@ -50,18 +51,18 @@ MODEL = {
     "flow": {
         "below": [{"text": "Frame 360×640 + action"}],
         "stack": [
-            {"box": "Causal tokenizer (block-causal transformer)", "short": "Causal tokenizer", "id": "tok", "style": "teal"},
-            {"box": "tanh bottleneck → 256 latent tokens", "id": "lat", "minor": True},
-            {"box": "Add register, shortcut and action tokens", "short": "Add action tokens", "id": "tokens", "side": "Action emb."},
+            {"box": "Causal tokenizer", "id": "tok", "style": "teal"},
+            {"box": "Tanh bottleneck", "id": "lat", "minor": True},
+            {"box": "Add action tokens", "id": "tokens", "side": "Action emb."},
             {"group": [
                 {"group": [
                     {"residual": [{"box": "RMSNorm", "minor": True},
-                                  {"box": "Space attention (within frame)", "short": "Space attention", "id": "sattn", "style": "dark"}]},
+                                  {"box": "Space attention", "id": "sattn", "style": "dark"}]},
                     {"residual": [{"box": "RMSNorm", "minor": True},
-                                  {"box": "Time attention (causal, GQA)", "short": "Time attention (causal)", "id": "tattn", "style": "dark", "side": "RoPE"}]},
+                                  {"box": "Causal time attention", "id": "tattn", "style": "dark", "side": "RoPE"}]},
                     {"residual": [{"box": "RMSNorm", "minor": True}, {"box": "SwiGLU MLP", "id": "mlp"}]},
                 ], "repeat": "N ×", "id": "block"},
-                {"box": "x-prediction (clean latents)", "id": "xpred", "minor": True},
+                {"box": "Predict clean latents", "id": "xpred", "minor": True},
                 {"box": "Shortcut update", "id": "upd", "minor": True},
             ], "loop": "4 shortcut steps", "tint": "grey", "id": "denoise"},
             {"fanout": [[{"box": "Next-frame latents", "id": "out", "minor": True}],
@@ -70,12 +71,12 @@ MODEL = {
         "above": [{"box": "Tokenizer decoder", "id": "dec", "style": "teal"}, {"text": "Next frame 360×640"}],
         "insets": [{"for": "mlp", "stack": [{"fanout": [[{"box": "Linear"}], [{"box": "Linear"}, {"box": "SiLU"}]]}, {"merge": "x"}, {"box": "Linear"}]}],
         "annotations": [
-            {"at": "tok", "text": "*400M*, MAE-trained; *960* patches of 16×16 → *256* tokens × *32* channels", "side": "left", "key": True},
-            {"at": "tattn", "text": "long-context time attention only in every *4th* layer; context *192* frames (9.6 s) ≈ *49k* tokens [D]", "short": "long context in every *4th* layer; *192* frames", "side": "left", "key": True},
-            {"at": "block", "text": "*1.6B* dynamics transformer; layers and heads not disclosed", "side": "right", "key": True},
-            {"at": "upd", "text": "shortcut forcing: *4* passes per frame instead of *64*; past frames re-noised at τ = *0.1*", "side": "right"},
-            {"at": "val", "text": "policy and value share the dynamics trunk", "side": "right"},
-            {"at": "dec", "text": "*21* fps on one H100 (authors, Table 1)", "side": "right"},
+            {"at": "tok", "text": "*400M* tokenizer, *256* tokens per frame", "side": "left", "key": True},
+            {"at": "lat", "text": "*32* channels per token", "side": "right"},
+            {"at": "tattn", "text": "Every *4th* layer; layer count not disclosed", "side": "left"},
+            {"at": "block", "text": "*1.6B* parameters, *192*-frame context", "side": "right", "key": True},
+            {"at": "upd", "text": "*4* passes per frame instead of *64*", "side": "right"},
+            {"at": "dec", "text": "*21* fps at *360×640*", "side": "right", "key": True},
         ],
         "feedback": "next frame",
     },

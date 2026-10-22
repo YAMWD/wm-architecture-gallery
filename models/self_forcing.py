@@ -10,6 +10,7 @@ MODEL = {
     "params_num": 1.3e9,
     "open": "code + weights",
     "links": {"arXiv": "https://arxiv.org/abs/2506.08009", "code": "https://github.com/guandeh17/Self-Forcing"},
+    "tagline": "Few-step causal Wan DiT trained on its own rollouts",
     "summary": "The distillation recipe behind most real-time game world models (Matrix-Game 2.0, LongLive, SANA-WM). "
                "It converts the bidirectional Wan2.1-T2V-1.3B flow-matching DiT into a block-causal autoregressive "
                "model, trains it by rolling out its own 4-step generations with a KV cache and matching the teacher's "
@@ -58,33 +59,32 @@ MODEL = {
         "loop": "AR rollout",
     },
     "flow": {
-        "below": [{"text": "Text prompt + previous chunks (no action input)"}],
+        "below": [{"text": "Text prompt + previous chunks"}],
         "stack": [
-            {"box": "Wan2.1 3D causal VAE encoder", "short": "Wan2.1 VAE encoder", "id": "vae", "style": "teal"},
+            {"box": "Wan2.1 VAE encoder", "id": "vae", "style": "teal"},
             {"box": "Patchify 1×2×2", "id": "patch", "minor": True},
             {"group": [
                 {"box": "Noisy latent chunk", "id": "noisy", "style": "soft", "minor": True},
                 {"group": [
                     {"residual": [{"box": "AdaLN (scale, shift)", "minor": True, "side": "Timestep emb."},
-                                  {"box": "Block-causal self-attention", "id": "attn", "style": "dark", "side": "3D RoPE"}]},
+                                  {"box": "Block-causal attention", "id": "attn", "style": "dark", "side": "3D RoPE"}]},
                     {"residual": [{"box": "Cross-attention", "id": "xattn", "side": "umT5 text"}]},
                     {"residual": [{"box": "AdaLN (scale, shift)", "minor": True}, {"box": "Feed forward", "id": "ffn"}]},
                 ], "repeat": "30 ×", "id": "block"},
                 {"box": "Predicted velocity", "id": "vel", "minor": True},
                 {"box": "Update latents", "id": "upd", "minor": True},
-            ], "loop": "4 denoising steps (DMD)", "tint": "grey", "id": "denoise"},
-            {"box": "KV-refresh pass, write cache", "id": "kv", "minor": True},
+            ], "loop": "4 steps (DMD)", "tint": "grey", "id": "denoise"},
+            {"box": "KV-refresh pass", "id": "kv", "minor": True},
         ],
         "above": [{"box": "Wan2.1 VAE decoder", "id": "dec", "style": "teal"}, {"text": "12 frames at 832×480"}],
         "insets": [{"for": "ffn", "stack": [{"box": "Linear"}, {"box": "GELU"}, {"box": "Linear"}]}],
         "annotations": [
-            {"at": "vae", "text": "*1,560* latents per 30×52 latent frame; a chunk of *3* latent frames = *4,680* tokens [D]", "side": "left", "key": True},
-            {"at": "attn", "text": "*12* heads of *128*, width *1,536*; dense within the chunk, causal over a rolling cache of *21* latent frames = *32,760* tokens", "side": "left", "key": True},
-            {"at": "xattn", "text": "no action input: text-to-video only; *512*-token text KV per layer", "side": "left"},
-            {"at": "block", "text": "*30* layers, *1.3B* parameters, FFN *8,960* (Wan2.1-T2V-1.3B, unchanged)", "side": "right", "key": True},
-            {"at": "upd", "text": "timesteps *1000, 750, 500, 250* (shift *5*); distilled with DMD from the frozen *14B* teacher", "side": "right"},
-            {"at": "kv", "text": "*1* extra pass at timestep *0* writes clean KV: *5* passes per chunk; the rolling cache (≈*6.0 GB* BF16 [D]) evicts the oldest frames", "side": "right"},
-            {"at": "dec", "text": "*17.0* fps at 832×480 on one H100, *0.69* s first-chunk latency (authors, Table 1)", "side": "right", "key": True},
+            {"at": "vae", "text": "*4,680* tokens per chunk of *12* frames", "side": "left", "key": True},
+            {"at": "attn", "text": "*12* heads of *128*, window *32,760* tokens", "side": "left", "key": True},
+            {"at": "xattn", "text": "*512* text tokens, no action", "side": "left"},
+            {"at": "block", "text": "*30* layers · *1.3B* parameters", "side": "right", "key": True},
+            {"at": "kv", "text": "*5* passes per chunk · cache ≈*6.0 GB*", "side": "right"},
+            {"at": "dec", "text": "*17* fps · *0.69* s latency", "side": "right", "key": True},
         ],
         "feedback": "next chunk",
     },

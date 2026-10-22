@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="247" height="291" viewBox="0 0 247 291" font-family="IBM Plex Sans">
+<style>@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;700&amp;family=Saira+Semi+Condensed:wght@500;600&amp;display=swap");</style>
+<defs><marker id="ah_1E2A3B" markerWidth="7" markerHeight="7" refX="5.5" refY="3.5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0 L7,3.5 L0,7 z" fill="#1E2A3B"/></marker><marker id="ah_B95A08" markerWidth="7" markerHeight="7" refX="5.5" refY="3.5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0 L7,3.5 L0,7 z" fill="#B95A08"/></marker></defs>
+<rect x="0.0" y="0.0" width="248.0" height="292.0" rx="0.0" fill="#FFFFFF"/>
+<rect x="10.0" y="48.0" width="226.2" height="226.4" rx="20.0" fill="#EEF1F5" stroke="#5E6B80" stroke-width="1.0"/>
+<rect x="67.2" y="241.4" width="126.0" height="24.0" rx="6.0" fill="#DCF2F1" stroke="#00A8A4" stroke-width="1.0"/>
+<text x="130.2" y="256.8" font-family="IBM Plex Sans" font-weight="400" font-size="11.5" fill="#1E2A3B" text-anchor="middle">Wan2.1 VAE encoder</text>
+<path d="M 130.2 240.4 L 130.2 232.4" fill="none" stroke="#1E2A3B" stroke-width="1.2" marker-end="url(#ah_1E2A3B)"/>
+<rect x="49.2" y="57.0" width="161.9" height="174.5" rx="10.0" fill="#E7EAEF" stroke="#5E6B80" stroke-width="1.0"/>
+<text x="199.2" y="71.4" font-family="IBM Plex Sans" font-weight="400" font-size="10.5" fill="#B95A08" text-anchor="end">3 steps</text>
+<rect x="56.2" y="78.6" width="147.9" height="143.8" rx="10.0" fill="#E4EAF4" stroke="#1D3E72" stroke-width="1.0"/>
+<rect x="63.2" y="189.5" width="133.9" height="24.0" rx="6.0" fill="#1D3E72" stroke="#1D3E72" stroke-width="1.0"/>
+<text x="130.2" y="204.9" font-family="IBM Plex Sans" font-weight="400" font-size="11.5" fill="#FFFFFF" text-anchor="middle">Block-causal attention</text>
+<path d="M 130.2 188.5 L 130.2 180.5" fill="none" stroke="#1E2A3B" stroke-width="1.2" marker-end="url(#ah_1E2A3B)"/>
+<rect x="81.1" y="155.5" width="98.1" height="24.0" rx="6.0" fill="#FFFFFF" stroke="#1E2A3B" stroke-width="1.0"/>
+<text x="130.2" y="170.9" font-family="IBM Plex Sans" font-weight="400" font-size="11.5" fill="#1E2A3B" text-anchor="middle">Cross-attention</text>
+<path d="M 130.2 154.5 L 130.2 146.5" fill="none" stroke="#1E2A3B" stroke-width="1.2" marker-end="url(#ah_1E2A3B)"/>
+<rect x="83.8" y="121.6" width="92.9" height="24.0" rx="6.0" fill="#FDE8D4" stroke="#F58F2D" stroke-width="1.0"/>
+<text x="130.2" y="137.0" font-family="IBM Plex Sans" font-weight="400" font-size="11.5" fill="#1E2A3B" text-anchor="middle">Action module</text>
+<path d="M 130.2 120.6 L 130.2 112.6" fill="none" stroke="#1E2A3B" stroke-width="1.2" marker-end="url(#ah_1E2A3B)"/>
+<rect x="87.1" y="87.6" width="86.2" height="24.0" rx="6.0" fill="#FFFFFF" stroke="#1E2A3B" stroke-width="1.0"/>
+<text x="130.2" y="103.0" font-family="IBM Plex Sans" font-weight="400" font-size="11.5" fill="#1E2A3B" text-anchor="middle">Feed forward</text>
+<rect x="52.2" y="199.4" width="8.0" height="18.0" rx="0.0" fill="#E4EAF4"/>
+<path d="M 55.2 216.4 l 5 -6 l -8 -4 l 5 -6" fill="none" stroke="#1E2A3B" stroke-width="1.4"/>
+<text x="43.2" y="210.4" font-family="Saira SemiCondensed" font-weight="500" font-size="12.5" fill="#B95A08" text-anchor="end">30 ×</text>
+<path d="M 211.2 67.7 L 221.2 67.7 L 221.2 217.4 L 213.2 217.4" fill="none" stroke="#B95A08" stroke-width="1.2" stroke-dasharray="4 3" marker-end="url(#ah_B95A08)"/>
+<path d="M 130.2 286.4 L 130.2 266.4" fill="none" stroke="#1E2A3B" stroke-width="1.2" marker-end="url(#ah_1E2A3B)"/>
+<rect x="67.2" y="14.0" width="126.1" height="24.0" rx="6.0" fill="#DCF2F1" stroke="#00A8A4" stroke-width="1.0"/>
+<text x="130.2" y="29.4" font-family="IBM Plex Sans" font-weight="400" font-size="11.5" fill="#1E2A3B" text-anchor="middle">Wan2.1 VAE decoder</text>
+<path d="M 130.2 56.0 L 130.2 39.0" fill="none" stroke="#1E2A3B" stroke-width="1.2" marker-end="url(#ah_1E2A3B)"/>
+</svg>

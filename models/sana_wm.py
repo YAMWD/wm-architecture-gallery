@@ -10,6 +10,7 @@ MODEL = {
     "params_num": 2.6e9,
     "open": "code + weights",
     "links": {"arXiv": "https://arxiv.org/abs/2605.15178"},
+    "tagline": "Hybrid linear DiT with a fixed-size state",
     "summary": "A minute-scale camera-controlled world model whose DiT replaces most softmax attention with frame-wise "
                "Gated DeltaNet: 15 of 20 blocks keep a D×D recurrent state per head, updated once per latent frame, and "
                "only 5 blocks use softmax attention, run at deployment with an attention sink plus a local window. The "
@@ -21,7 +22,7 @@ MODEL = {
                            "latent frame at 720p are not stated in the paper, which calls the representation 8x smaller than Wan2.1-VAE's"),
         ("Core", "Hybrid linear DiT from SANA-Video: 20 blocks, d 2240, 20 heads of 112; 15 frame-wise Gated DeltaNet blocks "
                  "+ softmax attention at layers {3, 7, 11, 15, 19}, keeping the original QKV and output projections; text, "
-                 "video and pose tokens pass through the alternating blocks"),
+                 "video and pose tokens pass through the alternating blocks; norm and modulation type not disclosed"),
         ("Attention", "GDN blocks: a D×D recurrent state per head updated once per latent frame from all S spatial tokens "
                       "(forward scan global, reversed scan reset at chunk boundaries in the chunk-causal variant); softmax blocks: "
                       "first latent frame as sink + local temporal window at deployment; chunk size not stated"),
@@ -64,35 +65,33 @@ MODEL = {
         "loop": "AR rollout",
     },
     "flow": {
-        "below": [{"text": "First frame + text + 6-DoF camera trajectory"}],
+        "below": [{"text": "First frame + text + 6-DoF camera"}],
         "stack": [
-            {"box": "LTX2 VAE encoder (8 frames per latent)", "short": "LTX2 VAE encoder", "id": "vae", "style": "teal"},
+            {"box": "LTX2 VAE encoder", "id": "vae", "style": "teal"},
             {"box": "Patchify", "id": "patch", "minor": True},
             {"group": [
                 {"box": "Noisy latent chunk", "id": "noisy", "style": "soft", "minor": True},
                 {"group": [
                     {"residual": [{"box": "Norm", "minor": True, "side": "Timestep emb."},
-                                  {"fanout": [[{"box": "Frame-wise Gated DeltaNet", "short": "Gated DeltaNet", "id": "gdn", "style": "dark"}],
-                                              [{"box": "Softmax attention (sink + window)", "short": "Softmax attention", "id": "sattn", "style": "dark"}]]},
-                                  {"box": "Add Plücker mixing", "id": "pl", "style": "orange", "minor": True, "side": "Raw-frame Plücker rays"}]},
+                                  {"fanout": [[{"box": "Softmax attention", "id": "sattn", "style": "dark"}],
+                                              [{"box": "Gated DeltaNet", "id": "gdn", "style": "dark"}]]},
+                                  {"box": "Add Plücker mixing", "id": "pl", "style": "orange", "minor": True, "side": "Plücker raymaps"}]},
                     {"residual": [{"box": "UCPE camera attention", "id": "ucpe", "style": "orange", "side": "6-DoF poses"}]},
                     {"residual": [{"box": "Cross-attention", "id": "xattn", "minor": True, "side": "Text tokens"}]},
                     {"residual": [{"box": "Norm", "minor": True}, {"box": "Mix-FFN", "id": "ffn"}]},
                 ], "repeat": "20 ×", "id": "block"},
                 {"box": "Predicted velocity", "id": "vel", "minor": True},
                 {"box": "Update latents", "id": "upd", "minor": True},
-            ], "loop": "4 denoising steps (Self Forcing)", "tint": "grey", "id": "denoise"},
+            ], "loop": "4 distilled steps", "tint": "grey", "id": "denoise"},
         ],
         "above": [{"box": "LTX2 VAE decoder", "id": "dec", "style": "teal"}, {"text": "720p at 16 fps, up to 60 s"}],
         "annotations": [
-            {"at": "vae", "text": "*128* latent channels, one latent frame per *8* raw frames (*8*× smaller than Wan2.1-VAE); spatial stride and tokens per frame not stated", "short": "one latent frame per *8* raw frames", "side": "left", "key": True},
-            {"at": "gdn", "text": "in *15* of *20* blocks: a D×D recurrent state per head (D = *112*), updated once per latent frame from all spatial tokens; ≈*7.5 MB* for all 15 layers [D]", "short": "*15* of *20* blocks; fixed state ≈ *7.5 MB* [D]", "side": "left", "key": True},
-            {"at": "sattn", "text": "in *5* of *20* blocks (layers *3, 7, 11, 15, 19*); first latent frame as sink + local temporal window at deployment", "short": "*5* of *20* blocks; sink + local window", "side": "right", "key": True},
-            {"at": "pl", "text": "*8* raw-frame raymaps per VAE stride packed into *48* channels → zero-init 3D patch embedder, added after each attention output", "side": "left"},
-            {"at": "ucpe", "text": "relative camera encoding on the geometric channels of the camera-branch heads, RoPE on the rest; in every block", "side": "left"},
-            {"at": "block", "text": "*20* blocks, width *2,240*, *20* heads, *2.6B* parameters; text via cross-attention; norm and modulation type not disclosed", "short": "*20* blocks, width *2,240*, *2.6B*", "side": "right", "key": True},
-            {"at": "upd", "text": "*60*-step chunk-causal generator distilled with Self Forcing to *4* steps: DiT time per minute of 720p *43* s, *29* s with the sink (one H100); chunk size not stated", "side": "right"},
-            {"at": "dec", "text": "*60* s of 720p in *34* s on one RTX 5090 with NVFP4 (authors); optional *17B* refiner, *3* Euler steps", "short": "*60* s of 720p in *34* s on one RTX 5090", "side": "right", "key": True},
+            {"at": "vae", "text": "*8* raw frames per latent", "side": "left", "key": True},
+            {"at": "sattn", "text": "*5* of *20* blocks · sink + local window", "side": "left"},
+            {"at": "gdn", "text": "*15* of *20* blocks · state ≈*7.5 MB*", "side": "right", "key": True},
+            {"at": "block", "text": "*20* heads of *112* · *2.6B* parameters", "side": "right", "key": True},
+            {"at": "upd", "text": "*4* steps, distilled from *60*", "side": "right"},
+            {"at": "dec", "text": "*60* s of *720p* in *34* s", "side": "right", "key": True},
         ],
         "feedback": "next chunk",
     },

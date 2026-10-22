@@ -11,6 +11,7 @@ MODEL = {
     "open": "code + weights",
     "links": {"arXiv": "https://arxiv.org/abs/2506.21539", "code": "https://github.com/alibaba-damo-academy/WorldVLA",
               "weights": "https://huggingface.co/Alibaba-DAMO-Academy/WorldVLA"},
+    "tagline": "One LLM writes next-frame and action tokens",
     "summary": "A single autoregressive transformer, initialised from Chameleon, that treats images, text and actions as one "
                "token vocabulary: it predicts the next frame's VQ-GAN codes as a world model and the next action's 7 tokens "
                "as a VLA, and training both together improves both. There are no diffusion steps; everything is next-token "
@@ -21,7 +22,8 @@ MODEL = {
         ("Representation", "VQ-GAN image tokenizer (compression 16, codebook 8192): 256 tokens per 256x256 frame or 1,024 per "
                            "512x512; BPE text; one shared vocabulary of 65,536 including the 8192 image and 256 action tokens"),
         ("Core", "Chameleon-initialised decoder-only LLM; the paper gives no size, the released base_model config.json has "
-                 "32 layers, d 4096, 32 heads, FFN 11,008 (~7B; 14 GB of bf16 safetensors [D])"),
+                 "32 layers, d 4096, 32 heads, FFN 11,008 (~7B; 14 GB of bf16 safetensors [D]); block details not disclosed "
+                 "in the paper"),
         ("Attention", "Causal over text, image and action tokens in world-model mode; in action mode a mask lets each action "
                       "attend to text and images but not to earlier actions of the chunk; default M = 2 input frames"),
         ("Actions", "7 discrete tokens per action (3 relative positions, 3 relative angles, 1 gripper), 256 bins per dimension; "
@@ -61,7 +63,7 @@ MODEL = {
         "below": [{"text": "Text + 2 history frames"}],
         "stack": [
             {"box": "VQ-GAN image tokenizer", "short": "VQ-GAN tokenizer", "id": "tok", "style": "teal"},
-            {"box": "One shared vocabulary", "id": "seq", "side": "BPE text, action bins", "minor": True},
+            {"box": "One shared vocabulary", "id": "seq", "side": "Text, action bins", "minor": True},
             {"box": "Token embedding", "id": "emb", "minor": True},
             {"group": [
                 {"residual": [{"box": "Norm", "minor": True}, {"box": "Masked self-attention", "id": "attn", "style": "dark"}]},
@@ -75,17 +77,12 @@ MODEL = {
         ],
         "above": [{"box": "VQ-GAN decoder", "id": "dec", "style": "teal"}, {"text": "Next frame (world-model mode)"}],
         "annotations": [
-            {"at": "tok", "text": "VQ-GAN, compression *16*, codebook *8,192*: *256* codes per 256×256 frame, *1,024* per 512×512",
-             "short": "*256* codes per 256×256 frame (*1,024* at 512), codebook *8,192*", "side": "left", "key": True},
-            {"at": "seq", "text": "one vocabulary of *65,536* incl. *8,192* image and *256* action tokens; *7* tokens per action (3 position, 3 angle, 1 gripper); M = *2* history frames by default", "side": "left"},
-            {"at": "attn", "text": "causal over text, image and action tokens; in action mode each action sees text and images but not earlier actions of its chunk",
-             "short": "causal; actions do not see earlier actions of their chunk", "side": "left", "key": True},
-            {"at": "block", "text": "Chameleon-initialised: *32* layers, d *4,096*, *32* heads, FFN *11,008* (~*7B*, released config); block details not disclosed in the paper",
-             "short": "*32* layers, d *4,096*, *32* heads (~*7B*)", "side": "right", "key": True},
-            {"at": "sample", "text": "next token over *65,536*: *7* passes per action (a chunk of K = *5* can be generated in parallel), *256* or *1,024* per imagined frame",
-             "short": "*7* passes per action, *256*–*1,024* per frame", "side": "right", "key": True},
-            {"at": "act", "text": "LIBERO: *3.13* FPS with chunking at *2* history frames (*1.77* without); GPU not stated (authors)", "side": "right"},
-            {"at": "dec", "text": "world-model mode only; actions need no decoding", "side": "right"},
+            {"at": "tok", "text": "*256* codes per frame · codebook *8,192*", "side": "left", "key": True},
+            {"at": "seq", "text": "Vocabulary of *65,536*", "side": "left"},
+            {"at": "attn", "text": "*32* heads · width *4,096*", "side": "left"},
+            {"at": "block", "text": "*32* layers · ~*7B* parameters", "side": "right", "key": True},
+            {"at": "sample", "text": "*7* passes per action · *256*+ per frame", "side": "right", "key": True},
+            {"at": "act", "text": "*3.13* FPS with chunking (*1.77* without)", "side": "right", "key": True},
         ],
         "feedback": "next token",
     },

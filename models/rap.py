@@ -10,6 +10,7 @@ MODEL = {
     "params_num": 32.5e9,
     "open": "code",
     "links": {"arXiv": "https://arxiv.org/abs/2305.14992", "code": "https://github.com/Ber666/llm-reasoners"},
+    "tagline": "Frozen LLM as world model inside tree search",
     "summary": "The template for using an off-the-shelf LLM as a world model. A frozen LLaMA-33B is prompted three ways: "
                "as the policy that proposes actions, as the world model that writes the next state in natural language, "
                "and as the reward model. Monte Carlo tree search runs 10-20 iterations over these text states before one "
@@ -56,7 +57,7 @@ MODEL = {
         "loop": "MCTS",
     },
     "flow": {
-        "below": [{"text": "Prompt: demonstrations + state + action (text)", "short": "Prompt (text)"}],
+        "below": [{"text": "Prompt: examples + state + action"}],
         "stack": [
             {"box": "LLaMA tokenizer", "id": "tok", "style": "teal"},
             {"box": "Token embedding", "id": "emb", "minor": True},
@@ -69,18 +70,17 @@ MODEL = {
             {"box": "Linear output layer", "id": "out", "minor": True},
             {"box": "Sample next token", "id": "sample"},
         ],
-        "above": [{"text": "Next state, action or reward as text"}],
+        "above": [{"text": "Next state, action or reward"}],
         "insets": [
             {"for": "ffn", "stack": [{"fanout": [[{"box": "Linear"}], [{"box": "Linear"}, {"box": "SiLU"}]]}, {"merge": "x"}, {"box": "Linear"}]},
             {"for": "sample", "label": "MCTS iteration", "stack": [{"box": "Select a leaf by UCT"}, {"box": "Propose d actions (LLM)"},
                                                                     {"box": "Predict next state (LLM)"}, {"box": "Score, back-propagate Q"}]},
         ],
         "annotations": [
-            {"at": "tok", "text": "frozen LLaMA-33B, no training; states and actions are natural-language text", "short": "frozen LLaMA-33B; states are text", "side": "left", "key": True},
-            {"at": "attn", "text": "*52* heads, width *6,656*; causal over prompt and generated text, cut at *2,048* tokens or a newline", "side": "left", "key": True},
-            {"at": "block", "text": "*60* layers, *32.5B* parameters (LLaMA paper); MCTS: *10–20* iterations of LLM generations", "side": "right", "key": True},
-            {"at": "sample", "text": "temperature *0.8*; one full generation per state transition; the same model is policy, world model and reward model", "side": "left"},
-            {"at": "out", "text": "rewards: action log-probability, answer confidence, P('Yes' | 'is this step correct?'); runs on 4× A5000 24 GB, no latency figure", "side": "left"},
+            {"at": "attn", "text": "*52* heads, width *6,656*", "side": "left", "key": True},
+            {"at": "block", "text": "*60* layers, *32.5B* parameters, frozen", "side": "left", "key": True},
+            {"at": "out", "text": "*1* LLM call per transition, ≤ *2,048* tokens", "side": "left"},
+            {"at": "sample", "text": "*10–20* MCTS iterations per answer", "side": "left", "key": True},
         ],
         "feedback": "MCTS",
     },

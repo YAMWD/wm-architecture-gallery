@@ -10,6 +10,7 @@ MODEL = {
     "params_num": 4e9,
     "open": "code + weights",
     "links": {"arXiv": "https://arxiv.org/abs/2501.03575", "code": "https://github.com/nvidia-cosmos/cosmos-predict1"},
+    "tagline": "Llama-style GPT over discrete video tokens",
     "summary": "NVIDIA's autoregressive world foundation models: Llama3-style GPTs trained from scratch to predict the "
                "next video token, with no language pretraining. A discrete video tokenizer (8x16x16, FSQ, vocabulary "
                "64,000) gives 2,560 tokens per latent frame at 640x1024, and the 4B and 12B models attend causally over "
@@ -17,7 +18,7 @@ MODEL = {
                "Medusa heads cut the number of forward passes 4.6x. Generating 32 frames takes 31 s on one H100 for the 4B.",
     "facts": [
         ("Representation", "Cosmos-Tokenize1-DV8x16x16 discrete tokens, FSQ levels (8,8,8,5,5,5) = vocabulary 64,000; at 640x1024 one latent frame (8 video frames) is 40x64 = 2,560 tokens [D]"),
-        ("Core", "Llama3-style decoder with SwiGLU and QK-norm: 4B = 16 layers, d 4096, FFN 14,336, 32 heads, 8 KV heads; 12B = 40 layers, d 5120; the 5B/13B Video2World models add cross-attention layers"),
+        ("Core", "Llama3-style decoder with SwiGLU and QK-norm: 4B = 16 layers, d 4096, FFN 14,336, 32 heads, 8 KV heads; 12B = 40 layers, d 5120; the 5B/13B Video2World models add cross-attention layers; norm type not stated"),
         ("Attention", "Dense causal over 12,800 tokens = 5 latent frames = 33 video frames, the maximum the AR variants support [D]; 3D RoPE (theta 500,000) plus a 3D absolute positional embedding in every block; the text says no MQA/GQA although the table lists 8 KV heads"),
         ("Actions", "The base models take only video; the Bridge robot post-train (5B ActionCond) projects the 7-D gripper action with an MLP and injects it by cross-attention; text enters by T5-XXL cross-attention in Video2World"),
         ("Prediction", "Next-token softmax, 2,560 passes per latent frame; Medusa speculative decoding (9 single-layer FFN heads, no tree attention) gives up to 2.0x token throughput and 4.6x fewer passes for 4B, 3.2x and 6.1x for 5B"),
@@ -47,14 +48,14 @@ MODEL = {
     "flow": {
         "below": [{"text": "Video 640×1024 (+ text prompt)"}],
         "stack": [
-            {"box": "Cosmos-Tokenize1 DV8×16×16", "short": "Video tokenizer (FSQ)", "id": "tok", "style": "teal"},
+            {"box": "Cosmos-Tokenize1 encoder", "short": "Video tokenizer (FSQ)", "id": "tok", "style": "teal"},
             {"box": "FSQ quantization", "id": "fsq", "minor": True},
             {"box": "Token embedding", "id": "emb", "minor": True},
             {"group": [
-                {"box": "Add 3D absolute positions", "id": "ape", "minor": True},
+                {"box": "3D absolute positions", "id": "ape", "minor": True},
                 {"residual": [{"box": "Norm", "minor": True},
                               {"box": "Masked self-attention", "id": "attn", "style": "dark", "side": "3D RoPE"}]},
-                {"residual": [{"box": "Norm", "minor": True}, {"box": "Cross-attention", "id": "xattn", "side": "T5-XXL text"}]},
+                {"residual": [{"box": "Norm", "minor": True}, {"box": "Cross-attention", "id": "xattn", "side": "T5 (Video2World)"}]},
                 {"residual": [{"box": "Norm", "minor": True}, {"box": "SwiGLU feed forward", "short": "SwiGLU FFN", "id": "ffn"}]},
             ], "repeat": "16 ×", "id": "block"},
             {"fanout": [[{"box": "Output layer", "id": "out", "minor": True}, {"box": "Sample next token", "id": "sample"}],
@@ -63,15 +64,12 @@ MODEL = {
         "above": [{"box": "Tokenizer decoder", "id": "dec", "style": "teal"}, {"text": "Frames 640×1024 (33 video frames)"}],
         "insets": [{"for": "ffn", "stack": [{"fanout": [[{"box": "Linear"}], [{"box": "Linear"}, {"box": "SiLU"}]]}, {"merge": "x"}, {"box": "Linear"}]}],
         "annotations": [
-            {"at": "tok", "text": "FSQ vocabulary *64,000*; *2,560* tokens per latent frame of *8* video frames [D]", "side": "left", "key": True},
-            {"at": "fsq", "text": "FSQ levels (*8, 8, 8, 5, 5, 5*); no language pretraining", "side": "left"},
-            {"at": "attn", "text": "*32* heads, width *4,096*, QK-norm; dense causal over *12,800* tokens = *5* latent frames", "side": "left", "key": True},
-            {"at": "ape", "text": "a learnable 3D absolute positional embedding per block; *8* KV heads in the config table although the text says no MQA/GQA", "side": "left"},
-            {"at": "xattn", "text": "Video2World *5B*/*13B* only; the ActionCond robot post-train injects a *7*-D action the same way; Llama3-style, norm type not stated", "side": "left"},
-            {"at": "block", "text": "*4B*: *16* layers, FFN *14,336*; *12B*: *40* layers, width *5,120*", "side": "right", "key": True},
-            {"at": "sample", "text": "*2,560* passes per latent frame; *4B* on one H100: *32* frames in *31* s (NVIDIA)", "side": "right", "key": True},
-            {"at": "medusa", "text": "*9* single-layer FFN heads, no tree attention: *4.6×* fewer passes, *2.0×* token throughput for *4B*", "side": "right"},
-            {"at": "dec", "text": "optional *7B* diffusion decoder roughly doubles the time (*31* → *61* s)", "side": "right"},
+            {"at": "tok", "text": "*2,560* tokens per latent frame", "side": "left", "key": True},
+            {"at": "fsq", "text": "Vocabulary of *64,000*", "side": "right"},
+            {"at": "attn", "text": "*32* heads, context of *12,800* tokens", "side": "left"},
+            {"at": "block", "text": "*16* layers, width *4,096*", "side": "right", "key": True},
+            {"at": "sample", "text": "*2,560* serial passes per latent frame", "side": "left", "key": True},
+            {"at": "dec", "text": "*4B*: *32* frames in *31* s", "side": "left", "key": True},
         ],
         "feedback": "next latent frame",
     },

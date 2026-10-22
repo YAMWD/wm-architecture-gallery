@@ -6,10 +6,11 @@ MODEL = {
     "family": "wam",
     "role": "Diffusion transformer",
     "status": "ICLR 2026",
-    "params": "2B GE-Base + 160M action decoder",
+    "params": "2B + 160M action decoder",
     "params_num": 2.16e9,
     "open": "code + weights",
     "links": {"arXiv": "https://arxiv.org/abs/2508.05635", "page": "https://genie-envisioner.github.io"},
+    "tagline": "Thin action DiT reads a video DiT's cached latents",
     "summary": "A two-stream world-action model on top of GE-Base, an instruction-conditioned multi-view video DiT built from "
                "LTX-Video 2B and pretrained on ~3,000 h of AgiBot-World-Beta. GE-Act adds a parallel 160M action branch with "
                "the same depth but a smaller hidden size; it reads the visual latents of every GE-Base block through "
@@ -22,7 +23,8 @@ MODEL = {
                            "not disclosed"),
         ("Core", "GE-Base: LTX-Video 2B DiT (28 layers, 32 heads of 64 = d 2048 per its config.json) with 2D RoPE plus view "
                  "embeddings, cross-view attention in selected blocks and a causal cross-view block; GE-Act: same block "
-                 "design and depth with a reduced hidden size, 160M parameters (width not stated)"),
+                 "design and depth with a reduced hidden size, 160M parameters (width not stated); norms and modulation "
+                 "not detailed"),
         ("Attention", "Video: spatial self-attention per view, cross-view self-attention over (views, H, W) in sparse blocks, "
                       "T5-XXL instruction via cross-attention; GE-Act action tokens cross-attend to the visual latents of "
                       "every GE-Base block"),
@@ -60,16 +62,16 @@ MODEL = {
         "loop": "closed loop with real frames",
     },
     "flow": {
-        "below": [{"text": "3 views + memory frames + instruction"}],
+        "below": [{"text": "3 views + memory frames + text"}],
         "stack": [
-            {"box": "Video VAE encoder (frozen)", "short": "Video VAE encoder", "id": "vae", "style": "teal"},
+            {"box": "Video VAE encoder", "id": "vae", "style": "teal"},
             {"box": "View tokens + noise maps", "id": "tok", "style": "soft", "minor": True, "side": "Timestep enc."},
             {"group": [
-                {"residual": [{"box": "Spatial / cross-view attention", "short": "Spatial attention", "id": "attn", "style": "dark", "side": "2D RoPE + view emb."}]},
+                {"residual": [{"box": "Multi-view attention", "id": "attn", "style": "dark", "side": "2D RoPE, view emb."}]},
                 {"residual": [{"box": "Cross-attention", "id": "xattn", "side": "T5-XXL text", "minor": True}]},
                 {"residual": [{"box": "Feed forward", "id": "ffn"}]},
             ], "repeat": "28 ×", "id": "vblock"},
-            {"box": "Cache every block's latents", "short": "Cached block latents", "id": "cache", "minor": True},
+            {"box": "Cache all block latents", "id": "cache", "minor": True},
             {"group": [
                 {"box": "Noisy action tokens", "id": "noisy", "style": "soft", "minor": True},
                 {"group": [
@@ -79,21 +81,16 @@ MODEL = {
                 ], "repeat": "28 ×", "tint": "orange", "id": "ablock"},
                 {"box": "Update actions", "id": "upd", "minor": True},
             ], "loop": "5 action steps", "tint": "grey", "id": "denoise"},
-            {"box": "Action trajectory", "id": "act", "style": "orange"},
+            {"box": "Action trajectory", "id": "act", "style": "orange", "minor": True},
         ],
-        "above": [{"text": "54 actions at 30 Hz; no video decoded", "short": "54 actions; no video decoded"}],
+        "above": [{"text": "54 actions at 30 Hz, no video", "id": "out"}],
         "annotations": [
-            {"at": "vae", "text": "frozen video VAE; head and two wrist views, each with the initial frame + *4* sparse memory frames; tokens per frame not disclosed",
-             "short": "*3* views + *4* memory frames; tokens per frame not disclosed", "side": "left", "key": True},
-            {"at": "attn", "text": "spatial self-attention per view; cross-view attention over (views, H, W) only in selected blocks; *32* heads of *64*", "side": "left"},
-            {"at": "vblock", "text": "GE-Base: LTX-Video 2B DiT, *28* layers, d *2,048*; *1* flow-matching step per inference pass, then the latents of every block are cached; norms and modulation not detailed",
-             "short": "GE-Base: *28* layers, d *2,048*; *1* video step, latents cached", "side": "right", "key": True},
-            {"at": "axattn", "text": "each action block cross-attends to the cached latents of the matching GE-Base block", "side": "left"},
-            {"at": "affn", "text": "GE-Act: same block design and depth, reduced width (not stated), *160M*; a new action DiT is trained for each embodiment",
-             "short": "GE-Act: *28* thin blocks, *160M*", "side": "right", "key": True},
-            {"at": "upd", "text": "*5* flow-matching steps on the cached video latents; video latents at *5* Hz, actions at *30* Hz (*1:6*)", "side": "left"},
-            {"at": "act", "text": "*54*-step trajectory (dual-arm 14-D poses) in *200* ms on an RTX 4090 mounted on the robot (authors)",
-             "short": "*54* actions in *200* ms on one RTX 4090 (authors)", "side": "right", "key": True},
+            {"at": "vae", "text": "Tokens per latent frame not disclosed", "side": "left", "key": True},
+            {"at": "attn", "text": "*32* heads · width *2,048*", "side": "left"},
+            {"at": "vblock", "text": "*28* layers · *2B* parameters", "side": "right", "key": True},
+            {"at": "cache", "text": "*1* video step per chunk", "side": "left"},
+            {"at": "ablock", "text": "*28* thin blocks · *160M*", "side": "right", "key": True},
+            {"at": "out", "text": "*200* ms per trajectory", "side": "left", "key": True},
         ],
         "feedback": "next chunk",
     },

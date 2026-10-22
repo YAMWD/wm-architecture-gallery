@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="275" height="316" viewBox="0 0 275 316" font-family="IBM Plex Sans">
+<style>@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;700&amp;family=Saira+Semi+Condensed:wght@500;600&amp;display=swap");</style>
+<defs><marker id="ah_1E2A3B" markerWidth="7" markerHeight="7" refX="5.5" refY="3.5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0 L7,3.5 L0,7 z" fill="#1E2A3B"/></marker><marker id="ah_B95A08" markerWidth="7" markerHeight="7" refX="5.5" refY="3.5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0 L7,3.5 L0,7 z" fill="#B95A08"/></marker></defs>
+<rect x="0.0" y="0.0" width="276.0" height="317.0" rx="0.0" fill="#FFFFFF"/>
+<rect x="10.0" y="14.0" width="254.2" height="285.3" rx="20.0" fill="#EEF1F5" stroke="#5E6B80" stroke-width="1.0"/>
+<rect x="81.2" y="266.4" width="126.0" height="24.0" rx="6.0" fill="#DCF2F1" stroke="#00A8A4" stroke-width="1.0"/>
+<text x="144.2" y="281.8" font-family="IBM Plex Sans" font-weight="400" font-size="11.5" fill="#1E2A3B" text-anchor="middle">Wan2.2 VAE encoder</text>
+<path d="M 144.2 265.4 L 144.2 257.4" fill="none" stroke="#1E2A3B" stroke-width="1.2" marker-end="url(#ah_1E2A3B)"/>
+<rect x="49.2" y="57.0" width="189.9" height="199.4" rx="10.0" fill="#E7EAEF" stroke="#5E6B80" stroke-width="1.0"/>
+<text x="227.2" y="71.4" font-family="IBM Plex Sans" font-weight="400" font-size="10.5" fill="#B95A08" text-anchor="end">10 steps</text>
+<rect x="88.9" y="223.4" width="110.7" height="24.0" rx="6.0" fill="#EEF1F5" stroke="#5E6B80" stroke-width="1.0"/>
+<text x="144.2" y="238.8" font-family="IBM Plex Sans" font-weight="400" font-size="11.5" fill="#1E2A3B" text-anchor="middle">Add action tokens</text>
+<path d="M 144.2 222.4 L 144.2 214.4" fill="none" stroke="#1E2A3B" stroke-width="1.2" marker-end="url(#ah_1E2A3B)"/>
+<rect x="56.2" y="78.6" width="175.9" height="134.8" rx="10.0" fill="#E4EAF4" stroke="#1D3E72" stroke-width="1.0"/>
+<rect x="95.3" y="165.5" width="97.8" height="38.9" rx="6.0" fill="#1D3E72" stroke="#1D3E72" stroke-width="1.0"/>
+<text x="144.2" y="180.9" font-family="IBM Plex Sans" font-weight="400" font-size="11.5" fill="#FFFFFF" text-anchor="middle">Shared masked</text>
+<text x="144.2" y="195.3" font-family="IBM Plex Sans" font-weight="400" font-size="11.5" fill="#FFFFFF" text-anchor="middle">attention</text>
+<path d="M 144.2 164.5 L 144.2 156.5" fill="none" stroke="#1E2A3B" stroke-width="1.2" marker-end="url(#ah_1E2A3B)"/>
+<rect x="95.1" y="131.6" width="98.1" height="24.0" rx="6.0" fill="#FFFFFF" stroke="#1E2A3B" stroke-width="1.0"/>
+<text x="144.2" y="147.0" font-family="IBM Plex Sans" font-weight="400" font-size="11.5" fill="#1E2A3B" text-anchor="middle">Cross-attention</text>
+<path d="M 144.2 130.6 L 99.3 112.6" fill="none" stroke="#1E2A3B" stroke-width="1.2" marker-end="url(#ah_1E2A3B)"/>
+<path d="M 144.2 130.6 L 187.2 112.6" fill="none" stroke="#1E2A3B" stroke-width="1.2" marker-end="url(#ah_1E2A3B)"/>
+<rect x="63.2" y="87.6" width="72.1" height="24.0" rx="6.0" fill="#FFFFFF" stroke="#1E2A3B" stroke-width="1.0"/>
+<text x="99.3" y="103.0" font-family="IBM Plex Sans" font-weight="400" font-size="11.5" fill="#1E2A3B" text-anchor="middle">Video MLP</text>
+<rect x="149.3" y="87.6" width="75.8" height="24.0" rx="6.0" fill="#FDE8D4" stroke="#F58F2D" stroke-width="1.0"/>
+<text x="187.2" y="103.0" font-family="IBM Plex Sans" font-weight="400" font-size="11.5" fill="#1E2A3B" text-anchor="middle">Action MLP</text>
+<rect x="52.2" y="190.4" width="8.0" height="18.0" rx="0.0" fill="#E4EAF4"/>
+<path d="M 55.2 207.4 l 5 -6 l -8 -4 l 5 -6" fill="none" stroke="#1E2A3B" stroke-width="1.4"/>
+<text x="43.2" y="201.4" font-family="Saira SemiCondensed" font-weight="500" font-size="12.5" fill="#B95A08" text-anchor="end">30 ×</text>
+<path d="M 239.2 67.7 L 249.2 67.7 L 249.2 242.4 L 241.2 242.4" fill="none" stroke="#B95A08" stroke-width="1.2" stroke-dasharray="4 3" marker-end="url(#ah_B95A08)"/>
+<path d="M 144.2 56.0 L 144.2 48.0" fill="none" stroke="#1E2A3B" stroke-width="1.2" marker-end="url(#ah_1E2A3B)"/>
+<rect x="101.6" y="23.0" width="85.2" height="24.0" rx="6.0" fill="#FDE8D4" stroke="#F58F2D" stroke-width="1.0"/>
+<text x="144.2" y="38.4" font-family="IBM Plex Sans" font-weight="400" font-size="11.5" fill="#1E2A3B" text-anchor="middle">Action chunk</text>
+<path d="M 144.2 311.3 L 144.2 291.3" fill="none" stroke="#1E2A3B" stroke-width="1.2" marker-end="url(#ah_1E2A3B)"/>
+<path d="M 144.2 22.0 L 144.2 2.0" fill="none" stroke="#1E2A3B" stroke-width="1.2" marker-end="url(#ah_1E2A3B)"/>
+</svg>

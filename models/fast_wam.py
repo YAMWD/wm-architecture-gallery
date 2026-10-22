@@ -10,6 +10,7 @@ MODEL = {
     "params_num": 6e9,
     "open": "closed",
     "links": {"arXiv": "https://arxiv.org/abs/2603.16666", "page": "https://yuantianyuan01.github.io/FastWAM"},
+    "tagline": "Video DiT plus action expert, no imagined video",
     "summary": "A mixture-of-transformers world-action model that keeps video co-training but drops test-time imagination. "
                "A Wan2.2-5B video DiT and a 1B action-expert DiT (the same architecture at d 1024) share attention; in "
                "training, future video latents and the action chunk are denoised jointly under a structured mask, while at "
@@ -20,7 +21,8 @@ MODEL = {
         ("Representation", "Wan2.2 VAE latents of the observation, with the multi-camera images concatenated into one image; "
                            "training video chunks of 9 frames after 4x temporal downsampling; tokens per frame not disclosed"),
         ("Core", "Video DiT from Wan2.2-5B (30 layers, d 3072, 24 heads, FFN 14,336 per its config.json) plus an action "
-                 "expert with the same architecture at d 1024 (1B); T5 text reaches all tokens through cross-attention"),
+                 "expert with the same architecture at d 1024 (1B); T5 text reaches all tokens through cross-attention; "
+                 "norms and timestep modulation not detailed in the paper"),
         ("Attention", "Shared attention with a structured mask: clean first-frame tokens attend to nothing else; future video "
                       "tokens (training only) attend within the video branch and to the first frame; action tokens attend "
                       "within the action branch and to the first frame, never to future video"),
@@ -58,14 +60,14 @@ MODEL = {
     "flow": {
         "below": [{"text": "Observation (cameras tiled) + text"}],
         "stack": [
-            {"box": "Wan2.2 VAE encoder (frozen)", "short": "Wan2.2 VAE encoder", "id": "vae", "style": "teal"},
+            {"box": "Wan2.2 VAE encoder", "id": "vae", "style": "teal"},
             {"box": "Clean first-frame tokens", "id": "first", "minor": True},
             {"group": [
                 {"box": "Add noisy action tokens", "short": "Add action tokens", "id": "noisy", "style": "soft", "side": "Noisy action chunk"},
                 {"group": [
                     {"fanout": [[{"box": "Video QKV", "id": "vqkv", "minor": True}],
                                 [{"box": "Action QKV", "id": "aqkv", "style": "orange", "minor": True}]]},
-                    {"box": "Shared attention, structured mask", "short": "Shared masked attention", "id": "attn", "style": "dark"},
+                    {"box": "Shared masked attention", "id": "attn", "style": "dark"},
                     {"box": "Cross-attention", "id": "xattn", "side": "T5 text"},
                     {"fanout": [[{"box": "Video MLP", "id": "vmlp"}],
                                 [{"box": "Action-expert MLP", "short": "Action MLP", "id": "amlp", "style": "orange"}]]},
@@ -76,17 +78,12 @@ MODEL = {
         ],
         "above": [{"text": "32 actions; no video decoded"}],
         "annotations": [
-            {"at": "vae", "text": "frozen Wan2.2 VAE; cameras concatenated into one image; at inference only the clean first-frame latents; tokens per frame not disclosed",
-             "short": "Wan2.2 VAE, first frame only; tokens per frame not disclosed", "side": "left", "key": True},
-            {"at": "noisy", "text": "h = *32* noisy action tokens for the action expert; in training, noisy future-video latents (*9* frames after *4×* temporal downsampling) join the video stream", "side": "left"},
-            {"at": "attn", "text": "structured mask: the first frame attends only to itself; actions attend to actions and the first frame, never to future video",
-             "short": "actions see the first frame, never future video", "side": "left", "key": True},
-            {"at": "xattn", "text": "T5 text reaches all tokens through cross-attention; norms and timestep modulation not detailed in the paper", "side": "left"},
-            {"at": "amlp", "text": "*30* layers; video stream from Wan2.2-5B (d *3,072*, *24* heads, FFN *14,336*) + action expert of the same architecture at d *1,024* (*1B*) = *6B*",
-             "short": "*30* layers: video d *3,072* (*5B*) + action expert d *1,024* (*1B*)", "side": "right", "key": True},
-            {"at": "upd", "text": "flow matching, *10* steps at CFG *1.0* (no second pass); the video stream runs once over the first frame and the action expert is denoised against it", "side": "right"},
-            {"at": "act", "text": "*190* ms per chunk on one RTX 5090D vs *810* ms for the imagine-then-execute variant on the same GPU (authors)",
-             "short": "*190* ms per chunk on one RTX 5090D (authors)", "side": "right", "key": True},
+            {"at": "vae", "text": "Tokens per latent frame not disclosed", "side": "left", "key": True},
+            {"at": "attn", "text": "*24* heads · width *3,072*", "side": "left"},
+            {"at": "block", "text": "*30* layers · *6B* (*5B* + *1B*)", "side": "left", "key": True},
+            {"at": "amlp", "text": "Action width *1,024*", "side": "right"},
+            {"at": "denoise", "text": "*1* video, *10* action steps", "side": "right", "key": True},
+            {"at": "act", "text": "*190* ms per chunk · imagine-first *810* ms", "side": "right", "key": True},
         ],
     },
 }

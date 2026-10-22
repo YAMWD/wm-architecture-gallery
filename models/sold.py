@@ -10,6 +10,7 @@ MODEL = {
     "params_num": 12e6,
     "open": "code",
     "links": {"arXiv": "https://arxiv.org/abs/2410.08822", "page": "https://slot-latent-dynamics.github.io/"},
+    "tagline": "Dreamer-style RL that imagines in object slots",
     "summary": "Dreamer-style model-based RL on object slots instead of one holistic latent. A SAVi encoder (pretrained, then "
                "fine-tuned) turns each frame into 2-10 slots of 128-d; an OCVP-style dynamics transformer predicts the next "
                "slot set from the slot history and the actions; a second Slot Aggregation Transformer with per-step output "
@@ -20,7 +21,8 @@ MODEL = {
         ("Representation", "N = 2-10 object slots of 128-d per frame from SAVi (learned slot init, 3 Slot Attention iterations on "
                            "the first frame, 1 afterwards); slots projected to 256-d tokens; frame size not stated in the text"),
         ("Core", "Dynamics: OCVP-Seq transformer encoder, 4 layers, d 256, 8 heads, FFN 512. Slot Aggregation Transformer (SAT) for "
-                 "reward, value and actor: 4 causal layers, d 256, 8 heads, FFN 512, RMSNorm; 12M parameters in total"),
+                 "reward, value and actor: 4 causal layers, d 256, 8 heads, FFN 512, RMSNorm; 12M parameters in total; "
+                 "dynamics norm and activation not disclosed"),
         ("Attention", "Dynamics: OCVP sequential pattern, temporal attention (each slot over its own history) then relational "
                       "attention (all slots of one step). SAT: causal over time with ALiBi recency bias; 1 [out] + 4 [reg] "
                       "tokens per step, which cannot attend to earlier [out]/[reg] tokens"),
@@ -34,7 +36,8 @@ MODEL = {
         ("Memory", "The dynamics model and SAT re-read the slot history each step (S + imagined steps); no KV cache mentioned"),
         ("Speed", "No inference or wall-clock figure; everything trains on one A100 40 GB (authors)"),
         ("Key detail", "Reward, value and actor are MLP heads on SAT [out] tokens, with symlog two-hot reward/value bins as in "
-                       "DreamerV3; per-step cost scales with the number of slots N, not with pixels"),
+                       "DreamerV3; per-step cost scales with the number of slots N, not with pixels; the actor head outputs a "
+                       "Gaussian (μ, σ)"),
     ],
     "evidence": "read",
     "sources": ["arXiv 2410.08822 Sec. 2 (SAVi, OCVP), Sec. 3.1-3.2 (dynamics, SAT, rewards, imagination), Eq. 3-11",
@@ -61,16 +64,16 @@ MODEL = {
     "flow": {
         "below": [{"text": "Frame + action a_t (4-D)"}],
         "stack": [
-            {"box": "SAVi encoder (Slot Attention)", "short": "SAVi slot encoder", "id": "enc", "style": "teal"},
-            {"box": "Slots → 256-d tokens", "id": "proj", "minor": True},
+            {"box": "SAVi slot encoder", "id": "enc", "style": "teal"},
+            {"box": "Project slots to tokens", "id": "proj", "minor": True},
             {"fanout": [
                 [
-                    {"box": "Slots + actions", "id": "seq", "minor": True, "side": "Action a_t"},
+                    {"box": "Slots + actions", "id": "seq", "side": "Action a_t"},
                     {"group": [
                         {"residual": [{"box": "Norm", "minor": True},
-                                      {"box": "Temporal attention (per slot)", "short": "Temporal attention", "id": "tattn", "style": "dark"}]},
+                                      {"box": "Temporal attention", "id": "tattn", "style": "dark"}]},
                         {"residual": [{"box": "Norm", "minor": True},
-                                      {"box": "Relational attention (per step)", "short": "Relational attention", "id": "rattn", "style": "dark"}]},
+                                      {"box": "Relational attention", "id": "rattn", "style": "dark"}]},
                         {"residual": [{"box": "Norm", "minor": True}, {"box": "MLP", "id": "mlp"}]},
                     ], "repeat": "4 ×", "id": "dyn"},
                     {"box": "Next slot set", "id": "pred"},
@@ -80,24 +83,22 @@ MODEL = {
                         {"residual": [{"box": "RMSNorm", "minor": True}, {"box": "Causal self-attention", "id": "sattn", "style": "dark"}]},
                         {"residual": [{"box": "RMSNorm", "minor": True}, {"box": "MLP", "id": "smlp"}]},
                     ], "repeat": "4 ×", "id": "sat"},
-                    {"box": "Reward, value, actor heads", "short": "Reward, value, actor", "id": "heads", "terminal": True},
+                    {"box": "Reward, value, actor", "id": "heads", "terminal": True},
                 ],
             ]},
         ],
-        "above": [{"box": "SAVi spatial-broadcast decoder", "short": "SAVi broadcast decoder", "id": "dec", "style": "teal"}, {"text": "Next frame (loss only)"}],
+        "above": [{"box": "SAVi broadcast decoder", "id": "dec", "style": "teal", "minor": True}, {"text": "Next frame (loss only)"}],
         "insets": [
             {"for": "heads", "label": "MLP heads on [out]", "stack": [{"box": "SAT [out] token"},
                                                                      {"fanout": [[{"box": "Reward head"}], [{"box": "Value head"}], [{"box": "Actor head"}]]}]},
         ],
         "annotations": [
-            {"at": "enc", "text": "SAVi (fine-tuned); *N* = *2–10* slots of *128*-d per frame, projected to *256*-d tokens", "side": "left", "key": True},
-            {"at": "proj", "text": "*3* Slot Attention iterations on the first frame, *1* after; learned slot initialisation", "side": "left"},
-            {"at": "tattn", "text": "OCVP-Seq pattern: temporal attention (each slot over its own history), then relational attention (all slots of one step)", "side": "left"},
-            {"at": "dyn", "text": "*4* layers, *8* heads, width *256*, FFN *512*; actions a_0:t (*4*-D) enter with the slot history, embedding not spelled out; norm and activation not disclosed", "side": "left"},
-            {"at": "pred", "text": "dynamics transformer (left): *4* layers, *8* heads, width *256*; *1* pass predicts all *N* next slots; *15* imagined steps, no teacher forcing", "side": "left", "key": True},
-            {"at": "sat", "text": "Slot Aggregation Transformer (right): *4* causal layers, ALiBi, RMSNorm; [out] + *4* [reg] tokens per step; *12M* parameters in all", "side": "right", "key": True},
-            {"at": "heads", "text": "MLP heads on the [out] tokens: reward and value as symlog two-hot bins, actor as a Gaussian (μ, σ); both transformers re-read the slot history each step", "side": "right"},
-            {"at": "dec", "text": "per-slot RGB + alpha, composited; dynamics loss and visualisation only, not used by the actor; no speed figure (one A100 40 GB)", "side": "right"},
+            {"at": "enc", "text": "*2–10* slots per frame, *128*-d each", "side": "left", "key": True},
+            {"at": "dyn", "text": "*8* heads · width *256*", "side": "left", "key": True},
+            {"at": "pred", "text": "*1* pass per step · imagination of *15* steps", "side": "left", "key": True},
+            {"at": "sat", "text": "*12M* parameters in all", "side": "right", "key": True},
+            {"at": "sattn", "text": "*1* [out] + *4* [reg] tokens per step", "side": "right"},
+            {"at": "heads", "text": "Latency not disclosed", "side": "right"},
         ],
         "feedback": "next step",
     },

@@ -10,6 +10,7 @@ MODEL = {
     "params_num": 1.6e9,
     "open": "weights",
     "links": {"paper": "https://doi.org/10.1038/s41586-025-08600-3", "weights": "https://huggingface.co/microsoft/wham"},
+    "tagline": "Game frames and controller tokens, one at a time",
     "summary": "World and Human Action Model: a nanoGPT-style causal transformer trained from scratch on seven years of "
                "Bleeding Edge gameplay to predict interleaved image and controller-action tokens. The 1.6B model sees "
                "540 ViT-VQGAN tokens per 300x180 frame (vocabulary 16,384) plus 16 action tokens, with a 1 s context of "
@@ -19,7 +20,7 @@ MODEL = {
         ("Representation", "540 discrete tokens per 300x180 frame from a ~300M ViT-VQGAN, vocabulary 16,384 (1.6B model); the 15M-894M models use 256 tokens per 128x128 frame from a ~60M conv VQGAN, vocabulary 4,096"),
         ("Core", "Modified nanoGPT implementation of GPT-2, 1.6B parameters (also 15M-894M); layer and head counts are in Extended Data Fig. 2c, which the text extraction does not include"),
         ("Attention", "Dense causal over 5,560 tokens = 1 s = 10 frames at 10 Hz (2,720 tokens for the 894M model)"),
-        ("Actions", "Xbox controller as 16 tokens per step [D: (5,560 - 10 x 540) / 10]: 12 buttons plus the x and y of both sticks discretized into 11 buckets; actions are predicted as well as consumed"),
+        ("Actions", "Xbox controller as 16 tokens per step [D: (5,560 - 10 x 540) / 10]: 12 buttons plus the x and y of both sticks discretized into 11 buckets; no delimiter token, the learned positions tell the modalities apart; actions are predicted as well as consumed"),
         ("Prediction", "Next-token softmax: at least 540 serial passes per frame plus the 16 action tokens [D]"),
         ("Decoder", "ViT-VQGAN decoder → 300x180 frame"),
         ("Memory", "KV policy not disclosed; 1 s context"),
@@ -47,9 +48,9 @@ MODEL = {
         "below": [{"text": "Frame 300×180 + controller action"}],
         "stack": [
             {"box": "ViT-VQGAN encoder", "id": "enc", "style": "teal"},
-            {"box": "Nearest codebook entry", "short": "Codebook lookup", "id": "vq", "minor": True},
-            {"box": "Interleave image and action tokens", "short": "Interleave tokens", "id": "seq", "side": "Controller tokens"},
-            {"box": "Token + learned position emb.", "id": "emb", "minor": True},
+            {"box": "Nearest codebook entry", "id": "vq", "minor": True},
+            {"box": "Interleave tokens", "id": "seq", "side": "Controller tokens"},
+            {"box": "Token + position emb.", "id": "emb", "minor": True},
             {"group": [
                 {"residual": [{"box": "LayerNorm", "minor": True}, {"box": "Masked self-attention", "id": "attn", "style": "dark"}]},
                 {"residual": [{"box": "LayerNorm", "minor": True}, {"box": "Feed forward", "id": "ffn"}]},
@@ -60,12 +61,12 @@ MODEL = {
         "above": [{"box": "ViT-VQGAN decoder", "id": "dec", "style": "teal"}, {"text": "Next frame 300×180 + next action"}],
         "insets": [{"for": "ffn", "stack": [{"box": "Linear"}, {"box": "GELU"}, {"box": "Linear"}]}],
         "annotations": [
-            {"at": "enc", "text": "~*300M* ViT-VQGAN; *540* tokens per frame, vocabulary *16,384*", "side": "left", "key": True},
-            {"at": "seq", "text": "*540* image + *16* controller tokens per step; context *1* s = *10* frames = *5,560* tokens", "side": "left", "key": True},
-            {"at": "vq", "text": "controller: *12* buttons + both sticks' x, y in *11* buckets; no delimiter token, the learned positions tell the modalities apart", "side": "left"},
-            {"at": "block", "text": "*1.6B* GPT-2 block as in nanoGPT; layers and heads only in Extended Data Fig. 2c", "side": "right", "key": True},
-            {"at": "sample", "text": "≥ *540* serial passes per frame; actions are predicted too", "side": "right", "key": True},
-            {"at": "dec", "text": "~*1* fps vs *10+* fps for the MaskGIT variant WHAMM (Microsoft Research blog)", "side": "right"},
+            {"at": "enc", "text": "*540* tokens per frame, vocabulary *16,384*", "side": "left", "key": True},
+            {"at": "seq", "text": "*16* action tokens: *12* buttons, *4* stick axes", "side": "left"},
+            {"at": "attn", "text": "Context of *10* frames = *5,560* tokens", "side": "left"},
+            {"at": "block", "text": "*1.6B* parameters, nanoGPT block", "side": "right", "key": True},
+            {"at": "sample", "text": "≥ *540* serial passes per frame", "side": "right", "key": True},
+            {"at": "dec", "text": "~*1* fps vs *10+* fps for MaskGIT WHAMM", "side": "right", "key": True},
         ],
         "feedback": "next step",
     },

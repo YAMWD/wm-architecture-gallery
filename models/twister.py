@@ -16,6 +16,7 @@ MODEL = {
                "predicts the next state, reward and continuation. The cache is capped at 8 steps, so per-step memory is "
                "bounded. The score gain comes from AC-CPC, which predicts features 10 steps ahead given the future "
                "actions, not from the transformer swap.",
+    "tagline": "DreamerV3 with a transformer and contrastive loss",
     "facts": [
         ("Representation", "32 categoricals x 32 classes per 64x64 RGB frame from a CNN VAE (4 strided conv layers)"),
         ("Core", "TSSM: 4 blocks, d 512, 8 heads, FFN 1024, dropout 0.1; ~8-9M transformer parameters (repo preset estimate)"),
@@ -49,7 +50,7 @@ MODEL = {
     "flow": {
         "below": [{"text": "Frame 64×64 + action"}],
         "stack": [
-            {"box": "CNN categorical VAE encoder", "short": "CNN VAE encoder", "id": "enc", "style": "teal"},
+            {"box": "CNN VAE encoder", "id": "enc", "style": "teal"},
             {"box": "Action mixer (MLP)", "id": "mix", "style": "orange", "side": "One-hot action"},
             {"group": [
                 {"residual": [{"box": "Masked self-attention", "id": "attn", "style": "dark", "side": "Relative positions"}]},
@@ -67,13 +68,12 @@ MODEL = {
         "insets": [{"for": "mix", "stack": [{"box": "Linear + LN + SiLU"}, {"box": "Linear + LN"}]},
                    {"for": "ffn", "stack": [{"box": "Linear"}, {"box": "ReLU"}, {"box": "Linear"}]}],
         "annotations": [
-            {"at": "enc", "text": "*32* categoricals × *32* classes per *64×64* RGB frame", "side": "left", "key": True},
-            {"at": "mix", "text": "flattened state + one-hot action → *1* token of width *512*", "side": "left", "key": True},
-            {"at": "attn", "text": "*8* heads; Transformer-XL relative positions; attention context *8* steps", "side": "left"},
-            {"at": "block", "text": "*4* blocks, FFN *1,024*, post-LN; ~*8–9M* transformer parameters", "side": "right", "key": True},
-            {"at": "cache", "text": "hidden states of the previous segment are cached and reused; capped at *8* steps in the released code", "side": "right"},
-            {"at": "sample", "text": "*1* pass per imagined step; horizon *15*", "side": "right", "key": True},
-            {"at": "cpc", "text": "AC-CPC: InfoNCE prediction of features *10* steps ahead given future actions (training only)", "side": "right"},
+            {"at": "enc", "text": "*32* categoricals × *32* classes per frame", "side": "left", "key": True},
+            {"at": "mix", "text": "*1* fused token per step · width *512*", "side": "left", "key": True},
+            {"at": "attn", "text": "*8* heads · *8*-step cache", "side": "left"},
+            {"at": "block", "text": "*4* blocks · ~*8–9M* parameters", "side": "right", "key": True},
+            {"at": "sample", "text": "*1* pass per frame · *15*-step rollouts", "side": "right", "key": True},
+            {"at": "cpc", "text": "AC-CPC: *10* steps ahead, training only", "side": "right"},
         ],
         "feedback": "next step",
     },

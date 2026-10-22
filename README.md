@@ -10,9 +10,10 @@ applied to world models.
 
 Published copy (private claude.ai page, share from its menu): https://claude.ai/artifact/Ds373si23Shvz56ZVURwaj
 
-The site is a single static page (`docs/index.html`) with filters (family, role, evidence level, availability),
-sorting, search, a two-model comparison view, per-card permalinks and downloadable SVGs. `docs/data.json`
-holds every card as data.
+The site is a single static page (`docs/index.html`). Models appear as small cards in two columns: a compact
+diagram, the name and a one-line tagline. Facts stay folded until you open *Details*, one fact at a time.
+Clicking a diagram opens the detailed version full-page, with zoom, previous and next, and a side-by-side
+compare. Search, family chips, filters and sorting sit in a sticky bar. `docs/data.json` holds every card as data.
 
 ## Layout
 

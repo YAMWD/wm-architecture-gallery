@@ -10,6 +10,7 @@ MODEL = {
     "params_num": 8.4e9,
     "open": "closed",
     "links": {"arXiv": "https://arxiv.org/abs/2503.20523", "page": "https://wayve.ai/thinking/gaia-2/"},
+    "tagline": "Factorized-attention DiT over five cameras",
     "summary": "Wayve's multi-camera driving world model: a video tokenizer with 32x spatial and 8x temporal compression turns "
                "5 camera streams into 64-channel latents, and an 8.4B space-time factorized transformer denoises them with "
                "flow matching, conditioned on the ego action through adaptive LayerNorm and on agents, maps and scene "
@@ -22,7 +23,8 @@ MODEL = {
         ("Core", "22 space-time factorized transformer blocks, d 4096, 32 heads; each block: spatial attention (over space and cameras), "
                  "temporal attention, cross-attention, MLP with adaptive LayerNorm; QK-norm; 8.4B parameters trained from scratch"),
         ("Attention", "Factorized: spatial attention over 2,100 tokens (5 cameras × 420), temporal attention over 6 latent steps; "
-                      "training window 48 frames × 5 cameras = 12,600 tokens; no full 3D attention"),
+                      "training window 48 frames × 5 cameras = 12,600 tokens; no full 3D attention; sinusoidal space and "
+                      "timestamp encodings plus learned camera geometry, re-added at the start of every block"),
         ("Actions", "Ego-vehicle action and flow-matching time via adaptive LayerNorm in every block (found more accurate than "
                     "cross-attention); agents, metadata, camera parameters and external embeddings via cross-attention"),
         ("Prediction", "Flow matching, 50 denoising steps, linear-quadratic schedule, no distillation; CFG off by default (scale 2-20 "
@@ -58,19 +60,19 @@ MODEL = {
         "loop": "AR rollout",
     },
     "flow": {
-        "below": [{"text": "5 cameras 448×960 + ego action + agents, map, metadata"}],
+        "below": [{"text": "5 cameras 448×960 + ego action"}],
         "stack": [
-            {"box": "Video tokenizer encoder (transformer)", "short": "Video tokenizer encoder", "id": "tok", "style": "teal"},
+            {"box": "Video tokenizer encoder", "short": "Video tokenizer", "id": "tok", "style": "teal"},
             {"group": [
-                {"box": "Noisy future + context latents", "id": "noisy", "style": "soft", "minor": True},
-                {"box": "Add positional + camera encodings", "id": "pos", "minor": True},
+                {"box": "Noisy + context latents", "id": "noisy", "style": "soft", "minor": True},
+                {"box": "Positions + camera emb.", "id": "pos", "minor": True},
                 {"group": [
-                    {"residual": [{"box": "Adaptive LayerNorm", "id": "ada", "side": "Ego action + flow time"},
-                                  {"box": "Spatial attention (space + cameras)", "short": "Spatial attention", "id": "sattn", "style": "dark"}]},
+                    {"residual": [{"box": "Adaptive LayerNorm", "id": "ada", "side": "Ego action + time"},
+                                  {"box": "Space + camera attention", "short": "Spatial attention", "id": "sattn", "style": "dark"}]},
                     {"residual": [{"box": "Adaptive LayerNorm", "minor": True},
                                   {"box": "Temporal attention", "id": "tattn", "style": "dark"}]},
                     {"residual": [{"box": "Adaptive LayerNorm", "minor": True},
-                                  {"box": "Cross-attention", "id": "xattn", "side": "Agents, map, metadata"}]},
+                                  {"box": "Cross-attention", "id": "xattn", "side": "Agents + metadata"}]},
                     {"residual": [{"box": "Adaptive LayerNorm", "minor": True}, {"box": "MLP", "id": "mlp", "minor": True}]},
                 ], "repeat": "22 ×", "id": "block"},
                 {"box": "Predicted velocity", "id": "vel", "minor": True},
@@ -79,13 +81,11 @@ MODEL = {
         ],
         "above": [{"box": "Video tokenizer decoder", "id": "dec", "style": "teal"}, {"text": "24 frames × 5 cameras at 448×960"}],
         "annotations": [
-            {"at": "tok", "text": "*85M* encoder: *8*× temporal, *32*× spatial, *64* channels; *420* latents per camera per latent step, *2,100* over *5* cameras [D]", "short": "*2,100* latents per step over *5* cameras [D]", "side": "left", "key": True},
-            {"at": "pos", "text": "sinusoidal space and timestamp encodings + learned camera geometry, re-added at the start of every block", "side": "left"},
-            {"at": "ada", "text": "ego action and flow time via adaptive LayerNorm (found more accurate than cross-attention)", "side": "left"},
-            {"at": "sattn", "text": "*32* heads, width *4,096*; QK-norm before each attention; spatial over *2,100* tokens, temporal over *6* latent steps", "short": "*32* heads, width *4,096*", "side": "left", "key": True},
-            {"at": "block", "text": "*22* layers, *8.4B* parameters, trained from scratch", "side": "right", "key": True},
-            {"at": "upd", "text": "flow matching, *50* steps, linear-quadratic schedule, no distillation; k = *3* context latents, sliding window, no KV cache", "side": "right"},
-            {"at": "dec", "text": "*200M* decoder with full spatiotemporal attention; inference speed not disclosed", "short": "inference speed not disclosed", "side": "right", "key": True},
+            {"at": "tok", "text": "*2,100* latents per step over *5* cameras", "side": "left", "key": True},
+            {"at": "sattn", "text": "*32* heads, width *4,096*", "side": "left"},
+            {"at": "tattn", "text": "Window of *6* latent steps, *12,600* tokens", "side": "left"},
+            {"at": "block", "text": "*50* passes per latent step, *8.4B* parameters", "side": "right", "key": True},
+            {"at": "dec", "text": "Speed not disclosed; *200M* decoder", "side": "right", "key": True},
         ],
         "feedback": "next latent step",
     },

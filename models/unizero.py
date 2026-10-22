@@ -15,6 +15,7 @@ MODEL = {
                "transformer output feeds heads for the next latent, reward, policy and value. Every real action runs "
                "50 MCTS simulations, each a single-step transformer call against a KV cache of the last 4 steps, so "
                "inference is a small-batch, latency-bound loop rather than a FLOP-bound one.",
+    "tagline": "MuZero-style planner on a tiny transformer",
     "facts": [
         ("Representation", "Conv encoder → one 768-d latent per step with SimNorm (simplex groups of 8); 64x64 Atari frames; no reconstruction"),
         ("Core", "2 transformer layers, d 768, 8 heads, GELU, dropout 0.1 (Atari, DMC); d 64 and 4 heads for the long-term memory tasks; FFN width and parameter count not listed"),
@@ -47,7 +48,7 @@ MODEL = {
         "below": [{"text": "Frame 64×64 + action"}],
         "stack": [
             {"box": "Conv encoder", "id": "enc", "style": "teal"},
-            {"box": "Linear + SimNorm → latent z", "short": "SimNorm latent z", "id": "lat"},
+            {"box": "SimNorm latent z", "id": "lat"},
             {"box": "Interleave (z, a) tokens", "short": "Interleave z, a", "id": "seq", "side": "Action emb."},
             {"box": "Add learned positions", "id": "pos", "minor": True},
             {"group": [
@@ -59,17 +60,16 @@ MODEL = {
             {"fanout": [[{"box": "Policy + value head", "id": "pol", "terminal": True, "minor": True}],
                         [{"box": "Dynamics head (MLP)", "short": "Dynamics head", "id": "dyn", "minor": True}, {"box": "Next latent + reward", "id": "next"}]]},
         ],
-        "above": [{"text": "Next latent → MCTS node, no decoding"}],
+        "above": [{"text": "Next latent → MCTS, no decoding"}],
         "insets": [{"for": "ffn", "stack": [{"box": "Linear"}, {"box": "GELU"}, {"box": "Linear"}]},
-                   {"for": "dyn", "label": "MCTS per real step", "stack": [{"box": "Pick an action (UCB)"}, {"box": "One-step transformer call"},
+                   {"for": "dyn", "label": "MCTS per real step", "stack": [{"box": "Pick an action (UCB)"}, {"box": "One transformer call"},
                                                                           {"box": "Back up the value, ×50"}]}],
         "annotations": [
-            {"at": "enc", "text": "one *768*-d latent per step, SimNorm in groups of *8*; no reconstruction", "side": "left", "key": True},
-            {"at": "seq", "text": "*2* tokens per step; training context *10* steps = *20* tokens", "side": "left", "key": True},
-            {"at": "attn", "text": "*8* heads; KV cache over the last *4* steps = *8* tokens [D], shared by all search nodes", "side": "left"},
-            {"at": "next", "text": "*50* MCTS simulations per real step = *50* dependent single-step calls", "side": "left", "key": True},
-            {"at": "pol", "text": "policy and value from the same trunk; the dynamics head ends in SimNorm", "side": "left"},
-            {"at": "block", "text": "*2* layers, width *768*, GELU, post-LN; parameter count not disclosed", "side": "right", "key": True},
+            {"at": "lat", "text": "SimNorm in groups of *8*", "side": "left"},
+            {"at": "seq", "text": "*2* tokens per step · context of *10* steps", "side": "left", "key": True},
+            {"at": "attn", "text": "*8* heads · KV of *4* steps", "side": "left", "key": True},
+            {"at": "next", "text": "*50* MCTS calls per action", "side": "left", "key": True},
+            {"at": "block", "text": "*2* layers · width *768*", "side": "right", "key": True},
         ],
         "feedback": "MCTS",
     },

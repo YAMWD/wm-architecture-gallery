@@ -10,6 +10,7 @@ MODEL = {
     "params_num": 10.1e9,
     "open": "closed",
     "links": {"arXiv": "https://arxiv.org/abs/2402.15391"},
+    "tagline": "MaskGIT over video tokens with latent actions",
     "summary": "A foundation world model trained on 30,000 h of unlabelled 2D-platformer video. An ST-ViViT video "
                "tokenizer (200M) turns 160x90 frames into discrete codes, a latent action model (300M) infers one of 8 "
                "latent actions between frames, and a 10.1B decoder-only MaskGIT dynamics transformer predicts the next "
@@ -19,7 +20,7 @@ MODEL = {
     "facts": [
         ("Representation", "Discrete codes from a 200M ST-ViViT VQ-VAE (patch 4, 1,024 codes x 32-d) on 160x90 frames at 10 FPS; the token grid is not stated, ~920 tokens per frame implied by the stated token counts [D]"),
         ("Core", "MaskGIT dynamics transformer: 48 layers, 36 heads, d 5120, k/q size 128; 10.1B (10.7B with tokenizer and LAM, rounded to '11B' in the abstract)"),
-        ("Attention", "ST-transformer block: spatial self-attention over one frame's tokens, causal temporal attention over the same position across 16 frames, then FFW; the spatial term scales linearly with frames"),
+        ("Attention", "ST-transformer block: spatial self-attention over one frame's tokens, causal temporal attention over the same position across 16 frames, then FFW; QK-norm; the spatial term scales linearly with frames; norm type and positional encoding not disclosed"),
         ("Actions", "8 discrete latent actions from a 300M latent action model (patch 16, VQ codebook of 8) learned without action labels; actions enter as additive embeddings on the frame tokens"),
         ("Prediction", "MaskGIT: 25 steps per frame at temperature 2 with random sampling, all tokens of a frame per pass; frames generated autoregressively"),
         ("Decoder", "ST-ViViT tokenizer decoder (20 layers, d 1024, 16 heads) → 160x90 frames"),
@@ -50,29 +51,29 @@ MODEL = {
     "flow": {
         "below": [{"text": "Frame 160×90 + latent action"}],
         "stack": [
-            {"box": "ST-ViViT tokenizer (VQ-VAE)", "short": "ST-ViViT tokenizer", "id": "tok", "style": "teal"},
-            {"box": "Nearest codebook entry", "short": "Codebook lookup", "id": "vq", "minor": True},
-            {"box": "Add latent action embedding", "short": "Add action embedding", "id": "act", "style": "orange", "side": "Latent action"},
+            {"box": "ST-ViViT tokenizer", "id": "tok", "style": "teal"},
+            {"box": "Nearest codebook entry", "id": "vq", "minor": True},
+            {"box": "Add action embedding", "id": "act", "style": "orange", "side": "Latent action"},
             {"group": [
                 {"box": "Masked frame tokens", "id": "masked", "style": "soft", "minor": True},
                 {"group": [
                     {"residual": [{"box": "Norm", "minor": True},
-                                  {"box": "Spatial attention (within frame)", "short": "Spatial attention", "id": "sattn", "style": "dark"}]},
+                                  {"box": "Spatial attention", "id": "sattn", "style": "dark"}]},
                     {"residual": [{"box": "Norm", "minor": True},
-                                  {"box": "Causal temporal attention", "short": "Temporal attention", "id": "tattn", "style": "dark"}]},
+                                  {"box": "Temporal attention", "id": "tattn", "style": "dark"}]},
                     {"residual": [{"box": "Norm", "minor": True}, {"box": "Feed forward", "id": "ffw", "minor": True}]},
                 ], "repeat": "48 ×", "id": "block"},
-                {"box": "Sample tokens, keep confident", "short": "Sample, keep confident", "id": "sample"},
+                {"box": "Sample, keep confident", "id": "sample"},
             ], "loop": "25 MaskGIT steps", "tint": "grey", "id": "maskgit"},
         ],
         "above": [{"box": "ST-ViViT decoder", "id": "dec", "style": "teal"}, {"text": "Next frame 160×90"}],
         "annotations": [
-            {"at": "tok", "text": "*200M*, patch *4*, codebook *1,024* × *32*-d; ~*920* tokens per frame implied [D]", "short": "~*920* codes per frame [D]", "side": "left", "key": True},
-            {"at": "act", "text": "*300M* latent action model, codebook of *8*, learned without labels; added to the frame tokens", "short": "*8* latent actions, learned without labels", "side": "left", "key": True},
-            {"at": "tattn", "text": "temporal: the same position across *16* frames, causal; spatial: all tokens of one frame; QK-norm; norm type and positions not disclosed", "side": "left"},
-            {"at": "sample", "text": "*25* MaskGIT steps per frame at temperature *2*, all tokens of a frame per pass", "short": "*25* MaskGIT passes per frame, ~*1* fps", "side": "left", "key": True},
-            {"at": "block", "text": "*48* layers, *36* heads, width *5,120*; *10.1B* dynamics (*10.7B* total)", "short": "*48* layers, width *5,120*, *10.1B*", "side": "right", "key": True},
-            {"at": "dec", "text": "*20* layers, width *1,024*; ~*1* FPS, hardware not stated (authors); ≈ *0.46* PFLOP per frame [D]", "side": "right"},
+            {"at": "tok", "text": "~*920* tokens per frame, vocabulary *1,024*", "side": "left", "key": True},
+            {"at": "act", "text": "*8* latent actions, learned without labels", "side": "left", "key": True},
+            {"at": "sattn", "text": "*36* heads, width *5,120*", "side": "left"},
+            {"at": "tattn", "text": "Causal over a *16*-frame window", "side": "left"},
+            {"at": "block", "text": "*48* layers, *10.1B* parameters", "side": "right", "key": True},
+            {"at": "sample", "text": "~*1* fps from *25* passes per frame", "side": "right", "key": True},
         ],
         "feedback": "next frame",
     },

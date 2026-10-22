@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-22 (version 3)
+- New page design: small two-column cards with a compact diagram, name and one-line tagline; facts fold behind *Details*, one fact at a time.
+- Clicking a diagram opens the detailed version full-page, with zoom, previous and next (arrow keys), and a side-by-side compare.
+- Diagram text cut to the essentials: at most 6 annotations of at most 44 characters, short box labels; caveats moved into the facts. The renderer enforces these limits.
+- New compact thumbnail mode (`--stack --mini`); every card has a `tagline`.
+
 ## 2026-10-21 (version 2)
 - Every card now leads with a bottom-up stack diagram in the style of the LLM Architecture Gallery: small boxes with one label each, repeated blocks with an N × marker, residual skip lines into ⊕, side inputs, zoom-in insets, and all numbers in annotations outside the model.
 - New renderer `wmgallery/stack.py` with a condensed mode for slides; specs live in `MODEL["flow"]` (see `docs/FLOW.md`).

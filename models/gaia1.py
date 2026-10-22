@@ -10,6 +10,7 @@ MODEL = {
     "params_num": 6.5e9,
     "open": "closed",
     "links": {"arXiv": "https://arxiv.org/abs/2309.17080"},
+    "tagline": "Driving video tokens, decoded one at a time",
     "summary": "A generative world model for driving: a 6.5B causal transformer predicts the next image token over an "
                "interleaved sequence of text, image and action tokens, trained from scratch on 4,700 h of London "
                "driving. Each 288x512 frame is 576 discrete tokens from a 0.3B DINO-distilled tokenizer, so one frame "
@@ -47,25 +48,25 @@ MODEL = {
     "flow": {
         "below": [{"text": "Frame 288×512 + text + action"}],
         "stack": [
-            {"box": "Image tokenizer (2D U-Net)", "short": "Image tokenizer", "id": "tok", "style": "teal"},
-            {"box": "Nearest codebook entry", "short": "Codebook lookup", "id": "vq", "minor": True},
-            {"box": "Interleave text, image, action tokens", "short": "Interleave tokens", "id": "seq", "side": "T5 text + action"},
-            {"box": "Token + spatio-temporal positions", "id": "emb", "minor": True},
+            {"box": "U-Net image tokenizer", "short": "Image tokenizer", "id": "tok", "style": "teal"},
+            {"box": "Nearest codebook entry", "id": "vq", "minor": True},
+            {"box": "Interleave tokens", "id": "seq", "side": "T5 text + action"},
+            {"box": "Space-time position emb.", "id": "emb", "minor": True},
             {"group": [
                 {"residual": [{"box": "Norm", "minor": True}, {"box": "Masked self-attention", "id": "attn", "style": "dark"}]},
                 {"residual": [{"box": "Norm", "minor": True}, {"box": "Feed forward", "id": "ffn"}]},
             ], "repeat": "N ×", "id": "block"},
             {"box": "Sample next image token", "short": "Sample next token", "id": "sample"},
         ],
-        "above": [{"box": "Video diffusion U-Net decoder", "short": "Diffusion U-Net decoder", "id": "dec", "style": "soft"},
+        "above": [{"box": "Diffusion U-Net decoder", "id": "dec", "style": "soft"},
                   {"text": "Frames 288×512 at 25 Hz"}],
         "annotations": [
-            {"at": "tok", "text": "*0.3B*, DINO-distilled; *576* tokens per frame (18×32), vocabulary *8,192*", "short": "*576* tokens per frame, vocabulary *8,192*", "side": "left", "key": True},
-            {"at": "seq", "text": "*32* text + *576* image + *2* action tokens per step; *26* frames = *15,860* tokens", "short": "*26* frames = *15,860* tokens of context", "side": "left", "key": True},
-            {"at": "attn", "text": "dense causal attention (FlashAttention v2) with learned temporal + spatial position embeddings; sliding window beyond *26* frames at 6.25 Hz", "side": "left"},
-            {"at": "dec", "text": "*2.6B* video diffusion 3D U-Net, not a transformer: *50* DDIM steps per *7*-frame window, then 6.25 → *25* Hz upsampling; not real time (authors)", "side": "left"},
-            {"at": "block", "text": "*6.5B* trained from scratch; layers, heads and block details not disclosed", "short": "*6.5B*; layers and heads not disclosed", "side": "right", "key": True},
-            {"at": "sample", "text": "*576* serial passes per frame, top-k *50*; classifier-free guidance doubles the evaluations [D]", "short": "*576* serial passes per frame", "side": "right", "key": True},
+            {"at": "tok", "text": "*576* tokens per frame, vocabulary *8,192*", "side": "left", "key": True},
+            {"at": "seq", "text": "*32* text + *2* action tokens per frame", "side": "left"},
+            {"at": "attn", "text": "Context of *26* frames = *15,860* tokens", "side": "left"},
+            {"at": "block", "text": "*6.5B* parameters; layers not disclosed", "side": "right", "key": True},
+            {"at": "sample", "text": "*576* serial passes per frame", "side": "right", "key": True},
+            {"at": "dec", "text": "*2.6B* U-Net, *50* DDIM steps per *7* frames", "side": "left", "key": True},
         ],
         "feedback": "next frame",
     },

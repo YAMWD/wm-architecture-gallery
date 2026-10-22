@@ -16,6 +16,7 @@ MODEL = {
                "learned encoder and no policy network; acting is beam search over the model's own trajectory "
                "predictions, extended one token at a time. Latency scales with state dimensionality, and the authors note "
                "it can take seconds per action, which rules out real-time control.",
+    "tagline": "GPT over binned states, actions and rewards",
     "facts": [
         ("Representation", "Each of the N state and M action dimensions, the reward and the reward-to-go is one token: "
                            "per-dimension uniform or quantile discretization into V = 100 bins; input vocabulary V × (N + M + 2), "
@@ -54,9 +55,9 @@ MODEL = {
         "loop": "beam search",
     },
     "flow": {
-        "below": [{"text": "Scalars: state, action, reward, reward-to-go"}],
+        "below": [{"text": "State, action, reward, R-to-go"}],
         "stack": [
-            {"box": "Per-dimension discretization", "short": "Per-dimension bins", "id": "disc", "style": "teal"},
+            {"box": "Per-dimension bins", "id": "disc", "style": "teal"},
             {"box": "Token embedding", "id": "emb", "minor": True},
             {"group": [
                 {"residual": [{"box": "LayerNorm", "minor": True},
@@ -66,20 +67,19 @@ MODEL = {
             {"box": "Linear output layer", "id": "out", "minor": True},
             {"box": "Sample next token", "id": "sample"},
         ],
-        "above": [{"box": "Bin centre lookup", "id": "dec", "style": "teal"}, {"text": "Planned trajectory; first action executed"}],
+        "above": [{"box": "Bin centre lookup", "id": "dec", "style": "teal"}, {"text": "Plan → first action executed"}],
         "insets": [
             {"for": "ffn", "stack": [{"box": "Linear"}, {"box": "GELU"}, {"box": "Linear"}]},
             {"for": "sample", "label": "beam search", "stack": [{"box": "Grow each beam one token"}, {"box": "Keep the likeliest beams"},
                                                                  {"box": "Rank by reward + R-to-go"}, {"box": "Repeat to the horizon"}]},
         ],
         "annotations": [
-            {"at": "disc", "text": "no learned encoder: each scalar becomes one of *100* bins (uniform or quantile); *N + M + 2* tokens per step", "side": "left", "key": True},
-            {"at": "emb", "text": "width *128*; input vocabulary *100* × (N + M + 2), output logits over *100* bins", "side": "left"},
-            {"at": "attn", "text": "*4* heads; causal over *5* transitions, e.g. *125* tokens for a 17-D state and 6-D action [D]", "side": "left", "key": True},
-            {"at": "block", "text": "*4* layers, width *128*; parameters not disclosed (~*0.8M* block weights [D]); GPT block as in minGPT", "side": "right", "key": True},
-            {"at": "ffn", "text": "dropout *0.1* at the end of each block", "side": "right"},
-            {"at": "sample", "text": "*1* token per pass: *15* × (N + M + 2) serial decodes per action with *256* beams batched, e.g. *375* for HalfCheetah [D]; 'up to multiple seconds' per action (authors)", "side": "left"},
-            {"at": "dec", "text": "greedy observations (k_obs *1*), actions from the top *20* tokens; horizon *15* transitions", "side": "right"},
+            {"at": "disc", "text": "*N + M + 2* tokens per step, *100* bins each", "side": "left", "key": True},
+            {"at": "emb", "text": "Embedding dimension of *128*", "side": "left"},
+            {"at": "attn", "text": "*4* heads · context of *5* transitions", "side": "left", "key": True},
+            {"at": "block", "text": "*4* layers · ~*0.8M* block weights", "side": "left", "key": True},
+            {"at": "sample", "text": "*15 × (N + M + 2)* passes per action", "side": "left", "key": True},
+            {"at": "dec", "text": "*256* beams · horizon of *15*", "side": "right"},
         ],
         "feedback": "receding horizon",
     },

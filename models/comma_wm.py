@@ -10,6 +10,7 @@ MODEL = {
     "params_num": 2e9,
     "open": "closed",
     "links": {"page": "https://blog.comma.ai/011release/"},
+    "tagline": "Block-causal driving DiT that trains openpilot",
     "summary": "The learned driving simulator behind openpilot 0.11, the first shipped driving policy trained entirely inside "
                "a world model. A ViT compressor turns the two camera views into a 32x16x32 latent, and a 2B block-causal "
                "diffusion transformer predicts the next frame latent from 2 s of context, 6-DoF relative-pose actions and "
@@ -19,7 +20,7 @@ MODEL = {
     "facts": [
         ("Representation", "ViT frame compressor (encoder 50M, decoder 100M, 2x deeper): two views (narrow, wide) of 3x128x256 → one "
                            "32x16x32 latent; tokens per frame after DiT patching not stated (512 if one token per 16x32 cell [D, assumption])"),
-        ("Core", "2B diffusion transformer: 48 layers, d 1600, 25 heads (n_layer=48, n_head=25, n_embd=1600), 'adapted to 3 dimensional data'"),
+        ("Core", "2B diffusion transformer: 48 layers, d 1600, 25 heads (n_layer=48, n_head=25, n_embd=1600), 'adapted to 3 dimensional data'; norm and MLP details not disclosed"),
         ("Attention", "Block-causal in every layer: tokens attend to their own frame and past frames; a sample = 2 s past context + 1 s "
                       "future conditioning + 0-7 s simulation window at 5 fps (10 context frames [D])"),
         ("Actions", "6-DoF relative positions, diffusion noise level and frame indices injected via AdaLN-single (PixArt-α style)"),
@@ -51,15 +52,15 @@ MODEL = {
         "loop": "AR rollout",
     },
     "flow": {
-        "below": [{"text": "2 camera views 128×256 + 6-DoF relative pose"}],
+        "below": [{"text": "2 views 128×256 + 6-DoF pose"}],
         "stack": [
-            {"box": "ViT frame compressor (encoder)", "short": "ViT compressor", "id": "enc", "style": "teal"},
+            {"box": "ViT frame compressor", "short": "ViT compressor", "id": "enc", "style": "teal"},
             {"box": "Latent 32×16×32", "id": "lat", "minor": True},
             {"group": [
-                {"box": "Noisy frame latent + context", "id": "noisy", "style": "soft", "minor": True},
+                {"box": "Noisy latent + context", "id": "noisy", "style": "soft", "minor": True},
                 {"group": [
-                    {"residual": [{"box": "AdaLN-single", "id": "ada", "side": "Pose + noise level + frame index"},
-                                  {"box": "Block-causal self-attention", "id": "attn", "style": "dark"}]},
+                    {"residual": [{"box": "AdaLN-single", "id": "ada", "side": "Pose + noise level"},
+                                  {"box": "Block-causal attention", "id": "attn", "style": "dark"}]},
                     {"residual": [{"box": "AdaLN-single", "minor": True}, {"box": "MLP", "id": "mlp"}]},
                 ], "repeat": "48 ×", "id": "block"},
                 {"box": "Predicted velocity", "id": "vel", "minor": True},
@@ -69,13 +70,12 @@ MODEL = {
         ],
         "above": [{"box": "ViT decoder", "id": "dec", "style": "teal"}, {"text": "Next frame, 2 views at 128×256"}],
         "annotations": [
-            {"at": "enc", "text": "*50M* encoder: narrow + wide views → one *32×16×32* latent per frame at *5* fps; tokens per frame not stated", "short": "one *32×16×32* latent per frame at *5* fps", "side": "left", "key": True},
-            {"at": "ada", "text": "*6*-DoF relative positions, noise level and frame index → AdaLN-single (PixArt-α style)", "side": "left"},
-            {"at": "attn", "text": "*25* heads, width *1,600*; tokens attend to their frame and past frames; context *2* s + *1* s of future frames (inverse dynamics)", "short": "*25* heads, width *1,600*; block-causal", "side": "left", "key": True},
-            {"at": "block", "text": "*48* layers, *2B* parameters; norm and MLP details not disclosed", "short": "*48* layers, *2B* parameters", "side": "right", "key": True},
-            {"at": "upd", "text": "rectified flow, *15* Euler steps, CFG *2.0*: up to *30* passes per frame [D]", "side": "right"},
-            {"at": "kv", "text": "KV cache over the block-causal context", "side": "right"},
-            {"at": "dec", "text": "*100M* decoder; *12.2* frames/s per GPU throughput with KV caching (company claim)", "short": "*12.2* frames/s per GPU (company claim)", "side": "right", "key": True},
+            {"at": "enc", "text": "One *32×16×32* latent per frame at *5* fps", "side": "left", "key": True},
+            {"at": "ada", "text": "*6*-DoF pose, noise level, frame index", "side": "left"},
+            {"at": "attn", "text": "*25* heads, width *1,600*", "side": "left"},
+            {"at": "block", "text": "*48* layers, *2B* parameters", "side": "right", "key": True},
+            {"at": "kv", "text": "Context of *2* s past + *1* s future frames", "side": "right"},
+            {"at": "dec", "text": "*12.2* frames/s per GPU at *15* steps", "side": "right", "key": True},
         ],
         "feedback": "next frame",
     },

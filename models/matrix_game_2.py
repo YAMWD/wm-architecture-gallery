@@ -10,6 +10,7 @@ MODEL = {
     "params_num": 1.3e9,
     "open": "code + weights",
     "links": {"arXiv": "https://arxiv.org/abs/2508.13009", "code": "https://github.com/SkyworkAI/Matrix-Game"},
+    "tagline": "Few-step causal DiT, real-time game world",
     "summary": "A real-time interactive game world model: a Wan-style video diffusion transformer made block-causal "
                "and distilled with DMD Self-Forcing to 3 denoising steps per 12-frame chunk. Keyboard and mouse "
                "actions enter through action modules inside the DiT blocks. A rolling KV cache of 6 latent frames "
@@ -46,34 +47,33 @@ MODEL = {
         "loop": "AR rollout",
     },
     "flow": {
-        "below": [{"text": "Previous frames + key/mouse actions"}],
+        "below": [{"text": "Previous frames + keys/mouse"}],
         "stack": [
-            {"box": "Wan2.1 3D causal VAE encoder", "short": "Wan2.1 VAE encoder", "id": "vae", "style": "teal"},
+            {"box": "Wan2.1 VAE encoder", "id": "vae", "style": "teal"},
             {"box": "Patchify 1×2×2", "id": "patch", "minor": True},
             {"box": "Noisy latent chunk", "id": "noisy", "style": "soft", "minor": True},
             {"group": [
                 {"group": [
                     {"residual": [{"box": "AdaLN (scale, shift)", "minor": True, "side": "Timestep emb."},
-                                  {"box": "Block-causal self-attention", "id": "attn", "style": "dark", "side": "3D RoPE"}]},
+                                  {"box": "Block-causal attention", "id": "attn", "style": "dark", "side": "3D RoPE"}]},
                     {"residual": [{"box": "Cross-attention", "id": "xattn", "side": "First-frame CLIP"}]},
                     {"residual": [{"box": "Action module", "id": "act", "style": "orange", "side": "Keys + mouse"}]},
                     {"residual": [{"box": "AdaLN (scale, shift)", "minor": True}, {"box": "Feed forward", "id": "ffn"}]},
                 ], "repeat": "30 ×", "id": "block"},
                 {"box": "Predicted velocity", "id": "vel", "minor": True},
                 {"box": "Update latents", "id": "upd", "minor": True},
-            ], "loop": "3 denoising steps (DMD)", "tint": "grey", "id": "denoise"},
+            ], "loop": "3 steps (DMD)", "tint": "grey", "id": "denoise"},
             {"box": "Write chunk to KV cache", "id": "kv", "minor": True},
         ],
         "above": [{"box": "Wan2.1 VAE decoder", "id": "dec", "style": "teal"}, {"text": "12 frames at 352×640"}],
         "insets": [{"for": "ffn", "stack": [{"box": "Linear"}, {"box": "GELU"}, {"box": "Linear"}]}],
         "annotations": [
-            {"at": "vae", "text": "*880* latents per 44×80 latent frame; a chunk of *3* latent frames = *2,640* tokens", "short": "*2,640* tokens per *3*-latent-frame chunk", "side": "left", "key": True},
-            {"at": "attn", "text": "*12* heads of *128*, width *1,536* · attends to the chunk and a window of *6* latent frames = *5,280* tokens", "short": "*12* heads; window of *6* latent frames = *5,280* tokens", "side": "left", "key": True},
-            {"at": "act", "text": "action modules only in blocks *1–15* in the fast configuration", "side": "left"},
-            {"at": "block", "text": "*30* layers, *1.3B* parameters (~*1.8B* with action modules)", "side": "right", "key": True},
-            {"at": "upd", "text": "distilled from a bidirectional teacher with DMD Self-Forcing; timesteps *1000, 666, 333*", "side": "right"},
-            {"at": "kv", "text": "rolling cache of *6* latent frames, oldest evicted; ~*0.97 GB* [D]", "side": "right"},
-            {"at": "dec", "text": "*25* fps at 352×640 on one H100 (company claim)", "side": "right", "key": True},
+            {"at": "vae", "text": "*2,640* tokens per chunk of *12* frames", "side": "left", "key": True},
+            {"at": "attn", "text": "*12* heads of *128*, window *5,280* tokens", "side": "left", "key": True},
+            {"at": "act", "text": "Action modules in *15* of *30* blocks", "side": "left"},
+            {"at": "block", "text": "*30* layers · *1.3B* parameters", "side": "right", "key": True},
+            {"at": "kv", "text": "Rolling cache of *6* latent frames, ~*0.97 GB*", "side": "right"},
+            {"at": "dec", "text": "*25* fps at *352×640*", "side": "right", "key": True},
         ],
         "feedback": "next chunk",
     },

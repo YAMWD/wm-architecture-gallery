@@ -16,6 +16,7 @@ MODEL = {
                "else is DreamerV2: CNN encoder and decoder, discrete latents, reward and discount heads, actor-critic in "
                "imagination. The transformer is tiny (2 layers), so imagination is latency-bound per step and attention "
                "over the growing imagined history is the only cost that scales.",
+    "tagline": "Dreamer with a transformer in place of the GRU",
     "facts": [
         ("Representation", "DreamerV2 CNN encoder; posterior q(z_t | x_t) computed from the frame alone (no h_t), discrete "
                            "stochastic latent; full state is the concatenation [h_t, z_t]"),
@@ -23,7 +24,7 @@ MODEL = {
                  "gating, no identity-map reordering (except Atari Pong); ~0.5M (DMC) to ~4.3M (Atari) block weights [D]"),
         ("Attention", "Causal over past steps: h_t = transformer(z_{1:t-1}, a_{1:t-1}); relative positional embedding "
                       "(Transformer-XL style) is a tunable option; sequence length per DreamerV2 config"),
-        ("Actions", "The action is part of each step's input token together with the stochastic latent"),
+        ("Actions", "The action is part of each step's input token together with the stochastic latent; how z_t and a_t are combined is not stated"),
         ("Prediction", "Prior p(z_t | h_t) sampled and fed back; 1 transformer pass per imagined step; image, reward and "
                        "discount predictors read (h_t, z_t); ELBO with KL(q(z_t|x_t) || p(z_t|h_t))"),
         ("Decoder", "DreamerV2 CNN decoder from (h_t, z_t), used for the reconstruction loss and visualisation only"),
@@ -59,7 +60,7 @@ MODEL = {
         "below": [{"text": "Frame x_t + action a_t"}],
         "stack": [
             {"box": "DreamerV2 CNN encoder", "short": "DreamerV2 encoder", "id": "enc", "style": "teal"},
-            {"box": "Posterior q(z_t | x_t), discrete", "id": "post", "minor": True},
+            {"box": "Posterior q(z_t | x_t)", "id": "post", "minor": True},
             {"box": "Step token (z_t, a_t)", "short": "Token (z_t, a_t)", "id": "tok", "side": "Action a_t"},
             {"group": [
                 {"residual": [{"box": "Masked self-attention", "id": "attn", "style": "dark"}]},
@@ -71,16 +72,13 @@ MODEL = {
             {"fanout": [[{"box": "Prior p(z_t | h_t)", "id": "prior", "minor": True}, {"box": "Sample z_t, feed back", "short": "Sample prior z_t", "id": "sample"}],
                         [{"box": "Reward head", "id": "rew", "terminal": True}], [{"box": "Discount head", "terminal": True, "minor": True}]]},
         ],
-        "above": [{"box": "DreamerV2 CNN decoder", "short": "DreamerV2 decoder", "id": "dec", "style": "teal"}, {"text": "Reconstructed frame x_t (training only)"}],
+        "above": [{"box": "DreamerV2 CNN decoder", "short": "DreamerV2 decoder", "id": "dec", "style": "teal"}, {"text": "Frame x_t (training only)"}],
         "annotations": [
-            {"at": "enc", "text": "DreamerV2 CNN; posterior q(z_t | x_t) without h_t, so all steps train in parallel", "side": "left", "key": True},
-            {"at": "tok", "text": "*1* token per step; how z_t and a_t are combined is not stated", "side": "left"},
-            {"at": "attn", "text": "*10* heads, width *200* (DMC) or *600* (Atari); causal over all past (z, a) steps", "side": "left", "key": True},
-            {"at": "block", "text": "*2* layers (~*0.5M*–*4.3M* block weights [D]); post-norm Vaswani block, no gating, no dropout", "side": "right", "key": True},
-            {"at": "mlp", "text": "no identity-map reordering (except Atari Pong), no KV cache mentioned; relative positional embedding (Transformer-XL) is a tunable option", "side": "right"},
-            {"at": "sample", "text": "*1* pass per imagined step; *K* = *3* imagined trajectories per replay sample; no wall-clock figure", "side": "left"},
-            {"at": "rew", "text": "reward and discount heads read (h_t, z_t)", "side": "right"},
-            {"at": "dec", "text": "reads (h_t, z_t); reconstruction loss and visualisation only, not run in imagination", "side": "right"},
+            {"at": "tok", "text": "*1* token per step", "side": "left", "key": True},
+            {"at": "attn", "text": "*10* heads · width *200* (DMC), *600* (Atari)", "side": "left", "key": True},
+            {"at": "block", "text": "*2* layers · ~*0.5M*–*4.3M* block weights", "side": "right", "key": True},
+            {"at": "sample", "text": "*1* pass per frame", "side": "left", "key": True},
+            {"at": "sample", "text": "*3* rollouts per replay sample", "side": "right"},
         ],
         "feedback": "next step: z_t",
     },

@@ -15,9 +15,10 @@ MODEL = {
                "separate tokens per step, and the hidden state read from the action token drives MLP heads for the "
                "next latent, reward and discount. The policy acts from z_t alone, so the transformer runs only in "
                "training and imagination, where the XL memory doubles throughput to 39,000 samples/s on one A100.",
+    "tagline": "Transformer-XL over three tokens per step",
     "facts": [
         ("Representation", "32 categorical variables x 32 classes per step from a CNN VAE on 64x64 grayscale frames (stack of 4)"),
-        ("Core", "Transformer-XL: 10 layers, d 256, 4 heads of 64, FFN 1024, SiLU; dynamics model 10.8M, world model 19M (Table 5)"),
+        ("Core", "Transformer-XL: 10 layers, d 256, 4 heads of 64, FFN 1024, SiLU; dynamics model 10.8M, world model 19M (Table 5); norm placement not disclosed"),
         ("Attention", "Causal with relative positions; history 16 steps = 47 tokens (3x16-1) [D], plus Transformer-XL segment memory"),
         ("Actions", "Own action token through a modality-specific linear embedding; h_t is read from the action token's output"),
         ("Prediction", "One pass per imagined step; MLP heads give the next latent (categorical sample), reward (mean) and discount"),
@@ -49,7 +50,7 @@ MODEL = {
         "stack": [
             {"box": "CNN VAE encoder", "id": "enc", "style": "teal"},
             {"box": "Categorical latent z", "id": "lat", "minor": True},
-            {"box": "Interleave (z, a, r) tokens", "short": "Interleave z, a, r", "id": "seq", "side": "Action + reward"},
+            {"box": "Interleave z, a, r", "id": "seq", "side": "Action + reward"},
             {"group": [
                 {"residual": [{"box": "LayerNorm", "minor": True},
                               {"box": "Masked self-attention", "id": "attn", "style": "dark", "side": "Relative positions"}]},
@@ -63,13 +64,12 @@ MODEL = {
         "above": [{"text": "Next z → actor-critic, no decoding"}],
         "insets": [{"for": "ffn", "stack": [{"box": "Linear"}, {"box": "SiLU"}, {"box": "Linear"}]}],
         "annotations": [
-            {"at": "enc", "text": "*32* categoricals × *32* classes per step (stack of *4* grayscale frames)", "side": "left", "key": True},
-            {"at": "seq", "text": "*3* tokens per step (latent, action, reward) through modality-specific linear embeddings; history *16* steps = *47* tokens [D]", "side": "left"},
-            {"at": "attn", "text": "*4* heads of *64*; Transformer-XL relative positions + cached segment memory", "side": "left", "key": True},
-            {"at": "block", "text": "*10* layers, width *256*, FFN *1,024*; *10.8M* dynamics model, *19M* world model", "side": "right", "key": True},
-            {"at": "read", "text": "h is the action token's output; norm placement not disclosed", "side": "right"},
-            {"at": "sample", "text": "*1* pass per imagined step; *39,000* samples/s on one A100 with the XL memory, *19,900* without (authors)", "side": "right"},
-            {"at": "disc", "text": "MLP heads; reward and discount take the mean", "side": "right"},
+            {"at": "enc", "text": "*32* categoricals × *32* classes per step", "side": "left", "key": True},
+            {"at": "seq", "text": "*3* tokens per step · history of *16* steps", "side": "left", "key": True},
+            {"at": "attn", "text": "*4* heads of *64* · width *256*", "side": "left"},
+            {"at": "ffn", "text": "Hidden layer dimension of *1,024*", "side": "left"},
+            {"at": "block", "text": "*10* layers · *10.8M* dynamics, *19M* total", "side": "right", "key": True},
+            {"at": "sample", "text": "*1* pass per step · *39,000* samples/s", "side": "right", "key": True},
         ],
         "feedback": "next step",
     },

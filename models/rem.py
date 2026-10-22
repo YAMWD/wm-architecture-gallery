@@ -15,15 +15,17 @@ MODEL = {
                "Observation Prediction (POP) feeds 64 learned prediction tokens from that state to sample all 64 next-frame "
                "codes in one call. Imagination becomes 2 calls per frame instead of 64, which the authors measure as 15.4× "
                "faster than prior token-based world models.",
+    "tagline": "RetNet over VQ codes, a whole frame at a time",
     "facts": [
         ("Representation", "64 VQ codes per 64×64 frame (8×8 grid), vocabulary 512; VQ-GAN-style CNN tokenizer without the "
                            "discriminator (IRIS uses 16 codes)"),
         ("Core", "RetNet (retention, not softmax attention): 5 layers, 4 retention heads, d 256, FFN 1024, dropout 0.1; "
-                 "parameter count not disclosed (~3.9M block weights [D])"),
+                 "parameter count not disclosed (~3.9M block weights [D]); FFN activation not disclosed"),
         ("Attention", "Multi-scale retention with a per-head exponential decay and relative position; chunkwise mode is parallel "
                       "inside a chunk of c = 3 observation-action blocks (195 tokens [D]) and recurrent between chunks through a "
                       "d×d state per head; world-model context 2 frames"),
-        ("Actions", "One action token per step (learned embedding) after the 64 observation tokens"),
+        ("Actions", "One action token per step (learned embedding) after the 64 observation tokens; reward and "
+                    "termination are read from the action token; the world model reuses the tokenizer's embedding table"),
         ("Prediction", "POP: K = 64 learned prediction tokens u are run from the recurrent state S_t and all next-frame tokens are "
                        "sampled in one pass; default mode = 2 sequential calls per imagined frame (state update with z_t, a_t, "
                        "then prediction with u), so 2H calls over the horizon H = 10 instead of KH = 640 (Table 6)"),
@@ -59,28 +61,26 @@ MODEL = {
         "stack": [
             {"box": "VQ-VAE encoder (CNN)", "id": "enc", "style": "teal"},
             {"box": "Nearest codebook entry", "id": "vq", "minor": True},
-            {"box": "Embed codes, action, prediction tokens u", "short": "Add action + u tokens", "id": "emb", "side": "Action emb."},
+            {"box": "Embed codes + u tokens", "short": "Embed + u tokens", "id": "emb", "side": "Action emb."},
             {"group": [
                 {"residual": [{"box": "LayerNorm", "minor": True},
                               {"box": "Multi-scale retention", "id": "ret", "style": "dark", "side": "Relative positions"}]},
                 {"residual": [{"box": "LayerNorm", "minor": True}, {"box": "Feed forward", "id": "ffn"}]},
             ], "repeat": "5 ×", "id": "block"},
-            {"fanout": [[{"box": "POP: sample all codes in one pass", "short": "POP: all codes in one pass", "id": "sample"}],
+            {"fanout": [[{"box": "POP: all codes at once", "id": "sample"}],
                         [{"box": "Reward head", "id": "rew", "terminal": True, "minor": True}],
                         [{"box": "Done head", "terminal": True, "minor": True}]]},
         ],
         "above": [{"box": "VQ-VAE decoder (CNN)", "id": "dec", "style": "teal"}, {"text": "Next frame 64×64 (loss only)"}],
         "insets": [
-            {"for": "sample", "stack": [{"box": "Update S_t with (z_t, a_t)"}, {"box": "Run u from S_t"}, {"box": "All next codes in parallel"}]},
+            {"for": "sample", "stack": [{"box": "Update S_t with z_t, a_t"}, {"box": "Run u from S_t"}, {"box": "All codes in parallel"}]},
         ],
         "annotations": [
-            {"at": "enc", "text": "*64* codes per frame (*8×8*), vocabulary *512*", "side": "left", "key": True},
-            {"at": "emb", "text": "*64* learned prediction tokens u per step; u never enters the recurrent state; the world model reuses the tokenizer's embedding table", "side": "right"},
-            {"at": "ret", "text": "*4* heads, width *256*; parallel inside a chunk of *3* blocks, recurrent across chunks through a d×d state per head: no KV cache", "side": "left", "key": True},
-            {"at": "block", "text": "*5* layers, FFN *1,024*, dropout *0.1*; parameters not disclosed (~*3.9M* block weights [D]); per-head exponential decay + relative positions (Θ); a chunk of *3* observation-action blocks = *195* tokens [D]; FFN activation not disclosed", "side": "right"},
-            {"at": "sample", "text": "*2* calls per imagined frame instead of *64*; *15.4×* faster imagination (authors, RTX 4090)", "side": "left", "key": True},
-            {"at": "rew", "text": "reward and termination read from the action token; *2H* = *20* calls over a horizon of *10* vs *640*", "side": "right"},
-            {"at": "dec", "text": "reconstruction loss only; the actor-critic reads the token code vectors through a CNN + LSTM, so imagination decodes no pixels", "side": "right"},
+            {"at": "enc", "text": "*64* codes per frame · vocabulary of *512*", "side": "left", "key": True},
+            {"at": "emb", "text": "*64* prediction tokens u", "side": "right", "key": True},
+            {"at": "ret", "text": "*4* heads · width *256*", "side": "left"},
+            {"at": "block", "text": "*5* layers · ~*3.9M* block weights", "side": "right", "key": True},
+            {"at": "sample", "text": "*2* calls per frame · imagination *15.4×* faster", "side": "left", "key": True},
         ],
         "feedback": "next step",
     },

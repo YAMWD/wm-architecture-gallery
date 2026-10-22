@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="213" height="226" viewBox="0 0 213 226" font-family="IBM Plex Sans">
+<style>@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;700&amp;family=Saira+Semi+Condensed:wght@500;600&amp;display=swap");</style>
+<defs><marker id="ah_1E2A3B" markerWidth="7" markerHeight="7" refX="5.5" refY="3.5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0 L7,3.5 L0,7 z" fill="#1E2A3B"/></marker></defs>
+<rect x="0.0" y="0.0" width="214.0" height="227.0" rx="0.0" fill="#FFFFFF"/>
+<rect x="10.0" y="48.0" width="192.4" height="161.8" rx="20.0" fill="#EEF1F5" stroke="#5E6B80" stroke-width="1.0"/>
+<rect x="65.8" y="176.8" width="108.3" height="24.0" rx="6.0" fill="#DCF2F1" stroke="#00A8A4" stroke-width="1.0"/>
+<text x="120.0" y="192.2" font-family="IBM Plex Sans" font-weight="400" font-size="11.5" fill="#1E2A3B" text-anchor="middle">SAVi slot encoder</text>
+<path d="M 120.0 175.8 L 120.0 167.8" fill="none" stroke="#1E2A3B" stroke-width="1.2" marker-end="url(#ah_1E2A3B)"/>
+<rect x="46.5" y="90.9" width="146.8" height="75.9" rx="10.0" fill="#E4EAF4" stroke="#1D3E72" stroke-width="1.0"/>
+<rect x="53.5" y="133.9" width="132.8" height="24.0" rx="6.0" fill="#1D3E72" stroke="#1D3E72" stroke-width="1.0"/>
+<text x="120.0" y="149.3" font-family="IBM Plex Sans" font-weight="400" font-size="11.5" fill="#FFFFFF" text-anchor="middle">Bidirectional attention</text>
+<path d="M 120.0 132.9 L 120.0 124.9" fill="none" stroke="#1E2A3B" stroke-width="1.2" marker-end="url(#ah_1E2A3B)"/>
+<rect x="76.8" y="99.9" width="86.2" height="24.0" rx="6.0" fill="#FFFFFF" stroke="#1E2A3B" stroke-width="1.0"/>
+<text x="120.0" y="115.3" font-family="IBM Plex Sans" font-weight="400" font-size="11.5" fill="#1E2A3B" text-anchor="middle">Feed forward</text>
+<rect x="42.5" y="143.8" width="8.0" height="18.0" rx="0.0" fill="#E4EAF4"/>
+<path d="M 45.5 160.8 l 5 -6 l -8 -4 l 5 -6" fill="none" stroke="#1E2A3B" stroke-width="1.4"/>
+<text x="36.5" y="154.8" font-family="Saira SemiCondensed" font-weight="500" font-size="12.5" fill="#B95A08" text-anchor="end">4 ×</text>
+<path d="M 120.0 89.9 L 120.0 81.9" fill="none" stroke="#1E2A3B" stroke-width="1.2" marker-end="url(#ah_1E2A3B)"/>
+<rect x="69.9" y="57.0" width="100.1" height="24.0" rx="6.0" fill="#FFFFFF" stroke="#1E2A3B" stroke-width="1.0"/>
+<text x="120.0" y="72.4" font-family="IBM Plex Sans" font-weight="400" font-size="11.5" fill="#1E2A3B" text-anchor="middle">Linear slot head</text>
+<path d="M 120.0 221.8 L 120.0 201.8" fill="none" stroke="#1E2A3B" stroke-width="1.2" marker-end="url(#ah_1E2A3B)"/>
+<rect x="52.0" y="14.0" width="136.0" height="24.0" rx="6.0" fill="#DCF2F1" stroke="#00A8A4" stroke-width="1.0"/>
+<text x="120.0" y="29.4" font-family="IBM Plex Sans" font-weight="400" font-size="11.5" fill="#1E2A3B" text-anchor="middle">SAVi broadcast decoder</text>
+<path d="M 120.0 56.0 L 120.0 39.0" fill="none" stroke="#1E2A3B" stroke-width="1.2" marker-end="url(#ah_1E2A3B)"/>
+</svg>

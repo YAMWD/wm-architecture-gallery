@@ -10,6 +10,7 @@ MODEL = {
     "params_num": 1.2e9,
     "open": "code + weights",
     "links": {"arXiv": "https://arxiv.org/abs/2504.08388", "code": "https://github.com/microsoft/MineWorld"},
+    "tagline": "Minecraft GPT, decoded along anti-diagonals",
     "summary": "An open, real-time Minecraft world model: a LLaMA-style decoder trained from scratch on interleaved frame "
                "and action tokens. A VQ-VAE with 16x compression turns each 224x384 frame into 336 tokens (14x24, "
                "codebook 8,192) and each action into 11 tokens. Diagonal decoding releases tokens along anti-diagonals, "
@@ -17,7 +18,7 @@ MODEL = {
                "the quality; the 1.2B model goes from 0.89 to 3.01 FPS.",
     "facts": [
         ("Representation", "336 discrete tokens per 224x384 frame (14x24 from a VQ-VAE with 16x spatial compression, codebook 8,192); frames downscaled from 360x640 'to reduce the computation'"),
-        ("Core", "LLaMA architecture (RMSNorm, rotary embeddings): 1.2B = 20 layers, d 2048, MLP 8192, 32 heads; 700M = 20 layers, d 2048, MLP 4096; 300M = 20 layers, d 1024, 16 heads"),
+        ("Core", "LLaMA architecture (RMSNorm, rotary embeddings): 1.2B = 20 layers, d 2048, MLP 8192, 32 heads; 700M = 20 layers, d 2048, MLP 4096; 300M = 20 layers, d 1024, 16 heads; activation not disclosed"),
         ("Attention", "Dense causal over 16-frame clips: 16 x 347 = 5,552 tokens [D]; vocabulary 8,192 + 70 = 8,262"),
         ("Actions", "11 action tokens per step ([aBOS], 9 action tokens incl. 2 camera tokens, [aEOS]) interleaved after each frame; the model predicts actions too, so it doubles as a policy"),
         ("Prediction", "Next-token AR, or diagonal decoding: tokens (i, j+1) and (i+1, j) are released together, 37 passes per frame instead of 336 (theoretical 9.1x) [D]; fine-tuned with a matching parallel attention mask"),
@@ -47,25 +48,24 @@ MODEL = {
         "below": [{"text": "Frame 224×384 + action tokens"}],
         "stack": [
             {"box": "VQ-VAE encoder", "id": "enc", "style": "teal"},
-            {"box": "Nearest codebook entry", "short": "Codebook lookup", "id": "vq", "minor": True},
-            {"box": "Interleave frame and action tokens", "short": "Interleave tokens", "id": "seq", "side": "Action tokens"},
+            {"box": "Nearest codebook entry", "id": "vq", "minor": True},
+            {"box": "Interleave tokens", "id": "seq", "side": "Action tokens"},
             {"box": "Token embedding", "id": "emb", "minor": True},
             {"group": [
                 {"residual": [{"box": "RMSNorm", "minor": True},
                               {"box": "Masked self-attention", "id": "attn", "style": "dark", "side": "RoPE"}]},
                 {"residual": [{"box": "RMSNorm", "minor": True}, {"box": "Feed forward", "id": "ffn"}]},
             ], "repeat": "20 ×", "id": "block"},
-            {"box": "Sample next anti-diagonal", "short": "Sample next diagonal", "id": "sample"},
+            {"box": "Sample anti-diagonal", "id": "sample"},
         ],
         "above": [{"box": "VQ-VAE decoder", "id": "dec", "style": "teal"}, {"text": "Next frame 224×384"}],
         "annotations": [
-            {"at": "enc", "text": "*16×* compression: *336* tokens per frame (14×24), codebook *8,192*", "side": "left", "key": True},
-            {"at": "seq", "text": "*11* action tokens after each frame; *16* frames = *5,552* tokens [D]", "side": "left", "key": True},
-            {"at": "emb", "text": "[aBOS], *9* action tokens incl. *2* camera bins, [aEOS]; vocabulary *8,192* + *70* = *8,262*", "side": "left"},
-            {"at": "attn", "text": "*32* heads; the causal mask is replaced by a parallel mask when fine-tuned for diagonal decoding; activation not disclosed", "side": "left"},
-            {"at": "block", "text": "LLaMA-style: *20* layers, width *2,048*, MLP *8,192*; *1.2B* (also *300M*, *700M*)", "side": "right", "key": True},
-            {"at": "sample", "text": "diagonal decoding: *37* passes per frame instead of *336*; *0.89* → *3.01* FPS for *1.2B* (authors)", "side": "right", "key": True},
-            {"at": "dec", "text": "tokens (i, j+1) and (i+1, j) are released together; the inference GPU is not stated", "side": "right"},
+            {"at": "enc", "text": "*336* tokens per frame, codebook of *8,192*", "side": "left", "key": True},
+            {"at": "seq", "text": "*11* action tokens, *5,552*-token context", "side": "left"},
+            {"at": "attn", "text": "*32* heads, width *2,048*", "side": "left"},
+            {"at": "block", "text": "*20* layers, *1.2B* parameters", "side": "right", "key": True},
+            {"at": "sample", "text": "*37* passes per frame instead of *336*", "side": "right", "key": True},
+            {"at": "dec", "text": "*0.89* → *3.01* fps with diagonal decoding", "side": "right", "key": True},
         ],
         "feedback": "next frame",
     },
