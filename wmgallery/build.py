@@ -100,13 +100,13 @@ def card_html(m, mini_svg, artifact=False):
 
 
 CSS = r"""
-/* Layout: a technical drawing sheet. Centered title block with crop marks over a faint engineering grid;
-   two-column catalogue of cards; diagrams sit on blueprint-grid tiles; labels and figures in mono. */
+/* Layout: centered title block with crop marks on a plain page; two-column catalogue of cards;
+   diagrams on white tiles; labels and figures in mono. */
 :root{
   --paper:#F5F7FA;--panel:#FFFFFF;--ink:#0F1B2D;--muted:#5B6779;--faint:#8792A5;
-  --line:#E1E6EE;--line-strong:#C3CCDA;--grid:rgba(29,62,114,.045);--grid-major:rgba(29,62,114,.08);
-  --navy:#1D3E72;--accent:#F58F2D;--accent-ink:#B4560A;--glow:rgba(245,143,45,.10);
-  --tile:#FFFFFF;--tile-grid:rgba(29,62,114,.065);--shade:rgba(8,15,28,.56);--shadow:rgba(15,27,45,.08);
+  --line:#E1E6EE;--line-strong:#C3CCDA;
+  --navy:#1D3E72;--accent:#F58F2D;--accent-ink:#B4560A;
+  --tile:#FFFFFF;--shade:rgba(8,15,28,.56);--shadow:rgba(15,27,45,.08);
   --ev-v:#0B6E6B;--ev-r:#1D3E72;--ev-c:#A4520E;--focus:#F58F2D;
   --display:"Saira Semi Condensed","Saira SemiCondensed","Arial Narrow",sans-serif;
   --body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
@@ -114,23 +114,19 @@ CSS = r"""
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
   --paper:#09111E;--panel:#0E1829;--ink:#E5ECF6;--muted:#9AA7BA;--faint:#6E7C91;
-  --line:#1C2A40;--line-strong:#2C3D5B;--grid:rgba(140,170,225,.05);--grid-major:rgba(140,170,225,.09);
-  --navy:#AFC8F4;--accent:#F58F2D;--accent-ink:#FFAD6A;--glow:rgba(245,143,45,.12);
-  --tile:#FFFFFF;--tile-grid:rgba(29,62,114,.065);--shade:rgba(2,6,14,.74);--shadow:rgba(0,0,0,.35);
+  --line:#1C2A40;--line-strong:#2C3D5B;
+  --navy:#AFC8F4;--accent:#F58F2D;--accent-ink:#FFAD6A;
+  --tile:#FFFFFF;--shade:rgba(2,6,14,.74);--shadow:rgba(0,0,0,.35);
   --ev-v:#6FD9D4;--ev-r:#AFC8F4;--ev-c:#FFB57A;color-scheme:dark}}
 :root[data-theme="dark"]{
   --paper:#09111E;--panel:#0E1829;--ink:#E5ECF6;--muted:#9AA7BA;--faint:#6E7C91;
-  --line:#1C2A40;--line-strong:#2C3D5B;--grid:rgba(140,170,225,.05);--grid-major:rgba(140,170,225,.09);
-  --navy:#AFC8F4;--accent:#F58F2D;--accent-ink:#FFAD6A;--glow:rgba(245,143,45,.12);
-  --tile:#FFFFFF;--tile-grid:rgba(29,62,114,.065);--shade:rgba(2,6,14,.74);--shadow:rgba(0,0,0,.35);
+  --line:#1C2A40;--line-strong:#2C3D5B;
+  --navy:#AFC8F4;--accent:#F58F2D;--accent-ink:#FFAD6A;
+  --tile:#FFFFFF;--shade:rgba(2,6,14,.74);--shadow:rgba(0,0,0,.35);
   --ev-v:#6FD9D4;--ev-r:#AFC8F4;--ev-c:#FFB57A;color-scheme:dark}
 *{box-sizing:border-box}
 html,body{margin:0}
-body{background-color:var(--paper);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.5;
-  background-image:radial-gradient(ellipse 60% 340px at 50% 0,var(--glow),transparent 70%),
-    linear-gradient(var(--grid-major) 1px,transparent 1px),linear-gradient(90deg,var(--grid-major) 1px,transparent 1px),
-    linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
-  background-size:100% 100%,120px 120px,120px 120px,24px 24px,24px 24px;background-repeat:no-repeat,repeat,repeat,repeat,repeat}
+body{background:var(--paper);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.5}
 body.noscroll{overflow:hidden}
 a{color:var(--navy);text-underline-offset:2px}
 button{font:inherit;color:inherit}
@@ -191,9 +187,7 @@ select.ctl{appearance:none;-webkit-appearance:none;padding-right:28px;background
   border:1px solid var(--line);border-radius:10px;scroll-margin-top:150px;transition:border-color .2s,box-shadow .2s,transform .2s}
 .card:hover{border-color:var(--line-strong);box-shadow:0 10px 30px var(--shadow);transform:translateY(-1px)}
 .card.hidden{display:none}
-.thumb{position:relative;display:block;width:220px;height:228px;padding:8px;cursor:zoom-in;border:1px solid var(--line);border-radius:8px;
-  background-color:var(--tile);background-image:linear-gradient(var(--tile-grid) 1px,transparent 1px),linear-gradient(90deg,var(--tile-grid) 1px,transparent 1px);
-  background-size:12px 12px;background-position:-1px -1px}
+.thumb{position:relative;display:block;width:220px;height:228px;padding:8px;cursor:zoom-in;border:1px solid var(--line);border-radius:8px;background:var(--tile)}
 .thumb svg{display:block;width:100%;height:100%}
 .expand{position:absolute;top:8px;right:8px;font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:#1D3E72;
   background:#fff;border:1px solid #C3CCDA;border-radius:4px;padding:2px 6px;opacity:0;transform:translateY(-2px);transition:opacity .15s,transform .15s}
@@ -250,8 +244,7 @@ footer .copy{margin:14px 0 0;font-family:var(--mono);font-size:11px;letter-spaci
 .vtools select{font-family:var(--mono);font-size:11.5px;letter-spacing:.04em;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:6px;height:32px;padding:0 8px;max-width:210px}
 .vb{font-family:var(--mono);font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);background:var(--panel);border:1px solid var(--line);border-radius:6px;height:32px;min-width:32px;padding:0 10px;cursor:pointer}
 .vb:hover{color:var(--ink);border-color:var(--line-strong)}
-.vbody{flex:1;min-height:0;overflow:auto;display:flex;background-color:#fff;
-  background-image:linear-gradient(rgba(29,62,114,.06) 1px,transparent 1px),linear-gradient(90deg,rgba(29,62,114,.06) 1px,transparent 1px);background-size:16px 16px}
+.vbody{flex:1;min-height:0;overflow:auto;display:flex;background:#fff}
 .vbody .pane{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;padding:14px}
 .vbody .pane+.pane{border-left:1px solid #DCE2EB}
 .vbody .fig{flex:1;width:100%;min-height:0;display:flex;justify-content:center}
@@ -261,7 +254,7 @@ footer .copy{margin:14px 0 0;font-family:var(--mono);font-size:11px;letter-spaci
 .vbody.zoom .fig svg{height:auto}
 .vkeys{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);padding:8px 16px;border-top:1px solid var(--line);text-align:center}
 .help{max-width:760px;margin:auto;width:100%;flex:0 1 auto}
-.help .vbody{display:block;padding:20px 22px;background:var(--panel);background-image:none;color:var(--ink)}
+.help .vbody{display:block;padding:20px 22px;background:var(--panel);color:var(--ink)}
 .help h2{margin:0 0 6px;font-family:var(--display);font-weight:600;font-size:24px}
 .help p{margin:0 0 12px;color:var(--muted)}
 .legend-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px 18px;font-size:14px;margin:8px 0 14px;padding:0;list-style:none}
