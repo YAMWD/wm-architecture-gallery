@@ -1,79 +1,72 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="513" height="417" viewBox="0 0 513 417" font-family="IBM Plex Sans">
+<svg xmlns="http://www.w3.org/2000/svg" width="517" height="417" viewBox="0 0 517 417" font-family="IBM Plex Sans">
 <style>@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;700&amp;family=Saira+Semi+Condensed:wght@500;600&amp;display=swap");</style>
 <defs><marker id="ah_1E2A3B" markerWidth="7" markerHeight="7" refX="5.5" refY="3.5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0 L7,3.5 L0,7 z" fill="#1E2A3B"/></marker><marker id="ah_B95A08" markerWidth="7" markerHeight="7" refX="5.5" refY="3.5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0 L7,3.5 L0,7 z" fill="#B95A08"/></marker></defs>
-<rect x="0.0" y="0.0" width="514.0" height="418.0" rx="0.0" fill="#FFFFFF"/>
-<text x="217.9" y="18.0" font-family="Saira SemiCondensed" font-weight="600" font-size="17.0" fill="#1D3E72" text-anchor="middle">LingBot-World-Fast</text>
-<text x="217.9" y="31.0" font-family="IBM Plex Sans" font-weight="400" font-size="10.0" fill="#5E6B80" text-anchor="middle">Robbyant · 2026</text>
-<rect x="10.0" y="104.8" width="331.4" height="269.6" rx="20.0" fill="#EEF1F5" stroke="#5E6B80" stroke-width="1.0"/>
-<rect x="153.4" y="335.2" width="128.8" height="27.2" rx="6.0" fill="#DCF2F1" stroke="#00A8A4" stroke-width="1.0"/>
-<text x="217.9" y="353.0" font-family="IBM Plex Sans" font-weight="400" font-size="14.0" fill="#1E2A3B" text-anchor="middle">Wan VAE encoder</text>
-<path d="M 217.9 334.2 L 217.9 322.2" fill="none" stroke="#1E2A3B" stroke-width="1.2" marker-end="url(#ah_1E2A3B)"/>
-<rect x="122.3" y="116.8" width="191.2" height="204.4" rx="14.0" fill="#E7EAEF" stroke="#5E6B80" stroke-width="1.0"/>
-<text x="301.4" y="132.6" font-family="IBM Plex Sans" font-weight="400" font-size="12.0" fill="#B95A08" text-anchor="end">4 steps (DMD + GAN)</text>
-<rect x="130.3" y="140.4" width="175.2" height="170.8" rx="14.0" fill="#E4EAF4" stroke="#1D3E72" stroke-width="1.0"/>
-<rect x="138.3" y="274.0" width="159.2" height="27.2" rx="6.0" fill="#1D3E72" stroke="#1D3E72" stroke-width="1.0"/>
-<text x="217.9" y="291.8" font-family="IBM Plex Sans" font-weight="400" font-size="14.0" fill="#FFFFFF" text-anchor="middle">Block-causal attention</text>
-<rect x="55.8" y="274.5" width="64.5" height="26.2" rx="6.0" fill="#FFFFFF" stroke="#1E2A3B" stroke-width="1.0"/>
-<text x="88.0" y="292.2" font-family="IBM Plex Sans" font-weight="400" font-size="13.0" fill="#1E2A3B" text-anchor="middle">3D RoPE</text>
-<path d="M 121.3 287.6 L 137.3 287.6" fill="none" stroke="#1E2A3B" stroke-width="1.1" marker-end="url(#ah_1E2A3B)"/>
-<path d="M 217.9 273.0 L 217.9 261.0" fill="none" stroke="#1E2A3B" stroke-width="1.2" marker-end="url(#ah_1E2A3B)"/>
-<rect x="140.3" y="232.8" width="155.1" height="27.2" rx="6.0" fill="#FDE8D4" stroke="#F58F2D" stroke-width="1.0"/>
-<text x="217.9" y="250.6" font-family="IBM Plex Sans" font-weight="400" font-size="14.0" fill="#1E2A3B" text-anchor="middle">Action AdaLN adapter</text>
-<rect x="22.0" y="233.3" width="98.3" height="26.2" rx="6.0" fill="#FFFFFF" stroke="#1E2A3B" stroke-width="1.0"/>
-<text x="71.1" y="251.0" font-family="IBM Plex Sans" font-weight="400" font-size="13.0" fill="#1E2A3B" text-anchor="middle">Plücker + keys</text>
-<path d="M 121.3 246.4 L 139.3 246.4" fill="none" stroke="#1E2A3B" stroke-width="1.1" marker-end="url(#ah_1E2A3B)"/>
-<path d="M 217.9 231.8 L 217.9 219.8" fill="none" stroke="#1E2A3B" stroke-width="1.2" marker-end="url(#ah_1E2A3B)"/>
-<rect x="160.1" y="191.6" width="115.6" height="27.2" rx="6.0" fill="#FFFFFF" stroke="#1E2A3B" stroke-width="1.0"/>
-<text x="217.9" y="209.4" font-family="IBM Plex Sans" font-weight="400" font-size="14.0" fill="#1E2A3B" text-anchor="middle">Cross-attention</text>
-<rect x="47.3" y="192.1" width="73.0" height="26.2" rx="6.0" fill="#FFFFFF" stroke="#1E2A3B" stroke-width="1.0"/>
-<text x="83.8" y="209.8" font-family="IBM Plex Sans" font-weight="400" font-size="13.0" fill="#1E2A3B" text-anchor="middle">umT5 text</text>
-<path d="M 121.3 205.2 L 159.1 205.2" fill="none" stroke="#1E2A3B" stroke-width="1.1" marker-end="url(#ah_1E2A3B)"/>
-<path d="M 217.9 190.6 L 217.9 178.6" fill="none" stroke="#1E2A3B" stroke-width="1.2" marker-end="url(#ah_1E2A3B)"/>
-<rect x="167.3" y="150.4" width="101.1" height="27.2" rx="6.0" fill="#FFFFFF" stroke="#1E2A3B" stroke-width="1.0"/>
-<text x="217.9" y="168.2" font-family="IBM Plex Sans" font-weight="400" font-size="14.0" fill="#1E2A3B" text-anchor="middle">Feed forward</text>
-<rect x="126.3" y="168.2" width="8.0" height="18.0" rx="0.0" fill="#E4EAF4"/>
-<path d="M 129.3 185.2 l 5 -6 l -8 -4 l 5 -6" fill="none" stroke="#1E2A3B" stroke-width="1.4"/>
-<text x="116.3" y="179.2" font-family="Saira SemiCondensed" font-weight="500" font-size="12.5" fill="#B95A08" text-anchor="end">40 ×</text>
-<path d="M 313.4 128.4 L 323.4 128.4 L 323.4 307.2 L 315.4 307.2" fill="none" stroke="#B95A08" stroke-width="1.2" stroke-dasharray="4 3" marker-end="url(#ah_B95A08)"/>
-<text x="217.9" y="399.8" font-family="IBM Plex Mono" font-weight="400" font-size="12.0" fill="#1E2A3B" text-anchor="middle">Frames + camera + keys + text</text>
-<path d="M 217.9 387.4 L 217.9 363.4" fill="none" stroke="#1E2A3B" stroke-width="1.2" marker-end="url(#ah_1E2A3B)"/>
-<rect x="153.3" y="63.6" width="129.0" height="27.2" rx="6.0" fill="#DCF2F1" stroke="#00A8A4" stroke-width="1.0"/>
-<text x="217.9" y="81.4" font-family="IBM Plex Sans" font-weight="400" font-size="14.0" fill="#1E2A3B" text-anchor="middle">Wan VAE decoder</text>
-<path d="M 217.9 62.6 L 217.9 50.6" fill="none" stroke="#1E2A3B" stroke-width="1.2" marker-end="url(#ah_1E2A3B)"/>
-<text x="217.9" y="45.4" font-family="IBM Plex Mono" font-weight="400" font-size="12.0" fill="#1E2A3B" text-anchor="middle">12 frames at 480×832</text>
-<path d="M 217.9 115.8 L 217.9 91.8" fill="none" stroke="#1E2A3B" stroke-width="1.2" marker-end="url(#ah_1E2A3B)"/>
-<text x="369.4" y="72.8" font-family="IBM Plex Sans" font-weight="700" font-size="12.5" fill="#B95A08" text-anchor="start">16</text>
-<text x="387.4" y="72.8" font-family="IBM Plex Sans" font-weight="400" font-size="12.5" fill="#1E2A3B" text-anchor="start">fps</text>
-<text x="407.7" y="72.8" font-family="IBM Plex Sans" font-weight="400" font-size="12.5" fill="#1E2A3B" text-anchor="start">at</text>
-<text x="421.7" y="72.8" font-family="IBM Plex Sans" font-weight="700" font-size="12.5" fill="#B95A08" text-anchor="start">480p</text>
-<text x="451.8" y="72.8" font-family="IBM Plex Sans" font-weight="400" font-size="12.5" fill="#1E2A3B" text-anchor="start">,</text>
-<text x="458.2" y="72.8" font-family="IBM Plex Sans" font-weight="400" font-size="12.5" fill="#1E2A3B" text-anchor="start">&lt;</text>
-<text x="465.7" y="72.8" font-family="IBM Plex Sans" font-weight="700" font-size="12.5" fill="#B95A08" text-anchor="start">1</text>
-<text x="476.1" y="72.8" font-family="IBM Plex Sans" font-weight="400" font-size="12.5" fill="#1E2A3B" text-anchor="start">s</text>
-<text x="369.4" y="89.1" font-family="IBM Plex Sans" font-weight="400" font-size="12.5" fill="#1E2A3B" text-anchor="start">latency</text>
-<path d="M 283.4 77.2 L 364.4 77.2" fill="none" stroke="#1E2A3B" stroke-width="0.9" stroke-dasharray="2 3"/>
-<text x="369.4" y="221.4" font-family="IBM Plex Sans" font-weight="700" font-size="12.5" fill="#B95A08" text-anchor="start">40</text>
-<text x="387.4" y="221.4" font-family="IBM Plex Sans" font-weight="400" font-size="12.5" fill="#1E2A3B" text-anchor="start">layers,</text>
-<text x="427.4" y="221.4" font-family="IBM Plex Sans" font-weight="400" font-size="12.5" fill="#1E2A3B" text-anchor="start">width</text>
-<text x="461.8" y="221.4" font-family="IBM Plex Sans" font-weight="700" font-size="12.5" fill="#B95A08" text-anchor="start">5,120</text>
-<text x="495.7" y="221.4" font-family="IBM Plex Sans" font-weight="400" font-size="12.5" fill="#1E2A3B" text-anchor="start">,</text>
-<text x="369.4" y="237.7" font-family="IBM Plex Sans" font-weight="700" font-size="12.5" fill="#B95A08" text-anchor="start">14B</text>
-<path d="M 306.4 225.8 L 364.4 225.8" fill="none" stroke="#1E2A3B" stroke-width="0.9" stroke-dasharray="2 3"/>
-<text x="369.4" y="283.2" font-family="IBM Plex Sans" font-weight="700" font-size="12.5" fill="#B95A08" text-anchor="start">40</text>
-<text x="387.4" y="283.2" font-family="IBM Plex Sans" font-weight="400" font-size="12.5" fill="#1E2A3B" text-anchor="start">heads,</text>
-<text x="427.6" y="283.2" font-family="IBM Plex Sans" font-weight="400" font-size="12.5" fill="#1E2A3B" text-anchor="start">full</text>
-<text x="448.5" y="283.2" font-family="IBM Plex Sans" font-weight="400" font-size="12.5" fill="#1E2A3B" text-anchor="start">KV</text>
-<text x="466.8" y="283.2" font-family="IBM Plex Sans" font-weight="400" font-size="12.5" fill="#1E2A3B" text-anchor="start">of</text>
-<text x="480.7" y="283.2" font-family="IBM Plex Sans" font-weight="400" font-size="12.5" fill="#1E2A3B" text-anchor="start">the</text>
-<text x="369.4" y="299.5" font-family="IBM Plex Sans" font-weight="400" font-size="12.5" fill="#1E2A3B" text-anchor="start">whole</text>
-<text x="406.3" y="299.5" font-family="IBM Plex Sans" font-weight="400" font-size="12.5" fill="#1E2A3B" text-anchor="start">rollout</text>
-<path d="M 298.4 287.6 L 364.4 287.6" fill="none" stroke="#1E2A3B" stroke-width="0.9" stroke-dasharray="2 3"/>
-<text x="369.4" y="344.4" font-family="IBM Plex Sans" font-weight="700" font-size="12.5" fill="#B95A08" text-anchor="start">4,680</text>
-<text x="406.3" y="344.4" font-family="IBM Plex Sans" font-weight="400" font-size="12.5" fill="#1E2A3B" text-anchor="start">tokens</text>
-<text x="447.0" y="344.4" font-family="IBM Plex Sans" font-weight="400" font-size="12.5" fill="#1E2A3B" text-anchor="start">per</text>
-<text x="468.6" y="344.4" font-family="IBM Plex Sans" font-weight="400" font-size="12.5" fill="#1E2A3B" text-anchor="start">chunk</text>
-<text x="369.4" y="360.7" font-family="IBM Plex Sans" font-weight="400" font-size="12.5" fill="#1E2A3B" text-anchor="start">of</text>
-<text x="383.4" y="360.7" font-family="IBM Plex Sans" font-weight="700" font-size="12.5" fill="#B95A08" text-anchor="start">12</text>
-<text x="401.3" y="360.7" font-family="IBM Plex Sans" font-weight="400" font-size="12.5" fill="#1E2A3B" text-anchor="start">frames</text>
-<path d="M 283.3 348.8 L 364.4 348.8" fill="none" stroke="#1E2A3B" stroke-width="0.9" stroke-dasharray="2 3"/>
+<rect x="0.0" y="0.0" width="518.0" height="418.0" rx="0.0" fill="#FFFFFF"/>
+<text x="225.7" y="18.0" font-family="Saira SemiCondensed" font-weight="600" font-size="17.0" fill="#1D3E72" text-anchor="middle">LingBot-World-Fast</text>
+<text x="225.7" y="31.0" font-family="IBM Plex Sans" font-weight="400" font-size="10.0" fill="#5E6B80" text-anchor="middle">Robbyant · 2026</text>
+<rect x="10.0" y="104.8" width="339.3" height="269.6" rx="20.0" fill="#EEF1F5" stroke="#5E6B80" stroke-width="1.0"/>
+<rect x="161.3" y="335.2" width="128.8" height="27.2" rx="6.0" fill="#DCF2F1" stroke="#00A8A4" stroke-width="1.0"/>
+<text x="225.7" y="353.0" font-family="IBM Plex Sans" font-weight="400" font-size="14.0" fill="#1E2A3B" text-anchor="middle">Wan VAE encoder</text>
+<path d="M 225.7 334.2 L 225.7 322.2" fill="none" stroke="#1E2A3B" stroke-width="1.2" marker-end="url(#ah_1E2A3B)"/>
+<rect x="130.1" y="116.8" width="191.2" height="204.4" rx="14.0" fill="#E7EAEF" stroke="#5E6B80" stroke-width="1.0"/>
+<text x="309.3" y="132.6" font-family="IBM Plex Sans" font-weight="400" font-size="12.0" fill="#B95A08" text-anchor="end">4 steps (DMD + GAN)</text>
+<rect x="138.1" y="140.4" width="175.2" height="170.8" rx="14.0" fill="#E4EAF4" stroke="#1D3E72" stroke-width="1.0"/>
+<rect x="146.1" y="274.0" width="159.2" height="27.2" rx="6.0" fill="#1D3E72" stroke="#1D3E72" stroke-width="1.0"/>
+<text x="225.7" y="291.8" font-family="IBM Plex Sans" font-weight="400" font-size="14.0" fill="#FFFFFF" text-anchor="middle">Block-causal attention</text>
+<rect x="63.6" y="274.5" width="64.5" height="26.2" rx="6.0" fill="#FFFFFF" stroke="#1E2A3B" stroke-width="1.0"/>
+<text x="95.9" y="292.2" font-family="IBM Plex Sans" font-weight="400" font-size="13.0" fill="#1E2A3B" text-anchor="middle">3D RoPE</text>
+<path d="M 129.1 287.6 L 145.1 287.6" fill="none" stroke="#1E2A3B" stroke-width="1.1" marker-end="url(#ah_1E2A3B)"/>
+<path d="M 225.7 273.0 L 225.7 261.0" fill="none" stroke="#1E2A3B" stroke-width="1.2" marker-end="url(#ah_1E2A3B)"/>
+<rect x="152.3" y="232.8" width="146.8" height="27.2" rx="6.0" fill="#FDE8D4" stroke="#F58F2D" stroke-width="1.0"/>
+<text x="225.7" y="250.6" font-family="IBM Plex Sans" font-weight="400" font-size="14.0" fill="#1E2A3B" text-anchor="middle">Camera scale &amp; shift</text>
+<rect x="22.0" y="233.3" width="106.1" height="26.2" rx="6.0" fill="#FFFFFF" stroke="#1E2A3B" stroke-width="1.0"/>
+<text x="75.0" y="251.0" font-family="IBM Plex Sans" font-weight="400" font-size="13.0" fill="#1E2A3B" text-anchor="middle">Camera Plücker</text>
+<path d="M 129.1 246.4 L 151.3 246.4" fill="none" stroke="#1E2A3B" stroke-width="1.1" marker-end="url(#ah_1E2A3B)"/>
+<path d="M 225.7 231.8 L 225.7 219.8" fill="none" stroke="#1E2A3B" stroke-width="1.2" marker-end="url(#ah_1E2A3B)"/>
+<rect x="167.9" y="191.6" width="115.6" height="27.2" rx="6.0" fill="#FFFFFF" stroke="#1E2A3B" stroke-width="1.0"/>
+<text x="225.7" y="209.4" font-family="IBM Plex Sans" font-weight="400" font-size="14.0" fill="#1E2A3B" text-anchor="middle">Cross-attention</text>
+<rect x="55.1" y="192.1" width="73.0" height="26.2" rx="6.0" fill="#FFFFFF" stroke="#1E2A3B" stroke-width="1.0"/>
+<text x="91.6" y="209.8" font-family="IBM Plex Sans" font-weight="400" font-size="13.0" fill="#1E2A3B" text-anchor="middle">umT5 text</text>
+<path d="M 129.1 205.2 L 166.9 205.2" fill="none" stroke="#1E2A3B" stroke-width="1.1" marker-end="url(#ah_1E2A3B)"/>
+<path d="M 225.7 190.6 L 225.7 178.6" fill="none" stroke="#1E2A3B" stroke-width="1.2" marker-end="url(#ah_1E2A3B)"/>
+<rect x="175.1" y="150.4" width="101.1" height="27.2" rx="6.0" fill="#FFFFFF" stroke="#1E2A3B" stroke-width="1.0"/>
+<text x="225.7" y="168.2" font-family="IBM Plex Sans" font-weight="400" font-size="14.0" fill="#1E2A3B" text-anchor="middle">Feed forward</text>
+<rect x="134.1" y="168.2" width="8.0" height="18.0" rx="0.0" fill="#E4EAF4"/>
+<path d="M 137.1 185.2 l 5 -6 l -8 -4 l 5 -6" fill="none" stroke="#1E2A3B" stroke-width="1.4"/>
+<text x="124.1" y="179.2" font-family="Saira SemiCondensed" font-weight="500" font-size="12.5" fill="#B95A08" text-anchor="end">40 ×</text>
+<path d="M 321.3 128.4 L 331.3 128.4 L 331.3 307.2 L 323.3 307.2" fill="none" stroke="#B95A08" stroke-width="1.2" stroke-dasharray="4 3" marker-end="url(#ah_B95A08)"/>
+<text x="225.7" y="399.8" font-family="IBM Plex Mono" font-weight="400" font-size="12.0" fill="#1E2A3B" text-anchor="middle">Image + camera poses + text</text>
+<path d="M 225.7 387.4 L 225.7 363.4" fill="none" stroke="#1E2A3B" stroke-width="1.2" marker-end="url(#ah_1E2A3B)"/>
+<rect x="161.2" y="63.6" width="129.0" height="27.2" rx="6.0" fill="#DCF2F1" stroke="#00A8A4" stroke-width="1.0"/>
+<text x="225.7" y="81.4" font-family="IBM Plex Sans" font-weight="400" font-size="14.0" fill="#1E2A3B" text-anchor="middle">Wan VAE decoder</text>
+<path d="M 225.7 62.6 L 225.7 50.6" fill="none" stroke="#1E2A3B" stroke-width="1.2" marker-end="url(#ah_1E2A3B)"/>
+<text x="225.7" y="45.4" font-family="IBM Plex Mono" font-weight="400" font-size="12.0" fill="#1E2A3B" text-anchor="middle">12 frames at 480×832</text>
+<path d="M 225.7 115.8 L 225.7 91.8" fill="none" stroke="#1E2A3B" stroke-width="1.2" marker-end="url(#ah_1E2A3B)"/>
+<text x="377.3" y="72.8" font-family="IBM Plex Sans" font-weight="700" font-size="12.5" fill="#B95A08" text-anchor="start">16</text>
+<text x="395.2" y="72.8" font-family="IBM Plex Sans" font-weight="400" font-size="12.5" fill="#1E2A3B" text-anchor="start">fps</text>
+<text x="415.5" y="72.8" font-family="IBM Plex Sans" font-weight="400" font-size="12.5" fill="#1E2A3B" text-anchor="start">at</text>
+<text x="429.6" y="72.8" font-family="IBM Plex Sans" font-weight="700" font-size="12.5" fill="#B95A08" text-anchor="start">480p</text>
+<text x="459.7" y="72.8" font-family="IBM Plex Sans" font-weight="400" font-size="12.5" fill="#1E2A3B" text-anchor="start">,</text>
+<text x="466.0" y="72.8" font-family="IBM Plex Sans" font-weight="400" font-size="12.5" fill="#1E2A3B" text-anchor="start">&lt;</text>
+<text x="473.5" y="72.8" font-family="IBM Plex Sans" font-weight="700" font-size="12.5" fill="#B95A08" text-anchor="start">1</text>
+<text x="484.0" y="72.8" font-family="IBM Plex Sans" font-weight="400" font-size="12.5" fill="#1E2A3B" text-anchor="start">s</text>
+<text x="377.3" y="89.1" font-family="IBM Plex Sans" font-weight="400" font-size="12.5" fill="#1E2A3B" text-anchor="start">latency</text>
+<path d="M 291.2 77.2 L 372.3 77.2" fill="none" stroke="#1E2A3B" stroke-width="0.9" stroke-dasharray="2 3"/>
+<text x="377.3" y="221.4" font-family="IBM Plex Sans" font-weight="700" font-size="12.5" fill="#B95A08" text-anchor="start">40</text>
+<text x="395.2" y="221.4" font-family="IBM Plex Sans" font-weight="400" font-size="12.5" fill="#1E2A3B" text-anchor="start">layers,</text>
+<text x="435.2" y="221.4" font-family="IBM Plex Sans" font-weight="400" font-size="12.5" fill="#1E2A3B" text-anchor="start">width</text>
+<text x="469.6" y="221.4" font-family="IBM Plex Sans" font-weight="700" font-size="12.5" fill="#B95A08" text-anchor="start">5,120</text>
+<text x="503.5" y="221.4" font-family="IBM Plex Sans" font-weight="400" font-size="12.5" fill="#1E2A3B" text-anchor="start">,</text>
+<text x="377.3" y="237.7" font-family="IBM Plex Sans" font-weight="400" font-size="12.5" fill="#1E2A3B" text-anchor="start">≈</text>
+<text x="384.8" y="237.7" font-family="IBM Plex Sans" font-weight="700" font-size="12.5" fill="#B95A08" text-anchor="start">18.5B</text>
+<path d="M 314.3 225.8 L 372.3 225.8" fill="none" stroke="#1E2A3B" stroke-width="0.9" stroke-dasharray="2 3"/>
+<text x="377.3" y="283.2" font-family="IBM Plex Sans" font-weight="700" font-size="12.5" fill="#B95A08" text-anchor="start">40</text>
+<text x="395.2" y="283.2" font-family="IBM Plex Sans" font-weight="400" font-size="12.5" fill="#1E2A3B" text-anchor="start">heads,</text>
+<text x="435.5" y="283.2" font-family="IBM Plex Sans" font-weight="400" font-size="12.5" fill="#1E2A3B" text-anchor="start">full</text>
+<text x="456.3" y="283.2" font-family="IBM Plex Sans" font-weight="400" font-size="12.5" fill="#1E2A3B" text-anchor="start">KV</text>
+<text x="474.6" y="283.2" font-family="IBM Plex Sans" font-weight="400" font-size="12.5" fill="#1E2A3B" text-anchor="start">of</text>
+<text x="488.5" y="283.2" font-family="IBM Plex Sans" font-weight="400" font-size="12.5" fill="#1E2A3B" text-anchor="start">the</text>
+<text x="377.3" y="299.5" font-family="IBM Plex Sans" font-weight="400" font-size="12.5" fill="#1E2A3B" text-anchor="start">whole</text>
+<text x="414.2" y="299.5" font-family="IBM Plex Sans" font-weight="400" font-size="12.5" fill="#1E2A3B" text-anchor="start">rollout</text>
+<path d="M 306.3 287.6 L 372.3 287.6" fill="none" stroke="#1E2A3B" stroke-width="0.9" stroke-dasharray="2 3"/>
 </svg>

@@ -18,13 +18,13 @@ compare. Search, family chips, filters and sorting sit in a sticky bar. `docs/da
 ## Layout
 
 ```
-models/<slug>.py        one card per model (metadata, facts, sources, "flow" diagram spec, summary-card spec)
+models/<slug>.py        one card per model (metadata, facts, sources, "flow" diagram spec, "audit" counts)
 wmgallery/stack.py      flow -> bottom-up stack diagram (SVG/PNG); full version for the web, condensed for slides
 wmgallery/diagram.py    summary card (token squares) and shared SVG helpers
 wmgallery/registry.py   loads and validates cards
 wmgallery/render.py     CLI: render one card, a contact sheet, or a side-by-side row for a slide
 wmgallery/build.py      CLI: build the site into docs/
-docs/                   the built site (index.html, svg/, data.json, legend.svg) and docs/SPEC.md
+docs/                   the built site (index.html, svg/stack, svg/mini, data.json) and the spec docs
 fonts/                  IBM Plex and Saira SemiCondensed (OFL), used for text measurement and PNG rendering
 ```
 
@@ -50,6 +50,24 @@ Open `docs/index.html` in a browser. Nothing else is needed; the page has no bui
 Every number on a card must be traceable to the sources listed on the card; our own arithmetic is marked [D];
 developer claims are labelled as such. Evidence levels: `verified` (adversarially checked), `read` (read from
 the paper or code), `claim` (developer page only).
+
+## How the cards were checked
+
+In October 2026 every card was cross-checked against its primary sources: the paper or official report, the
+official page, and the released code or config. The 49 cards hold 2,340 checkable elements: box labels, the
+order of sub-layers, residuals, side inputs, repeat counts, numbers, facts and metadata.
+
+1. An auditor judged every element and quoted its evidence.
+2. A script looked up every quoted piece of evidence in the downloaded sources; rows it could not match, and
+   every row judged wrong, unclear, assumed or derived, went to a second checker.
+3. The second checker re-verified those rows and applied the corrections it confirmed.
+4. A third checker reviewed every changed line against its evidence.
+
+Of the 2,340 elements, 1,433 are stated in the paper or report, 677 come from released code or config, 183 are
+our arithmetic and 47 are assumed. 440 elements were corrected. Each box records its basis (`"basis"` in the
+flow spec, see `docs/FLOW.md`); a box no source states is drawn with a dashed outline. A card's *Source check*
+panel gives its own counts. New or edited cards should keep the same standard: tag every box, quote the
+source for every number, and mark our arithmetic.
 
 ## Publish
 

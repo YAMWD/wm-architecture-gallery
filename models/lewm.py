@@ -6,8 +6,8 @@ MODEL = {
     "family": "jepa",
     "role": "Embedding predictor",
     "status": "arXiv preprint (v3 Jun 2026)",
-    "params": "~15M total (10M predictor)",
-    "params_num": 15e6,
+    "params": "~18M total (paper: 15M); predictor ~10.8M",
+    "params_num": 18e6,
     "open": "code + weights",
     "links": {"arXiv": "https://arxiv.org/abs/2603.19312", "code": "https://github.com/lucas-maes/le-wm",
               "page": "https://le-wm.github.io", "weights": "https://huggingface.co/collections/quentinll/lewm"},
@@ -22,8 +22,8 @@ MODEL = {
                            "12 layers, 3 heads, width 192, ~5M) followed by a 1-layer MLP projector with BatchNorm"),
         ("Core", "Predictor: 6 layers, d 192, 16 heads of 64, MLP 2048, dropout 0.1, learned positional embeddings; ~10M; "
                  "followed by a projector of the same design as the encoder's"),
-        ("Attention", "Temporal causal mask over the history of frame embeddings; N = 3 frames (PushT, OGBench-Cube) or 1 "
-                      "(TwoRoom), i.e. at most 3 tokens per predictor call [D]"),
+        ("Attention", "Temporal causal mask over the history of frame embeddings; N = 3 frames (paper: 1 for TwoRoom; the "
+                      "released TwoRoom checkpoint and code use 3), i.e. at most 3 tokens per predictor call [D]"),
         ("Actions", "Zero-initialised AdaLN at every predictor layer; with frameskip 5 the 5 actions between frames form "
                     "one 10-d action block, embedded to width 192"),
         ("Prediction", "One pass regresses the next frame embedding (MSE); encoder and predictor trained jointly, SIGReg "
@@ -35,15 +35,15 @@ MODEL = {
                   "samples, top 30, up to 30 iterations (PushT) or 10, horizon 5 latent steps = 25 environment steps, "
                   "whole plan executed before replanning"),
         ("Key detail", "196x fewer tokens per frame than DINO-WM [D]; a PushT plan is 150 sequential batched calls "
-                       "(30 iterations x horizon 5) of ~18 GFLOP each [D], a latency-bound chain rather than a "
-                       "throughput job"),
+                       "(30 iterations x 5 predictor steps), each over 300 candidates with windows of 1, 2, 3, 3, 3 tokens: "
+                       "~7-21 GFLOP per call, ~2.5 TFLOP per plan [D], a latency-bound chain rather than a throughput job"),
     ],
     "evidence": "read",
     "sources": ["arXiv 2603.19312 Sec. 3 (architecture, planning), Sec. 4.2 and Fig. 3 (timing), App. D (encoder, "
                 "predictor, decoder, planning solver)",
-                "Hugging Face quentinll/lewm-pusht config.json (predictor d 192, head dim 64, MLP 2048, history 3; "
-                "fetched)",
-                "GitHub lucas-maes/le-wm README (checkpoints, code base)"],
+                "Hugging Face quentinll/lewm-pusht config.json (predictor d 192, head dim 64, MLP 2048, history 3)",
+                "GitHub lucas-maes/le-wm README, module.py, jepa.py, config/eval/solver/cem.yaml",
+                "Hugging Face quentinll/lewm-pusht and lewm-tworooms weights.pt (parameter count)"],
     "diagram": {
         "encoder": {"text": "Frame 224x224 → ViT-Tiny (5M) + projector", "sub": "one 192-d [CLS] embedding per frame",
                     "tag": "trained jointly", "short": "ViT-Tiny, 1 token per frame"},
@@ -62,21 +62,21 @@ MODEL = {
     "flow": {
         "below": [{"text": "Frame 224×224 + action block"}],
         "stack": [
-            {"box": "ViT-Tiny encoder", "id": "enc", "style": "teal"},
-            {"box": "[CLS] token + projector", "short": "[CLS] + projector", "id": "cls"},
-            {"box": "History of frame tokens", "id": "hist", "minor": True},
+            {"box": "ViT-Tiny encoder", "id": "enc", "style": "teal", "basis": "stated"},
+            {"box": "[CLS] token + projector", "short": "[CLS] + projector", "id": "cls", "basis": "stated"},
+            {"box": "History of frame tokens", "id": "hist", "minor": True, "basis": "stated", "side": "Learned positions", "side_basis": "code"},
             {"group": [
-                {"residual": [{"box": "AdaLN, zero-initialised", "short": "AdaLN (actions)", "id": "ada", "style": "orange", "side": "Action emb."},
-                              {"box": "Causal self-attention", "id": "attn", "style": "dark", "side": "Learned positions"}]},
-                {"residual": [{"box": "AdaLN", "minor": True}, {"box": "MLP", "id": "mlp"}]},
+                {"residual": [{"box": "AdaLN, zero-initialised", "short": "AdaLN (actions)", "id": "ada", "style": "orange", "side": "Action emb.", "basis": "stated", "side_basis": "code"},
+                              {"box": "Causal self-attention", "id": "attn", "style": "dark", "basis": "stated"}]},
+                {"residual": [{"box": "AdaLN", "minor": True, "basis": "code"}, {"box": "MLP", "id": "mlp", "basis": "code"}]},
             ], "repeat": "6 ×", "id": "block"},
-            {"box": "Projector", "id": "proj", "minor": True},
-            {"box": "Next-frame embedding", "id": "pred"},
+            {"box": "Projector", "id": "proj", "minor": True, "basis": "stated"},
+            {"box": "Next-frame embedding", "id": "pred", "basis": "stated"},
         ],
-        "above": [{"text": "MSE distance to the goal embedding"}],
-        "insets": [{"for": "mlp", "stack": [{"box": "Linear"}, {"box": "GELU"}, {"box": "Linear"}]},
-                   {"for": "pred", "label": "planning loop", "stack": [{"box": "Sample 300 sequences"}, {"box": "Roll out 5 latent steps"},
-                                                                       {"box": "MSE to goal embedding"}, {"box": "Refit the Gaussian, ≤30×"}]}],
+        "above": [{"text": "Squared L2 to the goal embedding"}],
+        "insets": [{"for": "mlp", "stack": [{"box": "Linear", "basis": "code"}, {"box": "GELU", "basis": "code"}, {"box": "Linear", "basis": "code"}]},
+                   {"for": "pred", "label": "planning loop", "stack": [{"box": "Sample 300 sequences", "basis": "stated"}, {"box": "Roll out 5 latent steps", "basis": "stated"},
+                                                                       {"box": "Squared L2 to goal", "basis": "stated"}, {"box": "Refit the Gaussian, ≤30×", "basis": "stated"}]}],
         "annotations": [
             {"at": "enc", "text": "*12* layers · *3* heads · ~*5M*", "side": "left"},
             {"at": "cls", "text": "*1* token per frame · embedding *192*", "side": "left", "key": True},
@@ -87,4 +87,5 @@ MODEL = {
         ],
         "feedback": "CEM rollout",
     },
+    "audit": {"date": "2026-10-23", "checked": 47, "stated": 27, "code": 18, "derived": 2, "assumed": 0, "fixed": 6},
 }

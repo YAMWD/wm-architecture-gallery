@@ -12,24 +12,27 @@ MODEL = {
     "links": {"arXiv": "https://arxiv.org/abs/2309.17080"},
     "tagline": "Driving video tokens, decoded one at a time",
     "summary": "A generative world model for driving: a 6.5B causal transformer predicts the next image token over an "
-               "interleaved sequence of text, image and action tokens, trained from scratch on 4,700 h of London "
+               "interleaved sequence of text, image and action tokens, trained on 4,700 h of London "
                "driving. Each 288x512 frame is 576 discrete tokens from a 0.3B DINO-distilled tokenizer, so one frame "
                "costs 576 serial passes, and a separate 2.6B video diffusion U-Net, not a transformer, turns the tokens "
                "into pixels with 50 DDIM steps. The report says the model does not yet run in real time.",
     "facts": [
         ("Representation", "576 discrete tokens per 288x512 frame (18x32, downsampling 16), vocabulary 8,192, from a 0.3B image tokenizer trained with a DINO distillation loss"),
-        ("Core", "6.5B decoder-only transformer trained from scratch; layer, width and head counts not disclosed"),
+        ("Core", "6.5B decoder-only transformer with causal masking, width d = 4,096 (shared embedding dimension); layer and "
+                 "head counts not disclosed; norms, feed-forward and residual layout not described, drawn as a standard "
+                 "pre-norm block"),
         ("Attention", "Dense causal attention over 26 frames at 6.25 Hz (4 s): 26 x (32 text + 576 image + 2 action) = 15,860 tokens; FlashAttention v2; sliding window beyond the context"),
         ("Actions", "2 action tokens and 32 T5-large text tokens per step in the interleaved sequence; conditioning tokens are dropped at random in training, giving unconditional, action- and text-conditioned generation"),
         ("Prediction", "Next-token softmax with top-k = 50: 'n forward steps to generate one new image frame', so 576 serial passes per frame; optional classifier-free guidance doubles the evaluations [D]"),
         ("Decoder", "2.6B video diffusion 3D U-Net with factorized space/time attention: 50 DDIM steps per window of 7 frames (2 overlapping context frames), then temporal upsampling 6.25 → 12.5 → 25 Hz"),
         ("Memory", "KV-cache policy not disclosed; context capped at 26 frames with a sliding window for longer rollouts"),
         ("Speed", "Not disclosed; generation 'does not yet run at real-time' (authors). Training: world model 15 days on 64 A100-80GB, tokenizer 4 days on 32, decoder 15 days on 32 = ~1,568 A100-days [D]"),
-        ("Key detail", "576 dependent decode steps per frame through 6.5B parameters, at least 13 GB of bf16 weights streamed per step [D], followed by a 50-step diffusion decoder: a bandwidth-bound workload"),
+        ("Key detail", "576 dependent decode steps per frame through 6.5B parameters, then a 50-step diffusion decoder; with "
+                       "16-bit weights (precision not disclosed) each step reads 13 GB of weights [D], so decoding at batch 1 "
+                       "is bandwidth-bound"),
     ],
     "evidence": "read",
-    "sources": ["arXiv 2309.17080 Sec. 2.1-2.4 (tokens, world model, decoder), Sec. 4.1-4.3 (sizes, training), Sec. 5.1-5.2 (sampling, DDIM), Sec. 8 (not real time)",
-                "ar_token notes Group 1 (GAIA-1) for the [D] arithmetic"],
+    "sources": ["arXiv 2309.17080 Sec. 2.1-2.4 (tokens, world model, decoder), Sec. 4.1-4.3 (sizes, training), Sec. 5.1-5.2 (sampling, DDIM), Sec. 9 (not real time)"],
     "diagram": {
         "encoder": {"text": "Frame 288x512 → image tokenizer (0.3B)", "sub": "576 tokens per frame (18×32), vocab 8,192, DINO-distilled",
                     "tag": "frozen", "short": "Image tokenizer, 576 tokens/frame"},
@@ -48,17 +51,21 @@ MODEL = {
     "flow": {
         "below": [{"text": "Frame 288×512 + text + action"}],
         "stack": [
-            {"box": "U-Net image tokenizer", "short": "Image tokenizer", "id": "tok", "style": "teal"},
-            {"box": "Nearest codebook entry", "id": "vq", "minor": True},
-            {"box": "Interleave tokens", "id": "seq", "side": "T5 text + action"},
-            {"box": "Space-time position emb.", "id": "emb", "minor": True},
+            {"box": "U-Net image tokenizer", "short": "Image tokenizer", "id": "tok", "style": "teal", "basis": "stated"},
+            {"box": "Nearest codebook entry", "id": "vq", "minor": True, "basis": "stated"},
+            {"box": "Interleave tokens", "id": "seq", "side": "T5 text + action", "basis": "stated", "side_basis": "stated"},
             {"group": [
-                {"residual": [{"box": "Norm", "minor": True}, {"box": "Masked self-attention", "id": "attn", "style": "dark"}]},
-                {"residual": [{"box": "Norm", "minor": True}, {"box": "Feed forward", "id": "ffn"}]},
-            ], "repeat": "N ×", "id": "block"},
-            {"box": "Sample next image token", "short": "Sample next token", "id": "sample"},
+                {"box": "Space-time position emb.", "id": "emb", "minor": True, "basis": "stated"},
+                {"group": [
+                    {"residual": [{"box": "Norm", "minor": True, "basis": "assumed"},
+                                  {"box": "Masked self-attention", "id": "attn", "style": "dark", "basis": "stated"}]},
+                    {"residual": [{"box": "Norm", "minor": True, "basis": "assumed"},
+                                  {"box": "Feed forward", "id": "ffn", "basis": "assumed"}]},
+                ], "repeat": "N ×", "id": "block", "basis": "assumed"},
+                {"box": "Sample next image token", "short": "Sample next token", "id": "sample", "basis": "stated"},
+            ], "loop": "next image token", "loop_short": "next token", "tint": "grey", "id": "ar", "basis": "stated"},
         ],
-        "above": [{"box": "Diffusion U-Net decoder", "id": "dec", "style": "soft"},
+        "above": [{"box": "Diffusion U-Net decoder", "id": "dec", "style": "soft", "basis": "stated"},
                   {"text": "Frames 288×512 at 25 Hz"}],
         "annotations": [
             {"at": "tok", "text": "*576* tokens per frame, vocabulary *8,192*", "side": "left", "key": True},
@@ -68,6 +75,6 @@ MODEL = {
             {"at": "sample", "text": "*576* serial passes per frame", "side": "right", "key": True},
             {"at": "dec", "text": "*2.6B* U-Net, *50* DDIM steps per *7* frames", "side": "left", "key": True},
         ],
-        "feedback": "next frame",
     },
+    "audit": {"date": "2026-10-22", "checked": 40, "stated": 31, "code": 0, "derived": 3, "assumed": 6, "fixed": 4},
 }

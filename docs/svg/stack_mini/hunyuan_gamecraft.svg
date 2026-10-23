@@ -1,31 +1,31 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="286" height="267" viewBox="0 0 286 267" font-family="IBM Plex Sans">
+<svg xmlns="http://www.w3.org/2000/svg" width="292" height="267" viewBox="0 0 292 267" font-family="IBM Plex Sans">
 <style>@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;700&amp;family=Saira+Semi+Condensed:wght@500;600&amp;display=swap");</style>
 <defs><marker id="ah_1E2A3B" markerWidth="7" markerHeight="7" refX="5.5" refY="3.5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0 L7,3.5 L0,7 z" fill="#1E2A3B"/></marker><marker id="ah_B95A08" markerWidth="7" markerHeight="7" refX="5.5" refY="3.5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0 L7,3.5 L0,7 z" fill="#B95A08"/></marker></defs>
-<rect x="0.0" y="0.0" width="287.0" height="268.0" rx="0.0" fill="#FFFFFF"/>
-<rect x="10.0" y="48.0" width="265.4" height="202.5" rx="20.0" fill="#EEF1F5" stroke="#5E6B80" stroke-width="1.0"/>
-<rect x="89.2" y="217.5" width="115.5" height="24.0" rx="6.0" fill="#DCF2F1" stroke="#00A8A4" stroke-width="1.0"/>
-<text x="146.9" y="232.9" font-family="IBM Plex Sans" font-weight="400" font-size="11.5" fill="#1E2A3B" text-anchor="middle">Video VAE encoder</text>
-<path d="M 146.9 216.5 L 146.9 208.5" fill="none" stroke="#1E2A3B" stroke-width="1.2" marker-end="url(#ah_1E2A3B)"/>
-<rect x="78.9" y="183.5" width="136.0" height="24.0" rx="6.0" fill="#FDE8D4" stroke="#F58F2D" stroke-width="1.0"/>
-<text x="146.9" y="198.9" font-family="IBM Plex Sans" font-weight="400" font-size="11.5" fill="#1E2A3B" text-anchor="middle">Add Plücker embedding</text>
-<path d="M 146.9 182.5 L 146.9 174.5" fill="none" stroke="#1E2A3B" stroke-width="1.2" marker-end="url(#ah_1E2A3B)"/>
-<rect x="43.4" y="57.0" width="207.0" height="116.6" rx="10.0" fill="#E7EAEF" stroke="#5E6B80" stroke-width="1.0"/>
-<text x="238.4" y="71.4" font-family="IBM Plex Sans" font-weight="400" font-size="10.5" fill="#B95A08" text-anchor="end">8 steps</text>
-<rect x="50.4" y="78.6" width="193.0" height="85.9" rx="10.0" fill="#E4EAF4" stroke="#1D3E72" stroke-width="1.0"/>
-<rect x="57.4" y="121.6" width="78.8" height="24.0" rx="6.0" fill="#FFFFFF" stroke="#1E2A3B" stroke-width="1.0"/>
-<text x="96.8" y="137.0" font-family="IBM Plex Sans" font-weight="400" font-size="11.5" fill="#1E2A3B" text-anchor="middle">Text stream</text>
-<rect x="150.2" y="121.6" width="86.2" height="24.0" rx="6.0" fill="#FFFFFF" stroke="#1E2A3B" stroke-width="1.0"/>
-<text x="193.3" y="137.0" font-family="IBM Plex Sans" font-weight="400" font-size="11.5" fill="#1E2A3B" text-anchor="middle">Video stream</text>
-<path d="M 96.8 120.6 L 146.9 112.6" fill="none" stroke="#1E2A3B" stroke-width="1.2" marker-end="url(#ah_1E2A3B)"/>
-<path d="M 193.3 120.6 L 146.9 112.6" fill="none" stroke="#1E2A3B" stroke-width="1.2" marker-end="url(#ah_1E2A3B)"/>
-<rect x="90.7" y="87.6" width="112.4" height="24.0" rx="6.0" fill="#1D3E72" stroke="#1D3E72" stroke-width="1.0"/>
-<text x="146.9" y="103.0" font-family="IBM Plex Sans" font-weight="400" font-size="11.5" fill="#FFFFFF" text-anchor="middle">Joint full attention</text>
-<rect x="46.4" y="141.5" width="8.0" height="18.0" rx="0.0" fill="#E4EAF4"/>
-<path d="M 49.4 158.5 l 5 -6 l -8 -4 l 5 -6" fill="none" stroke="#1E2A3B" stroke-width="1.4"/>
-<text x="37.4" y="152.5" font-family="Saira SemiCondensed" font-weight="500" font-size="12.5" fill="#B95A08" text-anchor="end">N ×</text>
-<path d="M 250.4 67.7 L 260.4 67.7 L 260.4 159.5 L 252.4 159.5" fill="none" stroke="#B95A08" stroke-width="1.2" stroke-dasharray="4 3" marker-end="url(#ah_B95A08)"/>
-<path d="M 146.9 262.4 L 146.9 242.4" fill="none" stroke="#1E2A3B" stroke-width="1.2" marker-end="url(#ah_1E2A3B)"/>
-<rect x="89.1" y="14.0" width="115.7" height="24.0" rx="6.0" fill="#DCF2F1" stroke="#00A8A4" stroke-width="1.0"/>
-<text x="146.9" y="29.4" font-family="IBM Plex Sans" font-weight="400" font-size="11.5" fill="#1E2A3B" text-anchor="middle">Video VAE decoder</text>
-<path d="M 146.9 56.0 L 146.9 39.0" fill="none" stroke="#1E2A3B" stroke-width="1.2" marker-end="url(#ah_1E2A3B)"/>
+<rect x="0.0" y="0.0" width="293.0" height="268.0" rx="0.0" fill="#FFFFFF"/>
+<rect x="10.0" y="48.0" width="271.4" height="202.5" rx="20.0" fill="#EEF1F5" stroke="#5E6B80" stroke-width="1.0"/>
+<rect x="95.1" y="217.5" width="115.5" height="24.0" rx="6.0" fill="#DCF2F1" stroke="#00A8A4" stroke-width="1.0"/>
+<text x="152.9" y="232.9" font-family="IBM Plex Sans" font-weight="400" font-size="11.5" fill="#1E2A3B" text-anchor="middle">Video VAE encoder</text>
+<path d="M 152.9 216.5 L 152.9 208.5" fill="none" stroke="#1E2A3B" stroke-width="1.2" marker-end="url(#ah_1E2A3B)"/>
+<rect x="49.4" y="57.0" width="207.0" height="150.5" rx="10.0" fill="#E7EAEF" stroke="#5E6B80" stroke-width="1.0"/>
+<text x="244.4" y="71.4" font-family="IBM Plex Sans" font-weight="400" font-size="10.5" fill="#B95A08" text-anchor="end">8 steps</text>
+<rect x="84.9" y="174.5" width="136.0" height="24.0" rx="6.0" fill="#FDE8D4" stroke="#F58F2D" stroke-width="1.0"/>
+<text x="152.9" y="189.9" font-family="IBM Plex Sans" font-weight="400" font-size="11.5" fill="#1E2A3B" text-anchor="middle">Add Plücker embedding</text>
+<path d="M 152.9 173.5 L 152.9 165.5" fill="none" stroke="#1E2A3B" stroke-width="1.2" marker-end="url(#ah_1E2A3B)"/>
+<rect x="56.4" y="78.6" width="193.0" height="85.9" rx="10.0" fill="#E4EAF4" stroke="#1D3E72" stroke-width="1.0"/>
+<rect x="63.4" y="121.6" width="78.8" height="24.0" rx="6.0" fill="#FFFFFF" stroke="#1E2A3B" stroke-width="1.0"/>
+<text x="102.8" y="137.0" font-family="IBM Plex Sans" font-weight="400" font-size="11.5" fill="#1E2A3B" text-anchor="middle">Text stream</text>
+<rect x="156.2" y="121.6" width="86.2" height="24.0" rx="6.0" fill="#FFFFFF" stroke="#1E2A3B" stroke-width="1.0"/>
+<text x="199.3" y="137.0" font-family="IBM Plex Sans" font-weight="400" font-size="11.5" fill="#1E2A3B" text-anchor="middle">Video stream</text>
+<path d="M 102.8 120.6 L 152.9 112.6" fill="none" stroke="#1E2A3B" stroke-width="1.2" marker-end="url(#ah_1E2A3B)"/>
+<path d="M 199.3 120.6 L 152.9 112.6" fill="none" stroke="#1E2A3B" stroke-width="1.2" marker-end="url(#ah_1E2A3B)"/>
+<rect x="96.7" y="87.6" width="112.4" height="24.0" rx="6.0" fill="#1D3E72" stroke="#1D3E72" stroke-width="1.0"/>
+<text x="152.9" y="103.0" font-family="IBM Plex Sans" font-weight="400" font-size="11.5" fill="#FFFFFF" text-anchor="middle">Joint full attention</text>
+<rect x="52.4" y="141.5" width="8.0" height="18.0" rx="0.0" fill="#E4EAF4"/>
+<path d="M 55.4 158.5 l 5 -6 l -8 -4 l 5 -6" fill="none" stroke="#1E2A3B" stroke-width="1.4"/>
+<text x="43.4" y="152.5" font-family="Saira SemiCondensed" font-weight="500" font-size="12.5" fill="#B95A08" text-anchor="end">20 ×</text>
+<path d="M 256.4 67.7 L 266.4 67.7 L 266.4 193.5 L 258.4 193.5" fill="none" stroke="#B95A08" stroke-width="1.2" stroke-dasharray="4 3" marker-end="url(#ah_B95A08)"/>
+<path d="M 152.9 262.4 L 152.9 242.4" fill="none" stroke="#1E2A3B" stroke-width="1.2" marker-end="url(#ah_1E2A3B)"/>
+<rect x="95.0" y="14.0" width="115.7" height="24.0" rx="6.0" fill="#DCF2F1" stroke="#00A8A4" stroke-width="1.0"/>
+<text x="152.9" y="29.4" font-family="IBM Plex Sans" font-weight="400" font-size="11.5" fill="#1E2A3B" text-anchor="middle">Video VAE decoder</text>
+<path d="M 152.9 56.0 L 152.9 39.0" fill="none" stroke="#1E2A3B" stroke-width="1.2" marker-end="url(#ah_1E2A3B)"/>
 </svg>

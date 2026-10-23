@@ -23,22 +23,30 @@ MODEL = {
                  "dropout 0.1; input = vocabulary + position + learnable task embedding"),
         ("Attention", "Causal over interleaved (z_t^1..z_t^36, a_t) tokens; L = 8 steps, max 296 tokens (8 × 37 [D])"),
         ("Actions", "One action token per step (18-action Atari space) plus a task embedding; the Q-head reads the "
-                    "transformer output at the observation tokens; next-code, reward and done heads are 2-layer MLPs, "
-                    "the Q-head a 3-layer MLP (hidden 1,792, 3 distributional heads) trained by TD with CQL"),
+                    "output at the last observation token z_t^36 of each step, the reward and done heads the action token; "
+                    "next-code, reward and done heads are 2-layer MLPs; the JOWA-150M Q-head is a 3-layer MLP (hidden 1,792, "
+                    "3 distributional heads; 40M and 70M: 1 head, hidden 768 and 1,024) trained by TD with CQL"),
         ("Prediction", "Next observation token autoregressive within a frame, z_t^k | z_≤t-1, z_t^<k, a_≤t-1, so 36 serial "
                        "decodes per imagined frame [D]; reward sign {-1, 0, 1} and termination as classification; "
                        "distributional Q-head (3-layer MLP, hidden 1792, 3 heads for 150M) trained by TD learning"),
-        ("Decoder", "VQ-VAE CNN decoder for reconstruction only; planning and Q-values stay in token space"),
-        ("Memory", "Context of 8 steps = 296 tokens; no KV-cache details given"),
+        ("Decoder", "VQ-VAE CNN decoder; decisions use only token-space heads, but the released code decodes every "
+                    "imagined frame during beam search (K + K² frames per action, output discarded) and turns decoded "
+                    "imagined frames into synthetic fine-tuning data"),
+        ("Memory", "Context up to 8 steps = 296 tokens; with planning at most 8 − H = 6 real steps plus 2 imagined. The paper "
+                   "gives no cache details; the released code keeps a per-layer KV cache (prefill once, then single-token "
+                   "cached passes; per-beam caches concatenated for batched beam search)"),
         ("Speed", "JOWA-150M on 7 games: 10.8 FPS without planning, 1.26 FPS with beam search (H = 2, K = 2-4), 0.12 FPS with "
                   "MCTS; hardware not stated (authors, Table 5). Pretraining 1.75M steps, 'around 12 days on A100 GPUs', GPU "
                   "count not given"),
         ("Key detail", "Beam search calls the world model K²(H−1)+K times but takes only H forward latencies because beams are "
-                       "batched; at H = 2 that is still ~72 serial token decodes per action [D], ~0.8 s at 1.26 FPS [D]"),
+                       "batched; at H = 2 the released code runs 1 prefill + 2 × 37 = 75 serial transformer passes per action "
+                       "[D]; 1.26 FPS ≈ 0.79 s per frame [D] (the paper does not say whether FPS counts decisions or "
+                       "emulator frames at frame skip 4)"),
     ],
     "evidence": "read",
     "sources": ["arXiv 2410.00564 Sec. 3 (84×84, 18 actions), Sec. 4.1-4.2 (architecture, Eq. 4-6, beam search cost), Sec. 5 (K = 36, L = 8, H = 2)",
-                "arXiv 2410.00564 Table 5 (FPS), Tables 9-12 (VQ-VAE, transformer, Q-head configs), Table 17 (beam widths), Sec. 3 (12 A100-days)"],
+                "arXiv 2410.00564 Table 5 (FPS), Tables 9-12 (VQ-VAE, transformer, Q-head configs), Table 17 (beam widths), Sec. 5 (pretraining about 12 days on A100 GPUs)",
+                "github.com/CJReinforce/JOWA src/models/jowa_model.py, transformer.py, kv_caching.py, src/envs/world_model_env.py, src/agent.py, src/utils.py"],
     "diagram": {
         "encoder": {"text": "Frame 84×84 → VQ-VAE (CNN)", "sub": "36 codes per frame, vocab 2048", "tag": "frozen",
                     "short": "VQ-VAE, 36 codes per frame"},
@@ -52,39 +60,41 @@ MODEL = {
                      "sub": "36 serial token decodes per imagined frame; beams batched",
                      "short": "Beam search, horizon 2, width 2–4"},
         "heads": ["reward", "termination", "Q-values"],
-        "decoder": {"text": "VQ decoder (CNN) → 84×84 frame", "sub": "reconstruction only; planning stays in token space", "tag": "frozen",
+        "decoder": {"text": "VQ decoder (CNN) → 84×84 frame", "sub": "decisions stay in token space; imagined frames decoded for fine-tuning data", "tag": "frozen",
                     "short": "VQ decoder (not used in planning)"},
         "loop": "beam search",
     },
     "flow": {
         "below": [{"text": "Frame 84×84 + action + task ID"}],
         "stack": [
-            {"box": "VQ-VAE encoder (CNN)", "id": "enc", "style": "teal"},
-            {"box": "Nearest codebook entry", "id": "vq"},
-            {"box": "Token embedding", "id": "emb", "minor": True},
+            {"box": "VQ-VAE encoder (CNN)", "id": "enc", "style": "teal", "basis": "stated"},
+            {"box": "Nearest codebook entry", "id": "vq", "basis": "code"},
+            {"box": "Token embedding", "id": "emb", "minor": True, "basis": "stated",
+             "side": "Position + task", "side_basis": "stated"},
             {"group": [
-                {"residual": [{"box": "LayerNorm", "minor": True},
-                              {"box": "Masked self-attention", "id": "attn", "style": "dark", "side": "Position + task"}]},
-                {"residual": [{"box": "LayerNorm", "minor": True}, {"box": "Feed forward", "id": "ffn"}]},
+                {"residual": [{"box": "LayerNorm", "minor": True, "basis": "code"},
+                              {"box": "Masked self-attention", "id": "attn", "style": "dark", "basis": "code"}]},
+                {"residual": [{"box": "LayerNorm", "minor": True, "basis": "code"}, {"box": "Feed forward", "id": "ffn", "basis": "code"}]},
             ], "repeat": "12 ×", "id": "block"},
-            {"fanout": [[{"box": "Next-code head", "id": "out", "minor": True}, {"box": "Sample next code", "id": "sample"}],
-                        [{"box": "Reward head", "id": "rew", "terminal": True, "minor": True}],
-                        [{"box": "Done head", "terminal": True, "minor": True}],
-                        [{"box": "Q-value head", "id": "q", "terminal": True}]]},
+            {"fanout": [[{"box": "Next-code head", "id": "out", "minor": True, "basis": "stated"}, {"box": "Next code (argmax)", "id": "sample", "basis": "code"}],
+                        [{"box": "Reward head", "id": "rew", "terminal": True, "minor": True, "basis": "stated"}],
+                        [{"box": "Done head", "terminal": True, "minor": True, "basis": "stated"}],
+                        [{"box": "Q-value head", "id": "q", "terminal": True, "basis": "stated"}]]},
         ],
-        "above": [{"box": "VQ-VAE decoder (CNN)", "id": "dec", "style": "teal"}, {"text": "Next frame 84×84 (loss only)"}],
+        "above": [{"box": "VQ-VAE decoder (CNN)", "id": "dec", "style": "teal", "basis": "stated"}, {"text": "Imagined next frame 84×84"}],
         "insets": [
-            {"for": "ffn", "stack": [{"box": "Linear"}, {"box": "GELU"}, {"box": "Linear"}]},
-            {"for": "q", "label": "Q-value head", "stack": [{"box": "Linear, LayerNorm, Mish"}, {"box": "Linear, LayerNorm, Mish"}, {"box": "Linear → return bins"}]},
+            {"for": "ffn", "stack": [{"box": "Linear", "basis": "code"}, {"box": "GELU", "basis": "code"}, {"box": "Linear", "basis": "code"}]},
+            {"for": "q", "label": "Q-value head", "stack": [{"box": "Linear, LayerNorm, Mish", "basis": "code"}, {"box": "Linear, LayerNorm, Mish", "basis": "code"}, {"box": "Linear → return bins", "basis": "code"}]},
         ],
         "annotations": [
             {"at": "vq", "text": "*36* codes per frame · vocabulary of *2,048*", "side": "left", "key": True},
             {"at": "emb", "text": "Embedding dimension of *768*", "side": "left"},
             {"at": "attn", "text": "*12* heads · context of *296* tokens", "side": "left"},
             {"at": "block", "text": "*12* layers · *150M* parameters", "side": "left", "key": True},
-            {"at": "sample", "text": "*36* serial passes per imagined frame", "side": "left", "key": True},
+            {"at": "sample", "text": "*37* serial passes per imagined frame", "side": "left", "key": True},
             {"at": "q", "text": "*10.8* FPS · *1.26* FPS with planning", "side": "right", "key": True},
         ],
         "feedback": "next step",
     },
+    "audit": {"date": "2026-10-23", "checked": 50, "stated": 24, "code": 25, "derived": 1, "assumed": 0, "fixed": 8},
 }

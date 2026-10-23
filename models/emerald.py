@@ -13,22 +13,27 @@ MODEL = {
     "summary": "A Dreamer-style agent with a spatial latent state. A CNN VAE encodes each 64x64 frame as a 4x4 grid of "
                "32-way categoricals in 32 groups, a temporal transformer with one token per step carries the history, "
                "and a small spatial MaskGIT transformer predicts the next 4x4 grid in S = 3 parallel refinement passes "
-               "instead of 16 serial token decodes. The agent learns in latent space, and EMERALD collects 27 Crafter "
-               "frames per second of training on an RTX 3090, against 12 for Delta-IRIS and 38 for DreamerV3-M.",
+               "instead of 512 serial token decodes (4x4 positions x 32 groups). The agent learns in latent space, and "
+               "EMERALD collects 27 Crafter frames per second of training on an RTX 3090, against 12 for Delta-IRIS and "
+               "38 for DreamerV3-M.",
     "tagline": "Temporal transformer, MaskGIT over a latent grid",
     "facts": [
         ("Representation", "4x4 spatial grid x 32 groups x 32 classes per 64x64 frame from a CNN categorical VAE; 16 spatial tokens per step"),
-        ("Core", "Temporal transformer: 4 blocks, d 512; spatial MaskGIT predictor: 2 blocks, d 256 over 16 tokens; 8 heads, dropout 0.1; 30M parameters in total; block internals not disclosed"),
+        ("Core", "Temporal transformer: 4 blocks, d 512; spatial MaskGIT predictor: 2 blocks, d 256 over 16 tokens; 8 heads, dropout 0.1; 30M parameters in total; "
+                 "post-norm blocks in the official code, LN(x + attention) then LN(x + FFN), FFN 2x wide with ReLU (the paper gives no block internals)"),
         ("Attention", "Temporal: causal masked self-attention with relative positions, context 64 steps; spatial: bidirectional over the 4x4 grid"),
         ("Actions", "Action mixer MLP (as in STORM) concatenates the one-hot action with the 512-d latent features before the temporal transformer"),
         ("Prediction", "Next 4x4 grid by MaskGIT with a cosine mask schedule: S = 3 passes per imagined step; S = 1 or a plain MLP head runs at 33 FPS but scores lower"),
         ("Decoder", "CNN decoder from z_t and h_t for training; the actor-critic learns in latent space, so nothing is decoded in imagination"),
         ("Memory", "Cached keys and values over the 64-step context, carried from one batch to the next (TBTT)"),
         ("Speed", "27 collected frames/s of training on one RTX 3090 (authors); Delta-IRIS 12, DreamerV3-M 38, DreamerV3-XL 23 on the same GPU"),
-        ("Key detail", "16 spatial tokens per step predicted in 3 parallel passes instead of 16 serial ones; two small transformers, one over time and one over space"),
+        ("Key detail", "512 group tokens per step (4x4 positions x 32 groups) sampled in 3 parallel MaskGIT passes instead of 512 serial decodes (Fig. 4); "
+                       "two small transformers, one over time and one over space"),
     ],
     "evidence": "read",
-    "sources": ["arXiv 2507.04075 Sec. 3 (architecture, MaskGIT schedule), Sec. 4.2 Table 2, Sec. 4.4 Table 4, App. Tables 6-10"],
+    "sources": ["arXiv 2507.04075 Sec. 3 (architecture, MaskGIT schedule), Figs. 3-4, Sec. 4.2 Table 2, Sec. 4.4 Table 4, App. Tables 6-10",
+                "github.com/burchim/EMERALD @665948d: nnet/models/emerald.py (module_pre_norm = False), "
+                "nnet/modules/modules/attention_module.py and feed_forward_module.py (post-norm), nnet/modules/emerald/tssm.py, mask_network.py"],
     "diagram": {
         "encoder": {"text": "Frame 64x64 → CNN categorical VAE", "sub": "4×4 grid × 32 groups × 32 classes",
                     "tag": "trained jointly", "short": "CNN VAE, 4×4×32 categoricals"},
@@ -49,39 +54,42 @@ MODEL = {
     "flow": {
         "below": [{"text": "Frame 64×64 + action"}],
         "stack": [
-            {"box": "CNN VAE encoder", "id": "enc", "style": "teal"},
-            {"box": "Latent conv + flatten", "id": "flat", "minor": True},
-            {"box": "Action mixer (MLP)", "id": "mix", "style": "orange", "side": "One-hot action"},
+            {"box": "CNN VAE encoder", "id": "enc", "style": "teal", "basis": "stated"},
+            {"box": "Latent conv + flatten", "id": "flat", "minor": True, "side": "or predicted z", "basis": "stated", "side_basis": "code"},
+            {"box": "Action mixer (MLP)", "id": "mix", "style": "orange", "side": "One-hot action", "basis": "stated", "side_basis": "stated"},
             {"group": [
-                {"residual": [{"box": "LayerNorm", "minor": True},
-                              {"box": "Temporal attention", "id": "tattn", "style": "dark", "side": "Relative positions"}]},
-                {"residual": [{"box": "LayerNorm", "minor": True}, {"box": "Feed forward", "id": "tffn", "minor": True}]},
-            ], "repeat": "4 ×", "id": "tgroup"},
-            {"fanout": [[{"box": "Hidden state h", "id": "h", "minor": True}],
-                        [{"box": "Reward head", "terminal": True, "minor": True}],
-                        [{"box": "Continue head", "id": "cont", "terminal": True, "minor": True}]]},
+                {"residual": [{"box": "Temporal attention", "id": "tattn", "style": "dark", "side": "Relative positions",
+                               "basis": "stated", "side_basis": "stated"}]},
+                {"box": "LayerNorm", "minor": True, "basis": "code"},
+                {"residual": [{"box": "Feed forward", "id": "tffn", "minor": True, "basis": "code"}]},
+                {"box": "LayerNorm", "minor": True, "basis": "code"},
+            ], "repeat": "4 ×", "id": "tgroup", "basis": "code"},
+            {"box": "Hidden state h", "id": "h", "minor": True, "basis": "stated"},
             {"group": [
-                {"box": "Masked tokens + h", "id": "masked", "style": "soft", "minor": True},
-                {"box": "Linear + positions", "id": "pe", "minor": True},
+                {"box": "Masked tokens + h", "id": "masked", "style": "soft", "minor": True, "basis": "stated"},
+                {"box": "Linear + positions", "id": "pe", "minor": True, "basis": "stated"},
                 {"group": [
-                    {"residual": [{"box": "LayerNorm", "minor": True},
-                                  {"box": "Spatial attention", "id": "sattn", "style": "dark"}]},
-                    {"residual": [{"box": "LayerNorm", "minor": True}, {"box": "Feed forward", "id": "sffn", "minor": True}]},
-                ], "repeat": "2 ×", "id": "sgroup"},
-                {"box": "Keep confident tokens", "id": "sample"},
-            ], "loop": "3 MaskGIT passes", "tint": "grey", "id": "maskgit"},
-            {"box": "Next 4×4 latent grid", "id": "next", "minor": True},
+                    {"residual": [{"box": "Spatial attention", "id": "sattn", "style": "dark", "basis": "stated"}]},
+                    {"box": "LayerNorm", "minor": True, "basis": "code"},
+                    {"residual": [{"box": "Feed forward", "id": "sffn", "minor": True, "basis": "code"}]},
+                    {"box": "LayerNorm", "minor": True, "basis": "code"},
+                ], "repeat": "2 ×", "id": "sgroup", "basis": "code"},
+                {"box": "Keep confident tokens", "id": "sample", "basis": "stated"},
+            ], "loop": "3 MaskGIT passes", "tint": "grey", "id": "maskgit", "basis": "stated"},
+            {"fanout": [[{"box": "Reward head (z, h)", "terminal": True, "minor": True, "basis": "stated"}],
+                        [{"box": "Next 4×4 latent grid", "id": "next", "minor": True, "basis": "stated"}],
+                        [{"box": "Continue head (z, h)", "id": "cont", "terminal": True, "minor": True, "basis": "stated"}]]},
         ],
-        "above": [{"text": "Next z → actor-critic, no decoding"}],
-        "insets": [{"for": "mix", "stack": [{"box": "Linear + LN + SiLU"}, {"box": "Linear + LN"}]}],
+        "above": [{"text": "z, h → actor-critic, no decoding"}],
+        "insets": [{"for": "mix", "stack": [{"box": "Linear + LN + SiLU", "basis": "stated"}, {"box": "Linear + LN", "basis": "stated"}]}],
         "annotations": [
             {"at": "enc", "text": "*4×4* grid of *32* × *32* categoricals", "side": "left", "key": True},
             {"at": "mix", "text": "*1* fused token per step · width *512*", "side": "left", "key": True},
             {"at": "tattn", "text": "*8* heads · context of *64* steps", "side": "left"},
             {"at": "tgroup", "text": "*4* blocks · *30M* parameters in total", "side": "right", "key": True},
             {"at": "cont", "text": "*27* collected frames/s", "side": "right"},
-            {"at": "sample", "text": "*3* passes instead of *16* serial decodes", "side": "left", "key": True},
+            {"at": "sample", "text": "*3* passes instead of *512* serial decodes", "side": "left", "key": True},
         ],
-        "feedback": "next step",
     },
+    "audit": {"date": "2026-10-23", "checked": 56, "stated": 41, "code": 15, "derived": 0, "assumed": 0, "fixed": 17},
 }

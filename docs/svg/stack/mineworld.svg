@@ -1,7 +1,7 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="626" height="623" viewBox="0 0 626 623" font-family="IBM Plex Sans">
+<svg xmlns="http://www.w3.org/2000/svg" width="637" height="623" viewBox="0 0 637 623" font-family="IBM Plex Sans">
 <style>@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;700&amp;family=Saira+Semi+Condensed:wght@500;600&amp;display=swap");</style>
 <defs><marker id="ah_1E2A3B" markerWidth="7" markerHeight="7" refX="5.5" refY="3.5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0 L7,3.5 L0,7 z" fill="#1E2A3B"/></marker><marker id="ah_B95A08" markerWidth="7" markerHeight="7" refX="5.5" refY="3.5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0 L7,3.5 L0,7 z" fill="#B95A08"/></marker></defs>
-<rect x="0.0" y="0.0" width="627.0" height="624.0" rx="0.0" fill="#FFFFFF"/>
+<rect x="0.0" y="0.0" width="638.0" height="624.0" rx="0.0" fill="#FFFFFF"/>
 <text x="330.3" y="22.0" font-family="Saira SemiCondensed" font-weight="600" font-size="18.0" fill="#1D3E72" text-anchor="middle">MineWorld</text>
 <text x="330.3" y="38.0" font-family="IBM Plex Sans" font-weight="400" font-size="10.5" fill="#5E6B80" text-anchor="middle">Microsoft Research · 2025 · 1.2B</text>
 <rect x="149.3" y="115.0" width="295.9" height="465.7" rx="20.0" fill="#EEF1F5" stroke="#5E6B80" stroke-width="1.0"/>
@@ -72,9 +72,10 @@
 <text x="489.0" y="140.7" font-family="IBM Plex Sans" font-weight="400" font-size="11.0" fill="#1E2A3B" text-anchor="start">passes</text>
 <text x="525.9" y="140.7" font-family="IBM Plex Sans" font-weight="400" font-size="11.0" fill="#1E2A3B" text-anchor="start">per</text>
 <text x="545.0" y="140.7" font-family="IBM Plex Sans" font-weight="400" font-size="11.0" fill="#1E2A3B" text-anchor="start">frame</text>
-<text x="473.2" y="155.0" font-family="IBM Plex Sans" font-weight="400" font-size="11.0" fill="#1E2A3B" text-anchor="start">instead</text>
-<text x="512.2" y="155.0" font-family="IBM Plex Sans" font-weight="400" font-size="11.0" fill="#1E2A3B" text-anchor="start">of</text>
-<text x="524.4" y="155.0" font-family="IBM Plex Sans" font-weight="700" font-size="11.0" fill="#B95A08" text-anchor="start">336</text>
+<text x="576.6" y="140.7" font-family="IBM Plex Sans" font-weight="400" font-size="11.0" fill="#1E2A3B" text-anchor="start">at</text>
+<text x="473.2" y="155.0" font-family="IBM Plex Sans" font-weight="400" font-size="11.0" fill="#1E2A3B" text-anchor="start">k=1,</text>
+<text x="497.8" y="155.0" font-family="IBM Plex Sans" font-weight="400" font-size="11.0" fill="#1E2A3B" text-anchor="start">vs</text>
+<text x="511.2" y="155.0" font-family="IBM Plex Sans" font-weight="700" font-size="11.0" fill="#B95A08" text-anchor="start">336</text>
 <path d="M 392.8 144.6 L 468.2 144.6" fill="none" stroke="#1E2A3B" stroke-width="0.9" stroke-dasharray="2 3"/>
 <text x="473.2" y="285.0" font-family="IBM Plex Sans" font-weight="700" font-size="11.0" fill="#B95A08" text-anchor="start">20</text>
 <text x="489.0" y="285.0" font-family="IBM Plex Sans" font-weight="400" font-size="11.0" fill="#1E2A3B" text-anchor="start">layers,</text>
@@ -101,6 +102,6 @@
 <text x="79.3" y="561.5" font-family="IBM Plex Sans" font-weight="400" font-size="11.0" fill="#1E2A3B" text-anchor="start">of</text>
 <text x="91.5" y="561.5" font-family="IBM Plex Sans" font-weight="700" font-size="11.0" fill="#B95A08" text-anchor="start">8,192</text>
 <path d="M 279.6 551.0 L 126.3 551.0" fill="none" stroke="#1E2A3B" stroke-width="0.9" stroke-dasharray="2 3"/>
-<path d="M 394.0 52.8 L 599.7 52.8 L 599.7 603.5 L 429.6 603.5" fill="none" stroke="#B95A08" stroke-width="1.1" stroke-dasharray="4 3" marker-end="url(#ah_B95A08)"/>
-<text x="614.7" y="328.2" font-family="IBM Plex Sans" font-weight="400" font-size="10.5" fill="#B95A08" text-anchor="middle" transform="rotate(-90.0 614.7 328.2)">next frame</text>
+<path d="M 394.0 52.8 L 610.4 52.8 L 610.4 603.5 L 429.6 603.5" fill="none" stroke="#B95A08" stroke-width="1.1" stroke-dasharray="4 3" marker-end="url(#ah_B95A08)"/>
+<text x="625.4" y="328.2" font-family="IBM Plex Sans" font-weight="400" font-size="10.5" fill="#B95A08" text-anchor="middle" transform="rotate(-90.0 625.4 328.2)">next frame</text>
 </svg>

@@ -69,6 +69,22 @@ def read_changelog():
     return "\n".join(out)
 
 
+def audit_html(m):
+    a = m.get("audit")
+    if not a:
+        return ""
+    parts = []
+    for key, label in (("stated", "stated in the paper or report"), ("code", "from released code or config"),
+                       ("derived", "our arithmetic"), ("assumed", "not stated, drawn dashed")):
+        if a.get(key):
+            parts.append("%d %s" % (a[key], label))
+    fixed = a.get("fixed", 0)
+    text = ("Checked %d elements against the primary sources on %s: %s. %s" %
+            (a.get("checked", 0), a.get("date", ""), ", ".join(parts),
+             ("%d corrected." % fixed) if fixed else "No corrections needed."))
+    return '<details class="fact"><summary>Source check</summary><p>%s</p></details>' % h(text)
+
+
 def card_html(m, mini_svg, artifact=False):
     slug = m["slug"]
     links = [('<a href="%s" target="_blank" rel="noopener">%s</a>' % (h(u), h(k))) for k, u in m.get("links", {}).items()]
@@ -92,6 +108,7 @@ def card_html(m, mini_svg, artifact=False):
         <details class="fact"><summary>Overview</summary><p>{h(m["summary"])}</p></details>
         {facts}
         <details class="fact"><summary>Status and sources</summary><p>{h(m["status"])}. Availability: {h(m.get("open", "n/a"))}. Sources: {h("; ".join(m.get("sources", [])))}.</p></details>
+        {audit_html(m)}
       </div>
       <p class="links">{" · ".join(links)}</p>
     </details>
@@ -389,7 +406,7 @@ Click a card's diagram to open the detailed version; open <i>Details</i> for the
   <li><span class="sw group"></span> repeated block, with its N × marker</li>
   <li><span class="sw plus">+</span> residual add</li>
   <li><span class="sw inset"></span> zoom-in on one box</li>
-  <li><span class="sw loop"></span> sampling or rollout loop</li>
+  <li><span class="sw loop"></span> rollout loop: the label names what carries to the next step (tokens, latents)</li>
   <li><span class="sw acc">12</span> numbers sit beside the model</li>
   <li><span class="sw dashed"></span> dashed: not stated in the source; a standard choice drawn in</li>
 </ul>
@@ -431,7 +448,8 @@ def build(out_dir=DEFAULT_OUT, artifact=None):
         cards_site.append(card_html(m, mini_web, artifact=False))
         cards_art.append(card_html(m, mini_web, artifact=True))
         templates.append('<template id="full-%s">%s</template>' % (h(slug), full_web))
-        d = {k: v for k, v in m.items() if not k.startswith("_")}
+        # the legacy token-square "diagram" spec was not part of the source audit, so it is not published
+        d = {k: v for k, v in m.items() if not k.startswith("_") and k != "diagram"}
         d["facts"] = [list(f) for f in m["facts"]]
         data.append(d)
     with open(os.path.join(out_dir, "data.json"), "w", encoding="utf-8") as f:

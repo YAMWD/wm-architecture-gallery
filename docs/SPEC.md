@@ -1,7 +1,9 @@
 # Writing a model card
 
-A model card is one Python file `models/<slug>.py` that defines a dict `MODEL`. The build renders its
-`diagram` into an SVG card (web) and a compact PNG (slides), and prints the rest as a fact sheet.
+A model card is one Python file `models/<slug>.py` that defines a dict `MODEL`. The site and the slides show
+its `flow` stack diagram (grammar in `docs/FLOW.md`) and its facts. The `diagram` key described below is the
+older token-square summary card: it is still required by the loader, but it is not published and was not
+part of the October 2026 source audit, so treat its text as unchecked.
 Start from `models/_TEMPLATE.py`; `models/iris.py`, `models/matrix_game_2.py` and `models/vjepa2_ac.py`
 are complete examples for the three main shapes (token model, diffusion transformer, embedding predictor).
 

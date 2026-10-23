@@ -3,11 +3,11 @@
 <defs><marker id="ah_1E2A3B" markerWidth="7" markerHeight="7" refX="5.5" refY="3.5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0 L7,3.5 L0,7 z" fill="#1E2A3B"/></marker><marker id="ah_B95A08" markerWidth="7" markerHeight="7" refX="5.5" refY="3.5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0 L7,3.5 L0,7 z" fill="#B95A08"/></marker></defs>
 <rect x="0.0" y="0.0" width="238.0" height="273.0" rx="0.0" fill="#FFFFFF"/>
 <rect x="10.0" y="48.0" width="216.1" height="207.4" rx="20.0" fill="#EEF1F5" stroke="#5E6B80" stroke-width="1.0"/>
-<rect x="64.5" y="222.4" width="115.5" height="24.0" rx="6.0" fill="#DCF2F1" stroke="#00A8A4" stroke-width="1.0"/>
-<text x="122.3" y="237.8" font-family="IBM Plex Sans" font-weight="400" font-size="11.5" fill="#1E2A3B" text-anchor="middle">Video VAE encoder</text>
+<rect x="80.5" y="222.4" width="83.5" height="24.0" rx="6.0" fill="#DCF2F1" stroke="#00A8A4" stroke-width="1.0"/>
+<text x="122.3" y="237.8" font-family="IBM Plex Sans" font-weight="400" font-size="11.5" fill="#1E2A3B" text-anchor="middle">VAE encoder</text>
 <path d="M 122.3 221.4 L 122.3 213.4" fill="none" stroke="#1E2A3B" stroke-width="1.2" marker-end="url(#ah_1E2A3B)"/>
-<rect x="43.4" y="57.0" width="157.7" height="155.5" rx="10.0" fill="#E7EAEF" stroke="#5E6B80" stroke-width="1.0"/>
-<text x="189.1" y="71.4" font-family="IBM Plex Sans" font-weight="400" font-size="10.5" fill="#B95A08" text-anchor="end">N steps</text>
+<rect x="43.4" y="57.0" width="157.7" height="155.5" rx="10.0" fill="#E7EAEF" stroke="#5E6B80" stroke-width="1.0" stroke-dasharray="4 3"/>
+<text x="189.1" y="71.4" font-family="IBM Plex Sans" font-weight="400" font-size="10.5" fill="#B95A08" text-anchor="end">K steps</text>
 <rect x="50.4" y="78.6" width="143.7" height="124.8" rx="10.0" fill="#E4EAF4" stroke="#1D3E72" stroke-width="1.0"/>
 <rect x="64.5" y="155.5" width="115.6" height="38.9" rx="6.0" fill="#EEF1F5" stroke="#5E6B80" stroke-width="1.0"/>
 <text x="122.3" y="170.9" font-family="IBM Plex Sans" font-weight="400" font-size="11.5" fill="#1E2A3B" text-anchor="middle">Block-wise Mamba</text>
@@ -23,7 +23,7 @@
 <text x="37.4" y="191.4" font-family="Saira SemiCondensed" font-weight="500" font-size="12.5" fill="#B95A08" text-anchor="end">N ×</text>
 <path d="M 201.1 67.7 L 211.1 67.7 L 211.1 198.4 L 203.1 198.4" fill="none" stroke="#B95A08" stroke-width="1.2" stroke-dasharray="4 3" marker-end="url(#ah_B95A08)"/>
 <path d="M 122.3 267.4 L 122.3 247.4" fill="none" stroke="#1E2A3B" stroke-width="1.2" marker-end="url(#ah_1E2A3B)"/>
-<rect x="80.4" y="14.0" width="83.7" height="24.0" rx="6.0" fill="#DCF2F1" stroke="#00A8A4" stroke-width="1.0"/>
+<rect x="80.4" y="14.0" width="83.7" height="24.0" rx="6.0" fill="#DCF2F1" stroke="#00A8A4" stroke-width="1.1" stroke-dasharray="3.5 2.5"/>
 <text x="122.3" y="29.4" font-family="IBM Plex Sans" font-weight="400" font-size="11.5" fill="#1E2A3B" text-anchor="middle">VAE decoder</text>
 <path d="M 122.3 56.0 L 122.3 39.0" fill="none" stroke="#1E2A3B" stroke-width="1.2" marker-end="url(#ah_1E2A3B)"/>
 </svg>

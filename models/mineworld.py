@@ -8,28 +8,28 @@ MODEL = {
     "status": "arXiv preprint",
     "params": "1.2B (also 300M, 700M)",
     "params_num": 1.2e9,
-    "open": "code + weights",
+    "open": "code (MIT); weights taken down May 2025",
     "links": {"arXiv": "https://arxiv.org/abs/2504.08388", "code": "https://github.com/microsoft/MineWorld"},
     "tagline": "Minecraft GPT, decoded along anti-diagonals",
-    "summary": "An open, real-time Minecraft world model: a LLaMA-style decoder trained from scratch on interleaved frame "
-               "and action tokens. A VQ-VAE with 16x compression turns each 224x384 frame into 336 tokens (14x24, "
-               "codebook 8,192) and each action into 11 tokens. Diagonal decoding releases tokens along anti-diagonals, "
-               "cutting the 336 dependent steps per frame to 37, and a fine-tune with a matching attention mask recovers "
-               "the quality; the 1.2B model goes from 0.89 to 3.01 FPS.",
+    "summary": "An open-source (code; weights taken down), real-time Minecraft world model: a LLaMA-style decoder trained "
+               "on interleaved frame and action tokens. A VQ-VAE with 16x spatial compression turns each 224x384 frame "
+               "into 336 tokens (14x24, codebook 8,192); a separate action tokenizer turns each action into 11 tokens. "
+               "Diagonal decoding generates tokens along diagonals in parallel, and a fine-tune with a matching attention "
+               "mask narrows the quality gap; the 1.2B model goes from 0.89 to 3.01 FPS.",
     "facts": [
         ("Representation", "336 discrete tokens per 224x384 frame (14x24 from a VQ-VAE with 16x spatial compression, codebook 8,192); frames downscaled from 360x640 'to reduce the computation'"),
-        ("Core", "LLaMA architecture (RMSNorm, rotary embeddings): 1.2B = 20 layers, d 2048, MLP 8192, 32 heads; 700M = 20 layers, d 2048, MLP 4096; 300M = 20 layers, d 1024, 16 heads; activation not disclosed"),
+        ("Core", "LLaMA architecture (pre-norm RMSNorm, RoPE theta 10,000; code: SwiGLU FFN, GQA with 4 KV heads, head dim 64, no biases): 1.2B = 20 layers, d 2048, MLP 8192, 32 heads; 700M = 20 layers, d 2048, MLP 4096, 32 heads; 300M = 20 layers, d 1024, MLP 4096, 16 heads"),
         ("Attention", "Dense causal over 16-frame clips: 16 x 347 = 5,552 tokens [D]; vocabulary 8,192 + 70 = 8,262"),
         ("Actions", "11 action tokens per step ([aBOS], 9 action tokens incl. 2 camera tokens, [aEOS]) interleaved after each frame; the model predicts actions too, so it doubles as a policy"),
-        ("Prediction", "Next-token AR, or diagonal decoding: tokens (i, j+1) and (i+1, j) are released together, 37 passes per frame instead of 336 (theoretical 9.1x) [D]; fine-tuned with a matching parallel attention mask"),
+        ("Prediction", "Next-token AR, or diagonal decoding: tokens (i, j+1) and (i+1, j) are released together, 37 passes per frame instead of 336 at k = 1 (theoretical 9.1x) [D]; the released code defaults to k = 2 (50 passes, 6.7x) [D], and the k behind Table 2 is not stated; fine-tuned with a matching parallel attention mask"),
         ("Decoder", "VQ-VAE decoder → 224x384 frame"),
-        ("Memory", "KV policy not disclosed; 16-frame context"),
+        ("Memory", "Static full KV cache over the 16-frame, 5,552-position context (4 KV heads; about 114 MB fp16 for 1.2B [D]); no rolling window: when full, the demo keeps the last 8 frames, clears the cache and re-prefills. 32-frame configs (11,104 positions) exist for 700M and 1.2B"),
         ("Speed", "1.2B: 0.89 FPS autoregressive, 3.01 FPS with diagonal decoding; 300M: 2.00 / 5.91 FPS (authors, Table 2; inference GPU not stated). Trained on 32 A100-40GB for 200k steps"),
-        ("Key detail", "9.1x fewer dependent passes buys 3.4x in FPS [D]: each diagonal step of up to 14 tokens is still latency-bound; the authors' real-time bar is 2 FPS for amateurs and 5 FPS for professionals"),
+        ("Key detail", "Diagonal decoding cuts passes per frame 9.1x at k = 1 (6.7x at the code's default k = 2), yet FPS rises only 3.4x for 1.2B [D]; the sources do not analyse the gap. The authors' real-time bar is 2 FPS for amateurs and 5 FPS for professionals"),
     ],
     "evidence": "read",
     "sources": ["arXiv 2504.08388 Sec. 2.1-2.3 (tokenizer, decoder, diagonal decoding), Sec. 3.1-3.2 (data, training), Tables 1-2, App. B Table 6",
-                "verified_findings Finding 10 (MineWorld speed figures as cited by Dreamer 4)"],
+                "github.com/microsoft/MineWorld: README (news), LICENSE, configs/*.yaml, lvm.py, mineworld.py, inference.py, diagonal_decoding.py"],
     "diagram": {
         "encoder": {"text": "Frame 224x384 → VQ-VAE (16× compression)", "sub": "336 tokens per frame (14×24), codebook 8,192", "tag": "frozen",
                     "short": "VQ-VAE, 336 tokens/frame"},
@@ -47,26 +47,28 @@ MODEL = {
     "flow": {
         "below": [{"text": "Frame 224×384 + action tokens"}],
         "stack": [
-            {"box": "VQ-VAE encoder", "id": "enc", "style": "teal"},
-            {"box": "Nearest codebook entry", "id": "vq", "minor": True},
-            {"box": "Interleave tokens", "id": "seq", "side": "Action tokens"},
-            {"box": "Token embedding", "id": "emb", "minor": True},
+            {"box": "VQ-VAE encoder", "id": "enc", "style": "teal", "basis": "stated"},
+            {"box": "Nearest codebook entry", "id": "vq", "minor": True, "basis": "code"},
+            {"box": "Interleave tokens", "id": "seq", "side": "Action tokens", "basis": "stated", "side_basis": "stated"},
+            {"box": "Token embedding", "id": "emb", "minor": True, "basis": "code"},
             {"group": [
-                {"residual": [{"box": "RMSNorm", "minor": True},
-                              {"box": "Masked self-attention", "id": "attn", "style": "dark", "side": "RoPE"}]},
-                {"residual": [{"box": "RMSNorm", "minor": True}, {"box": "Feed forward", "id": "ffn"}]},
+                {"residual": [{"box": "RMSNorm", "minor": True, "basis": "code"},
+                              {"box": "Masked self-attention", "id": "attn", "style": "dark", "side": "RoPE",
+                               "basis": "stated", "side_basis": "code"}]},
+                {"residual": [{"box": "RMSNorm", "minor": True, "basis": "code"}, {"box": "Feed forward", "id": "ffn", "basis": "stated"}]},
             ], "repeat": "20 ×", "id": "block"},
-            {"box": "Sample anti-diagonal", "id": "sample"},
+            {"box": "Sample anti-diagonal", "id": "sample", "basis": "stated"},
         ],
-        "above": [{"box": "VQ-VAE decoder", "id": "dec", "style": "teal"}, {"text": "Next frame 224×384"}],
+        "above": [{"box": "VQ-VAE decoder", "id": "dec", "style": "teal", "basis": "code"}, {"text": "Next frame 224×384"}],
         "annotations": [
             {"at": "enc", "text": "*336* tokens per frame, codebook of *8,192*", "side": "left", "key": True},
             {"at": "seq", "text": "*11* action tokens, *5,552*-token context", "side": "left"},
             {"at": "attn", "text": "*32* heads, width *2,048*", "side": "left"},
             {"at": "block", "text": "*20* layers, *1.2B* parameters", "side": "right", "key": True},
-            {"at": "sample", "text": "*37* passes per frame instead of *336*", "side": "right", "key": True},
+            {"at": "sample", "text": "*37* passes per frame at k=1, vs *336*", "side": "right", "key": True},
             {"at": "dec", "text": "*0.89* → *3.01* fps with diagonal decoding", "side": "right", "key": True},
         ],
         "feedback": "next frame",
     },
+    "audit": {"date": "2026-10-23", "checked": 41, "stated": 22, "code": 16, "derived": 3, "assumed": 0, "fixed": 7},
 }

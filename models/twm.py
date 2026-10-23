@@ -1,7 +1,7 @@
 MODEL = {
     "slug": "twm",
     "name": "TWM",
-    "year": 2023, "month": 3,
+    "year": 2022, "month": 9,
     "org": "TU Dortmund",
     "family": "rl",
     "role": "Per-step latent model",
@@ -10,7 +10,7 @@ MODEL = {
     "params_num": 19e6,
     "open": "code",
     "links": {"arXiv": "https://arxiv.org/abs/2303.07109", "code": "https://github.com/jrobine/twm"},
-    "summary": "A Dreamer-style agent whose dynamics model is a causal Transformer-XL instead of a GRU. A CNN VAE "
+    "summary": "A Dreamer-style agent whose dynamics model is a causal Transformer-XL instead of an RNN. A CNN VAE "
                "turns each 64x64 observation into 32x32 categorical latents; latent, action and reward enter as three "
                "separate tokens per step, and the hidden state read from the action token drives MLP heads for the "
                "next latent, reward and discount. The policy acts from z_t alone, so the transformer runs only in "
@@ -18,8 +18,8 @@ MODEL = {
     "tagline": "Transformer-XL over three tokens per step",
     "facts": [
         ("Representation", "32 categorical variables x 32 classes per step from a CNN VAE on 64x64 grayscale frames (stack of 4)"),
-        ("Core", "Transformer-XL: 10 layers, d 256, 4 heads of 64, FFN 1024, SiLU; dynamics model 10.8M, world model 19M (Table 5); norm placement not disclosed"),
-        ("Attention", "Causal with relative positions; history 16 steps = 47 tokens (3x16-1) [D], plus Transformer-XL segment memory"),
+        ("Core", "Transformer-XL: 10 layers, d 256, 4 heads of 64, FFN 1024, SiLU; dynamics model 10.8M, world model 19M (Table 5); post-LN, LayerNorm after each residual add (code)"),
+        ("Attention", "Causal with relative positions; history 16 steps = 3ℓ−1 = 47 tokens per the paper [D] (50 in the released code), plus Transformer-XL segment memory"),
         ("Actions", "Own action token through a modality-specific linear embedding; h_t is read from the action token's output"),
         ("Prediction", "One pass per imagined step; MLP heads give the next latent (categorical sample), reward (mean) and discount"),
         ("Decoder", "CNN decoder trains the VAE only; the policy is conditioned on z_t, so nothing is decoded in imagination"),
@@ -29,7 +29,9 @@ MODEL = {
     ],
     "evidence": "read",
     "sources": ["arXiv 2303.07109 Sec. 2.1 (tokens, Transformer-XL), Table 4 (hyperparameters), Table 5 (parameters), App. A.1 (wall-clock)",
-                "verified_findings Finding 3 (STORM Table 1: TWM 3 tokens per step, 10 layers)"],
+                "Official code github.com/jrobine/twm: twm/nets.py (post-LN block, token count), twm/config.py",
+                "OpenReview TdBaDGCpjly (ICLR 2023 submission, Sep 2022)",
+                "STORM arXiv 2310.09615 Sec. 2, Table 1 (comparison)"],
     "diagram": {
         "encoder": {"text": "Frame 64x64 (stack 4) → CNN VAE", "sub": "32 categoricals × 32 classes per step",
                     "tag": "trained jointly", "short": "CNN VAE, 32×32 categoricals"},
@@ -48,29 +50,32 @@ MODEL = {
     "flow": {
         "below": [{"text": "Frames 64×64 + action + reward"}],
         "stack": [
-            {"box": "CNN VAE encoder", "id": "enc", "style": "teal"},
-            {"box": "Categorical latent z", "id": "lat", "minor": True},
-            {"box": "Interleave z, a, r", "id": "seq", "side": "Action + reward"},
+            {"box": "CNN VAE encoder", "id": "enc", "style": "teal", "basis": "stated"},
+            {"box": "Categorical latent z", "id": "lat", "minor": True, "basis": "stated"},
+            {"box": "Interleave z, a, r", "id": "seq", "side": "Action + reward", "basis": "stated", "side_basis": "stated"},
             {"group": [
-                {"residual": [{"box": "LayerNorm", "minor": True},
-                              {"box": "Masked self-attention", "id": "attn", "style": "dark", "side": "Relative positions"}]},
-                {"residual": [{"box": "LayerNorm", "minor": True}, {"box": "Feed forward", "id": "ffn"}]},
-            ], "repeat": "10 ×", "id": "block"},
-            {"box": "Read the action token", "short": "Read action token", "id": "read", "minor": True},
-            {"fanout": [[{"box": "Latent head (MLP)", "id": "lathead", "minor": True}, {"box": "Sample next latent", "id": "sample"}],
-                        [{"box": "Reward head", "terminal": True, "minor": True}],
-                        [{"box": "Discount head", "id": "disc", "terminal": True, "minor": True}]]},
+                {"residual": [{"box": "Masked self-attention", "id": "attn", "style": "dark", "side": "Relative positions",
+                               "basis": "stated", "side_basis": "stated"}]},
+                {"box": "LayerNorm", "minor": True, "basis": "code"},
+                {"residual": [{"box": "Feed forward", "id": "ffn", "basis": "stated"}]},
+                {"box": "LayerNorm", "minor": True, "basis": "code"},
+            ], "repeat": "10 ×", "id": "block", "basis": "code"},
+            {"box": "Read the action token", "short": "Read action token", "id": "read", "minor": True, "basis": "stated"},
+            {"fanout": [[{"box": "Latent head (MLP)", "id": "lathead", "minor": True, "basis": "stated"}, {"box": "Sample next latent", "id": "sample", "basis": "stated"}],
+                        [{"box": "Reward head", "terminal": True, "minor": True, "basis": "stated"}],
+                        [{"box": "Discount head", "id": "disc", "terminal": True, "minor": True, "basis": "stated"}]]},
         ],
         "above": [{"text": "Next z → actor-critic, no decoding"}],
-        "insets": [{"for": "ffn", "stack": [{"box": "Linear"}, {"box": "SiLU"}, {"box": "Linear"}]}],
+        "insets": [{"for": "ffn", "stack": [{"box": "Linear", "basis": "code"}, {"box": "SiLU", "basis": "stated"}, {"box": "Linear", "basis": "code"}]}],
         "annotations": [
             {"at": "enc", "text": "*32* categoricals × *32* classes per step", "side": "left", "key": True},
             {"at": "seq", "text": "*3* tokens per step · history of *16* steps", "side": "left", "key": True},
             {"at": "attn", "text": "*4* heads of *64* · width *256*", "side": "left"},
             {"at": "ffn", "text": "Hidden layer dimension of *1,024*", "side": "left"},
-            {"at": "block", "text": "*10* layers · *10.8M* dynamics, *19M* total", "side": "right", "key": True},
+            {"at": "block", "text": "*10* layers · *10.8M* dynamics, *19M* world model", "side": "right", "key": True},
             {"at": "sample", "text": "*1* pass per step · *39,000* samples/s", "side": "right", "key": True},
         ],
         "feedback": "next step",
     },
+    "audit": {"date": "2026-10-23", "checked": 47, "stated": 35, "code": 9, "derived": 3, "assumed": 0, "fixed": 8},
 }

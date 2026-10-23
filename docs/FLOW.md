@@ -30,7 +30,10 @@ the condensed warnings: give long annotations and wide input or output lines a `
     "above": [{"box": "VQ-VAE decoder", "style": "teal"}, {"text": "Next frame"}],   # outputs
     "insets": [{"for": "ffn", "stack": [{"box": "Linear"}, {"box": "GELU"}, {"box": "Linear"}]}],
     "annotations": [{"at": "attn", "text": "*4* heads · context *340* tokens", "side": "left", "key": True}],
-    "feedback": "next step",                                  # optional dashed loop from output to input
+    "feedback": "next step",                                  # optional dashed loop from output to input; it means
+                                                              # "repeat for the next step"; name what carries over
+                                                              # ("next-frame tokens", "next z, no encoder"), since
+                                                              # most models keep latents in context, not re-encoded frames
 }
 ```
 

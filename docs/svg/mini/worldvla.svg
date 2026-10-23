@@ -16,8 +16,8 @@
 <path d="M 51.6 204.8 l 5 -6 l -8 -4 l 5 -6" fill="none" stroke="#1E2A3B" stroke-width="1.4"/>
 <text x="42.6" y="198.8" font-family="Saira SemiCondensed" font-weight="500" font-size="12.5" fill="#B95A08" text-anchor="end">32 ×</text>
 <path d="M 125.0 133.8 L 125.0 125.8" fill="none" stroke="#1E2A3B" stroke-width="1.2" marker-end="url(#ah_1E2A3B)"/>
-<rect x="68.0" y="100.9" width="114.1" height="24.0" rx="6.0" fill="#FFFFFF" stroke="#1E2A3B" stroke-width="1.0"/>
-<text x="125.0" y="116.3" font-family="IBM Plex Sans" font-weight="400" font-size="11.5" fill="#1E2A3B" text-anchor="middle">Sample next token</text>
+<rect x="68.8" y="100.9" width="112.3" height="24.0" rx="6.0" fill="#FFFFFF" stroke="#1E2A3B" stroke-width="1.0"/>
+<text x="125.0" y="116.3" font-family="IBM Plex Sans" font-weight="400" font-size="11.5" fill="#1E2A3B" text-anchor="middle">Greedy next token</text>
 <path d="M 125.0 99.9 L 73.8 81.9" fill="none" stroke="#1E2A3B" stroke-width="1.2" marker-end="url(#ah_1E2A3B)"/>
 <path d="M 125.0 99.9 L 176.3 81.9" fill="none" stroke="#1E2A3B" stroke-width="1.2" marker-end="url(#ah_1E2A3B)"/>
 <rect x="29.5" y="56.9" width="88.5" height="24.0" rx="6.0" fill="#FFFFFF" stroke="#1E2A3B" stroke-width="1.0"/>

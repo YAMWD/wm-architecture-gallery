@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-10-23 (version 5): source audit
+- Every card was cross-checked against its primary sources in three independent passes: 2,340 elements over 49 cards, 440 of them corrected. Examples: IRIS adds its learned positions at the token embedding and its transformer has about 8.5M parameters (30M is the whole agent); Dreamer 4 runs causal time attention in one layer of four and has a reward head; WorldPlay has no cross-attention in the released code; Matrix-Game 2.0's real-time model has 1.62B parameters.
+- Each box records its basis: stated in the paper, shown in the released code or config, or assumed. Assumed boxes are drawn with a dashed outline, and each card gains a *Source check* panel with its counts.
+- Sources lists name primary sources only.
+- The renderer now splits an arrow into a nested fanout to each of its boxes.
+- `data.json` no longer carries the unaudited token-square `diagram` spec, and the legacy token-square SVGs were removed from `docs/`.
+
 ## 2026-10-22 (version 4)
 - Redesigned page: centered title block with crop marks over a faint engineering grid, monospace labels and figures, diagrams on blueprint-grid tiles, a sticky search and filter bar, more whitespace throughout.
 - The full-page viewer shows each diagram once (no duplicate title) and both models' details when comparing.

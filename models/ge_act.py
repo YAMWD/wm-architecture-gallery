@@ -18,75 +18,91 @@ MODEL = {
                "a single denoising step whose latents are cached, the action branch runs 5 steps, and a 54-step trajectory "
                "comes out in 200 ms on a robot-mounted RTX 4090.",
     "facts": [
-        ("Representation", "Frozen video VAE latents of three views (head, left wrist, right wrist); initial frame plus 4 sparse "
-                           "memory frames per view; GE-Base-LF maps 9-frame clips at 5 Hz to 2 latent frames; tokens per frame "
-                           "not disclosed"),
-        ("Core", "GE-Base: LTX-Video 2B DiT (28 layers, 32 heads of 64 = d 2048 per its config.json) with 2D RoPE plus view "
-                 "embeddings, cross-view attention in selected blocks and a causal cross-view block; GE-Act: same block "
-                 "design and depth with a reduced hidden size, 160M parameters (width not stated); norms and modulation "
-                 "not detailed"),
-        ("Attention", "Video: spatial self-attention per view, cross-view self-attention over (views, H, W) in sparse blocks, "
-                      "T5-XXL instruction via cross-attention; GE-Act action tokens cross-attend to the visual latents of "
-                      "every GE-Base block"),
-        ("Actions", "54-step trajectories at 30 Hz (dual-arm 14-D end-effector poses) denoised by flow matching from "
-                    "noise-initialised action tokens; a new action DiT is trained from scratch for each new embodiment"),
+        ("Representation", "Frozen LTX video-VAE latents of three views (head, left wrist, right wrist); 4 conditioning frames "
+                           "per view (sparse memory, the last being the current frame in the code), each one latent frame, plus "
+                           "2 predicted latent frames from 9-frame clips at 5 Hz; 48 tokens per latent frame per view at 192x256 "
+                           "(32x VAE, patch 1) [D], so 288 per view and 864 for 3 views [D]"),
+        ("Core", "GE-Base: LTX-Video 2B DiT (28 layers, 32 heads of 64 = d 2048 [D]); RoPE on Q/K (paper: 2D; code: 3D over "
+                 "latent frame, H, W); in code the view embedding is added to the AdaLN-single timestep modulation (shift, "
+                 "scale, gate), RMSNorm without affine before self-attention and FFN, un-normalised text cross-attention, "
+                 "GELU-tanh FFN; GE-Act: same block design, 28 blocks, width 512 (16 heads x 32) in the policy config, 160M "
+                 "parameters"),
+        ("Attention", "Video: unmasked self-attention over all (T, H, W) tokens of each view; in every third block (10 of 28 "
+                      "[D]) over all 3 views jointly (code; the paper says selected blocks); T5-XXL instruction via "
+                      "cross-attention; GE-Act action tokens cross-attend to every block's video hidden states, all views "
+                      "concatenated"),
+        ("Actions", "54-step trajectories at 30 Hz of 14-D dual-arm actions (released AgiBot config: per-step end-effector "
+                    "xyz/rpy deltas + gripper; the paper intro calls them torque trajectories), denoised by flow matching "
+                    "from noise-initialised action tokens; a new action DiT is trained from scratch for each new embodiment"),
         ("Prediction", "Slow-fast asynchronous inference: 1 flow-matching step of the video DiT with its latents cached, then "
                        "5 action denoising steps on that cache; video DiT at 5 Hz vs action model at 30 Hz (1:6)"),
-        ("Decoder", "Frozen video VAE decoder, used only when GE-Base generates video (GE-Sim); GE-Act never produces pixels"),
-        ("Memory", "Sparse memory: 4 frames sampled from earlier chunks, concatenated with the initial frame per view"),
+        ("Decoder", "Frozen video VAE decoder, used when GE-Base / GE-Sim generate video; GE-Act deployment skips video "
+                    "decoding (return_video=False), though the paper also shows GE-Act generating videos"),
+        ("Memory", "Sparse memory: 4 conditioning frames per view (code: 3 sampled earlier frames plus the current one), "
+                   "each one latent frame; the paper's GE-Base text counts the initial frame separately"),
         ("Speed", "54-step trajectory in 200 ms on an onboard RTX 4090 mounted on the robot (authors), i.e. 5 chunks/s [D]; "
                   "training: GE-Base-MR 32 A100 x ~7 days, GE-Base-LF 32 A100 x ~3 days, GE-Act pretraining 16 A100 x ~3 days"),
-        ("Key detail", "Partial video denoising in deployment: one 2B video pass plus 5 passes of a thin action DiT [D]; the "
-                       "only model in this set timed on a single robot-mounted consumer GPU"),
+        ("Key detail", "Partial video denoising in deployment: one 2B video pass plus 5 passes of a thin action DiT per "
+                       "trajectory [D]"),
     ],
     "evidence": "read",
     "sources": ["arXiv 2508.05635 Sec. 2.1 (GE-Base architecture, views, attention), 2.2 (MR/LF stages, training hardware), "
                 "3.1 (GE-Act, 160M), 3.2 (action training), 3.3 (slow-fast inference, 200 ms), Sec. 4 (new embodiments)",
-                "Hugging Face Lightricks/LTX-Video transformer/config.json (28 layers, 32 heads x 64; fetched)",
-                "ICLR 2026 page (venue; code and models promised, release not verified here)"],
+                "Hugging Face Lightricks/LTX-Video transformer/config.json and vae/config.json",
+                "Official code github.com/AgibotTech/Genie-Envisioner-V1 @ d41358f (policy_model.yaml, "
+                "transformer_ltx_multiview.py, action_patches/patches.py, custom_pipeline.py)",
+                "OpenReview fHLtSxDFKC (ICLR 2026 venue)"],
     "diagram": {
-        "encoder": {"text": "3 views → video VAE", "sub": "initial frame + 4 sparse memory frames per view; tokens per frame not disclosed",
+        "encoder": {"text": "3 views → video VAE", "sub": "4 conditioning frames per view (sparse memory); ~48 tokens per latent frame",
                     "tag": "frozen", "short": "Video VAE, 3 views + memory"},
         "tokens": {"groups": [("latent", 16, "3-view latents + noise"), ("action", 8, "54 noisy action tokens")],
                    "note": "video DiT at 5 Hz; action branch at 30 Hz"},
         "core": {"title": "LTX-Video DiT ×28 · d 2048 · 32 heads",
-                 "rows": [("attn", "Spatial self-attention; cross-view attention (views, H, W) in selected blocks"),
+                 "rows": [("attn", "Per-view self-attention; all 3 views jointly in every 3rd block"),
                           ("xattn", "Cross-attention to T5-XXL instruction embeddings"),
                           ("moe", "GE-Act branch: same depth, smaller width (160M), cross-attends to each block's latents"),
                           ("mlp", "MLP")],
-                 "notes": ["2D RoPE + view embeddings; 1 video step cached for 5 action steps"]},
+                 "notes": ["3D RoPE; view embedding in AdaLN; 1 video step cached for 5 action steps"]},
         "sampling": {"kind": "diffusion", "text": "Flow matching: 1 video step (cached) + 5 action steps",
                      "sub": "per 54-step trajectory", "short": "1 video step + 5 action steps"},
         "heads": ["action chunk"],
-        "decoder": {"none": "GE-Act never decodes video; the VAE decoder serves GE-Base / GE-Sim generation"},
+        "decoder": {"none": "GE-Act deployment skips video decoding; the VAE decoder serves GE-Base / GE-Sim generation"},
         "loop": "closed loop with real frames",
     },
     "flow": {
         "below": [{"text": "3 views + memory frames + text"}],
         "stack": [
-            {"box": "Video VAE encoder", "id": "vae", "style": "teal"},
-            {"box": "View tokens + noise maps", "id": "tok", "style": "soft", "minor": True, "side": "Timestep enc."},
+            {"box": "Video VAE encoder", "id": "vae", "style": "teal", "basis": "stated"},
+            {"box": "View tokens + noise maps", "id": "tok", "style": "soft", "minor": True, "basis": "stated"},
             {"group": [
-                {"residual": [{"box": "Multi-view attention", "id": "attn", "style": "dark", "side": "2D RoPE, view emb."}]},
-                {"residual": [{"box": "Cross-attention", "id": "xattn", "side": "T5-XXL text", "minor": True}]},
-                {"residual": [{"box": "Feed forward", "id": "ffn"}]},
-            ], "repeat": "28 ×", "id": "vblock"},
-            {"box": "Cache all block latents", "id": "cache", "minor": True},
+                {"residual": [{"box": "AdaLN (scale, shift)", "minor": True, "side": "Timestep + view",
+                               "basis": "code", "side_basis": "code"},
+                              {"box": "Per-view self-attention", "id": "attn", "style": "dark", "side": "3D RoPE",
+                               "basis": "code", "side_basis": "code"}]},
+                {"residual": [{"box": "Cross-attention", "id": "xattn", "side": "T5-XXL text", "minor": True,
+                               "basis": "stated", "side_basis": "stated"}]},
+                {"residual": [{"box": "AdaLN (scale, shift)", "minor": True, "basis": "code"},
+                              {"box": "Feed forward", "id": "ffn", "basis": "code"}]},
+            ], "repeat": "28 ×", "id": "vblock", "basis": "code"},
+            {"box": "Cache all block latents", "id": "cache", "minor": True, "basis": "code"},
             {"group": [
-                {"box": "Noisy action tokens", "id": "noisy", "style": "soft", "minor": True},
+                {"box": "Noisy action tokens", "id": "noisy", "style": "soft", "minor": True, "basis": "stated"},
                 {"group": [
-                    {"residual": [{"box": "Self-attention", "id": "aattn", "style": "dark", "minor": True}]},
-                    {"residual": [{"box": "Cross-attention", "id": "axattn", "side": "Video latents"}]},
-                    {"residual": [{"box": "Feed forward", "id": "affn"}]},
-                ], "repeat": "28 ×", "tint": "orange", "id": "ablock"},
-                {"box": "Update actions", "id": "upd", "minor": True},
-            ], "loop": "5 action steps", "tint": "grey", "id": "denoise"},
-            {"box": "Action trajectory", "id": "act", "style": "orange", "minor": True},
+                    {"residual": [{"box": "AdaLN (scale, shift)", "minor": True, "basis": "code"},
+                                  {"box": "Self-attention", "id": "aattn", "style": "dark", "minor": True, "basis": "code"}]},
+                    {"residual": [{"box": "Cross-attention", "id": "axattn", "side": "Video latents",
+                                   "basis": "stated", "side_basis": "stated"}]},
+                    {"residual": [{"box": "AdaLN (scale, shift)", "minor": True, "basis": "code"},
+                                  {"box": "Feed forward", "id": "affn", "basis": "code"}]},
+                ], "repeat": "28 ×", "tint": "orange", "id": "ablock", "basis": "code"},
+                {"box": "Update actions", "id": "upd", "minor": True, "basis": "code"},
+            ], "loop": "5 action steps", "tint": "grey", "id": "denoise", "basis": "stated"},
+            {"box": "Action trajectory", "id": "act", "style": "orange", "minor": True, "basis": "stated"},
         ],
         "above": [{"text": "54 actions at 30 Hz, no video", "id": "out"}],
         "annotations": [
-            {"at": "vae", "text": "Tokens per latent frame not disclosed", "side": "left", "key": True},
-            {"at": "attn", "text": "*32* heads · width *2,048*", "side": "left"},
+            {"at": "vae", "text": "≈*48* tokens per latent frame per view", "side": "left", "key": True},
+            {"at": "attn", "text": "*32* heads · *2,048* · all views every *3rd*", "side": "left"},
             {"at": "vblock", "text": "*28* layers · *2B* parameters", "side": "right", "key": True},
             {"at": "cache", "text": "*1* video step per chunk", "side": "left"},
             {"at": "ablock", "text": "*28* thin blocks · *160M*", "side": "right", "key": True},
@@ -94,4 +110,5 @@ MODEL = {
         ],
         "feedback": "next chunk",
     },
+    "audit": {"date": "2026-10-23", "checked": 51, "stated": 24, "code": 25, "derived": 2, "assumed": 0, "fixed": 12},
 }

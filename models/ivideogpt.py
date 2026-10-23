@@ -15,7 +15,7 @@ MODEL = {
                "own into 16x16 = 256 VQ tokens, but every future frame is encoded, conditioned on the context frames "
                "through cross-attention, into only 4x4 = 16 tokens. A LLaMA-style transformer (12 layers, d 768, 138M) "
                "predicts the sequence token by token, so a future frame costs 17 passes instead of 257, and actions enter "
-               "by addition to the slot token that precedes each frame. On an RTX 4090 generation takes 1.11 s against "
+               "by addition to the slot token that precedes each future frame. On an RTX 4090 generation takes 1.11 s against "
                "22.5 s with a plain 16x16 tokenizer.",
     "facts": [
         ("Representation", "Compressive conditional VQGAN (114M at 64x64): 256 tokens per context frame, 16 tokens per future frame, codebooks of 8,192 each; transformer vocabulary 16,386 incl. 2 slot tokens"),
@@ -24,12 +24,14 @@ MODEL = {
         ("Actions", "Action linearly projected and added to the slot-token embedding before each future frame; optional reward head on the last token of each frame (MSE)"),
         ("Prediction", "Next-token softmax with top-k 100: 17 passes per future frame (slot + 16 tokens) against 257 with a per-frame 16x16 tokenizer [D]"),
         ("Decoder", "Conditional VQGAN decoder with cross-attention to the context-frame features → 64x64 (a 256x256 variant uses a 310M VQGAN)"),
-        ("Memory", "KV policy not disclosed; the whole 12-16-frame clip stays in context"),
+        ("Memory", "Hugging Face KV cache, no eviction (code): action-free generation keeps one cache over the clip; action-conditioned and MBRL rollouts re-prefill the full prefix each frame; the 12-16-frame clip stays in context (1024 positions)"),
         ("Speed", "RTX 4090, batch 1: tokenize 0.29 s, generation 1.11 s, detokenize 0.06 s, 2.33 GB; 22.5 s generation with a 16x16-per-frame tokenizer (authors, Table 8; rollout length not stated in the caption)"),
-        ("Key detail", "Tokens per predicted frame, 16 against 256, is the lever: 20x faster generation [D] at 138M, where the number of passes, not FLOPs, sets the latency"),
+        ("Key detail", "Tokens per predicted frame, 16 against 256, is the lever: 20x faster generation than a 16x16 tokenizer [D], since transformer passes set the generation time"),
     ],
     "evidence": "read",
-    "sources": ["arXiv 2405.15223 Sec. 3.1-3.3 (tokenizer, transformer, action conditioning), Sec. 4.5 (scaling), App. Table 2 (architecture), Table 3 (sequence lengths), Table 8 (RTX 4090 timings)"],
+    "sources": ["arXiv 2405.15223 Sec. 3.1-3.3 (tokenizer, transformer, action conditioning), Sec. 4.4 (model analysis, scaling), App. Table 2 (architecture), Table 3 (sequence lengths), App. B.5 and Table 8 (RTX 4090 timings)",
+                "Official code github.com/thuml/iVideoGPT: configs/llama/config.json, ivideogpt/transformer/action_model.py, inference/predict.py, mbrl/video_predictor.py",
+                "Hugging Face transformers 4.38.2 modeling_llama.py (pinned base LLaMA implementation)"],
     "diagram": {
         "encoder": {"text": "Frames 64x64 → compressive VQGAN (114M)", "sub": "256 tokens per context frame, 16 per future frame (cross-attention to context)",
                     "tag": "frozen", "short": "Compressive VQGAN: 256 / 16 tokens"},
@@ -50,20 +52,20 @@ MODEL = {
     "flow": {
         "below": [{"text": "Frames 64×64 + action"}],
         "stack": [
-            {"box": "Compressive VQGAN", "id": "enc", "style": "teal", "side": "Context features"},
-            {"box": "Nearest codebook entry", "id": "vq", "minor": True},
-            {"box": "Slot tokens + action", "id": "seq", "style": "orange", "side": "Action (linear)"},
-            {"box": "Token embedding", "id": "emb", "minor": True},
+            {"box": "Compressive VQGAN", "id": "enc", "style": "teal", "side": "Context features", "basis": "stated", "side_basis": "stated"},
+            {"box": "Nearest codebook entry", "id": "vq", "minor": True, "basis": "code"},
+            {"box": "Token embedding", "id": "emb", "minor": True, "basis": "stated"},
+            {"box": "Slot tokens + action", "id": "seq", "style": "orange", "side": "Action (linear)", "basis": "stated", "side_basis": "stated"},
             {"group": [
-                {"residual": [{"box": "RMSNorm", "minor": True},
-                              {"box": "Masked self-attention", "id": "attn", "style": "dark", "side": "RoPE"}]},
-                {"residual": [{"box": "RMSNorm", "minor": True}, {"box": "SwiGLU feed forward", "short": "SwiGLU FFN", "id": "ffn"}]},
+                {"residual": [{"box": "RMSNorm", "minor": True, "basis": "stated"},
+                              {"box": "Masked self-attention", "id": "attn", "style": "dark", "side": "RoPE", "basis": "code", "side_basis": "stated"}]},
+                {"residual": [{"box": "RMSNorm", "minor": True, "basis": "stated"}, {"box": "SwiGLU feed forward", "short": "SwiGLU FFN", "id": "ffn", "basis": "stated"}]},
             ], "repeat": "12 ×", "id": "block"},
-            {"fanout": [[{"box": "Output layer", "id": "out", "minor": True}, {"box": "Sample next token", "id": "sample"}],
-                        [{"box": "Reward head", "id": "rew", "terminal": True, "minor": True}]]},
+            {"fanout": [[{"box": "Output layer", "id": "out", "minor": True, "basis": "code"}, {"box": "Sample next token", "id": "sample", "basis": "stated"}],
+                        [{"box": "Reward head", "id": "rew", "terminal": True, "minor": True, "basis": "stated"}]]},
         ],
-        "above": [{"box": "VQGAN decoder", "id": "dec", "style": "teal", "side": "Context features"}, {"text": "Next frame 64×64"}],
-        "insets": [{"for": "ffn", "stack": [{"fanout": [[{"box": "Linear"}], [{"box": "Linear"}, {"box": "SiLU"}]]}, {"merge": "x"}, {"box": "Linear"}]}],
+        "above": [{"box": "VQGAN decoder", "id": "dec", "style": "teal", "side": "Context features", "basis": "stated", "side_basis": "stated"}, {"text": "Next frame 64×64"}],
+        "insets": [{"for": "ffn", "stack": [{"fanout": [[{"box": "Linear", "basis": "code"}], [{"box": "Linear", "basis": "code"}, {"box": "SiLU", "basis": "stated"}]]}, {"merge": "x"}, {"box": "Linear", "basis": "code"}]}],
         "annotations": [
             {"at": "enc", "text": "*256* tokens per context frame, *16* per future", "side": "left", "key": True},
             {"at": "vq", "text": "Codebooks of *8,192*", "side": "right"},
@@ -74,4 +76,5 @@ MODEL = {
         ],
         "feedback": "next frame",
     },
+    "audit": {"date": "2026-10-23", "checked": 52, "stated": 34, "code": 12, "derived": 6, "assumed": 0, "fixed": 4},
 }

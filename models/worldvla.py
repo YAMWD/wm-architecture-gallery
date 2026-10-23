@@ -14,10 +14,11 @@ MODEL = {
     "tagline": "One LLM writes next-frame and action tokens",
     "summary": "A single autoregressive transformer, initialised from Chameleon, that treats images, text and actions as one "
                "token vocabulary: it predicts the next frame's VQ-GAN codes as a world model and the next action's 7 tokens "
-               "as a VLA, and training both together improves both. There are no diffusion steps; everything is next-token "
-               "decoding, so an action costs 7 serial passes and an imagined frame 256 or 1,024. A custom mask hides the "
-               "earlier actions of a chunk so that each action depends only on text and images, which lets the chunk be "
-               "generated in parallel.",
+               "as a VLA, and the authors report that training both together helps both. There are no diffusion steps; "
+               "everything is next-token decoding, so an action costs 9 serial passes ([BOA], 7 action tokens, [EOA]) and "
+               "an imagined frame about 277 (256×256) or 1,061 (512×512). A custom mask hides the earlier actions of a "
+               "chunk so that each action depends only on text and images, which, the authors say, lets the chunk be "
+               "generated in parallel; the released code still decodes it token by token.",
     "facts": [
         ("Representation", "VQ-GAN image tokenizer (compression 16, codebook 8192): 256 tokens per 256x256 frame or 1,024 per "
                            "512x512; BPE text; one shared vocabulary of 65,536 including the 8192 image and 256 action tokens"),
@@ -28,21 +29,26 @@ MODEL = {
                       "attend to text and images but not to earlier actions of the chunk; default M = 2 input frames"),
         ("Actions", "7 discrete tokens per action (3 relative positions, 3 relative angles, 1 gripper), 256 bins per dimension; "
                     "chunks of K = 5 (K = 10 on LIBERO-Long)"),
-        ("Prediction", "Next-token softmax; 7 tokens per action, and the masked chunk can be generated in parallel (authors); "
-                       "256 or 1,024 serial passes per generated frame"),
-        ("Decoder", "VQ-GAN decoder for predicted image tokens (world-model mode); actions need no decoding"),
+        ("Prediction", "Next-token softmax, greedy in the released code; 9 passes per action ([BOA], 7 tokens, [EOA]) [D]; "
+                       "the masked chunk can be generated in parallel (authors); about 277 or 1,061 serial passes per "
+                       "generated frame (256 / 1,024 VQ codes plus row-end, size, [BOI], [EOI] and end tokens) [D]"),
+        ("Decoder", "VQ-GAN decoder for predicted image tokens (world-model mode); actions need only a de-binning lookup "
+                    "(token → bin centre → min-max un-normalisation), no neural decoder"),
         ("Memory", "LLM KV cache over the prompt (history frames + text); 1, 2 or 4 history frames evaluated, 2 by default"),
         ("Speed", "LIBERO, GPU not stated (authors, Table 5): 2.27 / 1.77 / 1.22 FPS with 1 / 2 / 4 history frames without "
                   "chunking, 3.67 / 3.13 / 2.78 FPS with chunking"),
-        ("Key detail", "An LLM-style decode workload, token-serial and memory-bandwidth-bound, the opposite profile from the "
-                       "diffusion WAMs; each imagined frame is 256 to 1,024 decode steps"),
+        ("Key detail", "An LLM-style decode workload, token-serial; each imagined frame is about 277 (256×256) to 1,061 "
+                       "(512×512) decode steps [D]; 'memory-bandwidth-bound' is our estimate for batch-1 decode of a 7B "
+                       "model, not an author measurement"),
     ],
     "evidence": "read",
     "sources": ["arXiv 2506.21539 Sec. 3.2 (tokenizers, Chameleon init), 3.3 (attention mask), 4.1 (M = 2, K), 4.3 and "
                 "Table 5 (history length, FPS)",
-                "Hugging Face Alibaba-DAMO-Academy/WorldVLA base_model/config.json (32 layers, hidden 4096, 32 heads, "
-                "FFN 11008, vocab 65536; fetched) and file sizes (2 safetensors, 14.0 GB)",
-                "GitHub alibaba-damo-academy/WorldVLA README (now RynnVLA-002; LIBERO checkpoints)"],
+                "Hugging Face Alibaba-DAMO-Academy/WorldVLA config.json (32 layers, hidden 4096, 32 heads, FFN 11008, "
+                "vocab 65536) and safetensors headers (7.01B params, BF16)",
+                "GitHub alibaba-damo-academy/WorldVLA: README; item_processor.py (process_image, process_action); "
+                "libero_util/Chameleon_utils.py (GenerationConfig, greedy); modeling_xllmx_chameleon_ck.py "
+                "(decode_token_ids_to_actions)"],
     "diagram": {
         "encoder": {"text": "Frame 256x256 or 512x512 → VQ-GAN tokenizer", "sub": "256 or 1,024 codes per frame, codebook 8192",
                     "tag": "pretrained", "short": "VQ-GAN, 256 / 1,024 codes per frame"},
@@ -60,30 +66,31 @@ MODEL = {
         "loop": "AR rollout",
     },
     "flow": {
-        "below": [{"text": "Text + 2 history frames"}],
+        "below": [{"text": "Text + 2 frames (current + 1 past)"}],
         "stack": [
-            {"box": "VQ-GAN image tokenizer", "short": "VQ-GAN tokenizer", "id": "tok", "style": "teal"},
-            {"box": "One shared vocabulary", "id": "seq", "side": "Text, action bins", "minor": True},
-            {"box": "Token embedding", "id": "emb", "minor": True},
+            {"box": "VQ-GAN image tokenizer", "short": "VQ-GAN tokenizer", "id": "tok", "style": "teal", "basis": "stated"},
+            {"box": "One shared vocabulary", "id": "seq", "side": "Text, action bins", "minor": True, "basis": "stated", "side_basis": "stated"},
+            {"box": "Token embedding", "id": "emb", "minor": True, "basis": "code"},
             {"group": [
-                {"residual": [{"box": "Norm", "minor": True}, {"box": "Masked self-attention", "id": "attn", "style": "dark"}]},
-                {"residual": [{"box": "Norm", "minor": True}, {"box": "Feed forward", "id": "ffn"}]},
-            ], "repeat": "32 ×", "id": "block"},
-            {"box": "Final norm", "id": "fnorm", "minor": True},
-            {"box": "Linear output layer", "id": "out", "minor": True},
-            {"box": "Sample next token", "id": "sample"},
-            {"fanout": [[{"box": "Image tokens", "id": "img"}],
-                        [{"box": "Action tokens", "id": "act", "style": "orange", "terminal": True}]]},
+                {"residual": [{"box": "Norm", "minor": True, "basis": "code"}, {"box": "Masked self-attention", "id": "attn", "style": "dark", "basis": "stated"}]},
+                {"residual": [{"box": "Norm", "minor": True, "basis": "code"}, {"box": "Feed forward", "id": "ffn", "basis": "code"}]},
+            ], "repeat": "32 ×", "id": "block", "basis": "code"},
+            {"box": "Final norm", "id": "fnorm", "minor": True, "basis": "code"},
+            {"box": "Linear output layer", "id": "out", "minor": True, "basis": "code"},
+            {"box": "Greedy next token", "id": "sample", "basis": "code"},
+            {"fanout": [[{"box": "Image tokens", "id": "img", "basis": "stated"}],
+                        [{"box": "Action tokens", "id": "act", "style": "orange", "terminal": True, "basis": "stated"}]]},
         ],
-        "above": [{"box": "VQ-GAN decoder", "id": "dec", "style": "teal"}, {"text": "Next frame (world-model mode)"}],
+        "above": [{"box": "VQ-GAN decoder", "id": "dec", "style": "teal", "basis": "code"}, {"text": "Next frame (world-model mode)"}],
         "annotations": [
             {"at": "tok", "text": "*256* codes per frame · codebook *8,192*", "side": "left", "key": True},
             {"at": "seq", "text": "Vocabulary of *65,536*", "side": "left"},
             {"at": "attn", "text": "*32* heads · width *4,096*", "side": "left"},
-            {"at": "block", "text": "*32* layers · ~*7B* parameters", "side": "right", "key": True},
-            {"at": "sample", "text": "*7* passes per action · *256*+ per frame", "side": "right", "key": True},
+            {"at": "block", "text": "*32* layers · ≈*7B* parameters", "side": "right", "key": True},
+            {"at": "sample", "text": "*9* passes per action · ≈*277* / *1,061* per frame", "side": "right", "key": True},
             {"at": "act", "text": "*3.13* FPS with chunking (*1.77* without)", "side": "right", "key": True},
         ],
         "feedback": "next token",
     },
+    "audit": {"date": "2026-10-23", "checked": 44, "stated": 22, "code": 15, "derived": 6, "assumed": 1, "fixed": 8},
 }

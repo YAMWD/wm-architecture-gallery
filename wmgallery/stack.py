@@ -580,12 +580,23 @@ class StackLayout:
     def _bottom_point(self, n):
         return (self.ox + n.cx, self.oy + n.y + n.h + 1)
 
+    def _entries(self, n):
+        """Nodes an arrow arriving at `n` from below must reach: for a fanout, the first node of every
+        branch, recursively, so an arrow into a nested fanout splits to its boxes instead of ending
+        between them."""
+        if n.kind == "fanout":
+            out = []
+            for br in n.children:
+                out += self._entries(br[0])
+            return out
+        return [n]
+
     def _connect(self, lower, upper):
         """Arrow(s) from the top of `lower` to the bottom of `upper`, handling fanouts on either side."""
         cv = self.cv
         if upper.kind == "fanout" and lower.kind == "fanout":
             lows = [br[-1] for br in lower.children if not br[-1].spec.get("terminal")]
-            ups = [br[0] for br in upper.children]
+            ups = self._entries(upper)
             if len(lows) != len(ups):
                 cv.warnings.append("%s: fanout feeds a fanout with a different branch count; each branch "
                                    "connects to the nearest one above" % self.spec["slug"])
@@ -596,8 +607,8 @@ class StackLayout:
             return
         if upper.kind == "fanout":
             src = self._top_point(lower)
-            for br in upper.children:
-                dst = self._bottom_point(br[0])
+            for up in self._entries(upper):
+                dst = self._bottom_point(up)
                 cv.arrow(src[0], src[1], dst[0], dst[1], stroke=INK, sw=1.2)
             return
         dst = self._bottom_point(upper)

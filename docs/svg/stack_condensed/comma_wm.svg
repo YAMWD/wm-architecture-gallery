@@ -10,7 +10,7 @@
 <path d="M 237.9 293.0 L 237.9 281.0" fill="none" stroke="#1E2A3B" stroke-width="1.2" marker-end="url(#ah_1E2A3B)"/>
 <rect x="142.3" y="116.8" width="191.2" height="163.2" rx="14.0" fill="#E7EAEF" stroke="#5E6B80" stroke-width="1.0"/>
 <text x="321.4" y="132.6" font-family="IBM Plex Sans" font-weight="400" font-size="12.0" fill="#B95A08" text-anchor="end">15 Euler steps</text>
-<rect x="150.3" y="140.4" width="175.2" height="129.6" rx="14.0" fill="#E4EAF4" stroke="#1D3E72" stroke-width="1.0"/>
+<rect x="150.3" y="140.4" width="175.2" height="129.6" rx="14.0" fill="#E4EAF4" stroke="#1D3E72" stroke-width="1.0" stroke-dasharray="4 3"/>
 <rect x="186.7" y="232.8" width="102.2" height="27.2" rx="6.0" fill="#FFFFFF" stroke="#1E2A3B" stroke-width="1.0"/>
 <text x="237.9" y="250.6" font-family="IBM Plex Sans" font-weight="400" font-size="14.0" fill="#1E2A3B" text-anchor="middle">AdaLN-single</text>
 <rect x="22.0" y="233.3" width="118.3" height="26.2" rx="6.0" fill="#FFFFFF" stroke="#1E2A3B" stroke-width="1.0"/>
@@ -20,7 +20,7 @@
 <rect x="158.3" y="191.6" width="159.2" height="27.2" rx="6.0" fill="#1D3E72" stroke="#1D3E72" stroke-width="1.0"/>
 <text x="237.9" y="209.4" font-family="IBM Plex Sans" font-weight="400" font-size="14.0" fill="#FFFFFF" text-anchor="middle">Block-causal attention</text>
 <path d="M 237.9 190.6 L 237.9 178.6" fill="none" stroke="#1E2A3B" stroke-width="1.2" marker-end="url(#ah_1E2A3B)"/>
-<rect x="195.9" y="150.4" width="84.0" height="27.2" rx="6.0" fill="#FFFFFF" stroke="#1E2A3B" stroke-width="1.0"/>
+<rect x="195.9" y="150.4" width="84.0" height="27.2" rx="6.0" fill="#FFFFFF" stroke="#1E2A3B" stroke-width="1.1" stroke-dasharray="3.5 2.5"/>
 <text x="237.9" y="168.2" font-family="IBM Plex Sans" font-weight="400" font-size="14.0" fill="#1E2A3B" text-anchor="middle">MLP</text>
 <rect x="146.3" y="211.0" width="8.0" height="18.0" rx="0.0" fill="#E4EAF4"/>
 <path d="M 149.3 228.0 l 5 -6 l -8 -4 l 5 -6" fill="none" stroke="#1E2A3B" stroke-width="1.4"/>

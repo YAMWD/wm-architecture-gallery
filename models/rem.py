@@ -6,7 +6,7 @@ MODEL = {
     "family": "rl",
     "role": "Discrete-token model",
     "status": "ICML 2024",
-    "params": "size not disclosed (~4M [D])",
+    "params": "size not disclosed (~4.8M world model, 4.28M in RetNet blocks [D])",
     "params_num": None,
     "open": "code",
     "links": {"arXiv": "https://arxiv.org/abs/2402.05643", "code": "https://github.com/leor-c/REM"},
@@ -20,10 +20,11 @@ MODEL = {
         ("Representation", "64 VQ codes per 64×64 frame (8×8 grid), vocabulary 512; VQ-GAN-style CNN tokenizer without the "
                            "discriminator (IRIS uses 16 codes)"),
         ("Core", "RetNet (retention, not softmax attention): 5 layers, 4 retention heads, d 256, FFN 1024, dropout 0.1; "
-                 "parameter count not disclosed (~3.9M block weights [D]); FFN activation not disclosed"),
+                 "parameter count not disclosed (~4.3M block weights [D]); FFN activation GELU per the paper (A.3), SiLU "
+                 "in the released code"),
         ("Attention", "Multi-scale retention with a per-head exponential decay and relative position; chunkwise mode is parallel "
-                      "inside a chunk of c = 3 observation-action blocks (195 tokens [D]) and recurrent between chunks through a "
-                      "d×d state per head; world-model context 2 frames"),
+                      "inside a chunk of c = 3 observation-action blocks in training (195 tokens [D]; one block at imagination) and "
+                      "recurrent between chunks through a 64×64 (d/h × d/h) state per head; world-model context 2 frames"),
         ("Actions", "One action token per step (learned embedding) after the 64 observation tokens; reward and "
                     "termination are read from the action token; the world model reuses the tokenizer's embedding table"),
         ("Prediction", "POP: K = 64 learned prediction tokens u are run from the recurrent state S_t and all next-frame tokens are "
@@ -39,7 +40,9 @@ MODEL = {
     ],
     "evidence": "read",
     "sources": ["arXiv 2402.05643 Sec. 2.2-2.4 (retention, POP, training), Fig. 4, Sec. 4 (K = 64, RTX 4090 / V100), abstract (15.4×, < 12 h)",
-                "arXiv 2402.05643 Table 2 (H 10, N 512, 64×64), Table 5 (world-model config), Table 6 (call counts), Table 8 and A.1.3 (actor-critic input)"],
+                "arXiv 2402.05643 Table 2 (H 10, N 512, 64×64), Table 5 (world-model config), Table 6 (call counts), Table 8 and A.1.3 (actor-critic input)",
+                "arXiv 2402.05643 A.3 (RetNet layer, Eqs. 9-10, GELU FFN), Table 4 (tokenizer), Alg. 5 and 7",
+                "github.com/leor-c/REM src/models/world_model.py; yet-another-retnet 0.5.1 retention.py, retnet.py (SiLU FFN, state shape)"],
     "diagram": {
         "encoder": {"text": "Frame 64×64 → VQ-VAE (CNN)", "sub": "64 codes per frame (8×8), vocab 512", "tag": "trained jointly",
                     "short": "VQ-VAE, 64 codes per frame"},
@@ -48,7 +51,7 @@ MODEL = {
         "core": {"title": "RetNet ×5 · d 256 · 4 heads",
                  "rows": [("ssm", "Retention (recurrent across chunks)"),
                           ("mlp", "FFN 1024")],
-                 "notes": ["d×d recurrent state per head replaces the KV cache", "POP: u tokens read S_t, never update it"]},
+                 "notes": ["64×64 recurrent state per head replaces the KV cache", "POP: u tokens read S_t, never update it"]},
         "sampling": {"kind": "parallel", "text": "POP: all 64 next-frame tokens in one call", "sub": "2 sequential calls per imagined frame; horizon 10",
                      "short": "POP: 64 tokens per call"},
         "heads": ["reward", "termination"],
@@ -59,29 +62,31 @@ MODEL = {
     "flow": {
         "below": [{"text": "Atari frame 64×64 + action"}],
         "stack": [
-            {"box": "VQ-VAE encoder (CNN)", "id": "enc", "style": "teal"},
-            {"box": "Nearest codebook entry", "id": "vq", "minor": True},
-            {"box": "Embed codes + u tokens", "short": "Embed + u tokens", "id": "emb", "side": "Action emb."},
+            {"box": "VQ-VAE encoder (CNN)", "id": "enc", "style": "teal", "basis": "stated"},
+            {"box": "Nearest codebook entry", "id": "vq", "minor": True, "basis": "stated"},
+            {"box": "Embed codes + u tokens", "short": "Embed + u tokens", "id": "emb", "side": "Action emb.", "basis": "stated", "side_basis": "stated"},
             {"group": [
-                {"residual": [{"box": "LayerNorm", "minor": True},
-                              {"box": "Multi-scale retention", "id": "ret", "style": "dark", "side": "Relative positions"}]},
-                {"residual": [{"box": "LayerNorm", "minor": True}, {"box": "Feed forward", "id": "ffn"}]},
+                {"residual": [{"box": "LayerNorm", "minor": True, "basis": "stated"},
+                              {"box": "Multi-scale retention", "id": "ret", "style": "dark", "side": "Relative positions", "basis": "stated", "side_basis": "stated"}]},
+                {"residual": [{"box": "LayerNorm", "minor": True, "basis": "stated"}, {"box": "Feed forward", "id": "ffn", "basis": "stated"}]},
             ], "repeat": "5 ×", "id": "block"},
-            {"fanout": [[{"box": "POP: all codes at once", "id": "sample"}],
-                        [{"box": "Reward head", "id": "rew", "terminal": True, "minor": True}],
-                        [{"box": "Done head", "terminal": True, "minor": True}]]},
+            {"fanout": [[{"box": "POP: all codes at once", "id": "sample", "basis": "stated"}],
+                        [{"box": "Reward head", "id": "rew", "terminal": True, "minor": True, "basis": "stated"}],
+                        [{"box": "Done head", "terminal": True, "minor": True, "basis": "stated"}]]},
         ],
-        "above": [{"box": "VQ-VAE decoder (CNN)", "id": "dec", "style": "teal"}, {"text": "Next frame 64×64 (loss only)"}],
+        "above": [{"box": "VQ-VAE decoder (CNN)", "id": "dec", "style": "teal", "basis": "stated"}, {"text": "Reconstructed frame (loss only)"}],
         "insets": [
-            {"for": "sample", "stack": [{"box": "Update S_t with z_t, a_t"}, {"box": "Run u from S_t"}, {"box": "All codes in parallel"}]},
+            {"for": "sample", "stack": [{"box": "Update S_t with z_t, a_t", "basis": "stated"}, {"box": "Run u from S_t", "basis": "stated"},
+                                       {"box": "All codes in parallel", "basis": "stated"}]},
         ],
         "annotations": [
             {"at": "enc", "text": "*64* codes per frame · vocabulary of *512*", "side": "left", "key": True},
             {"at": "emb", "text": "*64* prediction tokens u", "side": "right", "key": True},
             {"at": "ret", "text": "*4* heads · width *256*", "side": "left"},
-            {"at": "block", "text": "*5* layers · ~*3.9M* block weights", "side": "right", "key": True},
+            {"at": "block", "text": "*5* layers · ≈*4.3M* block weights", "side": "right", "key": True},
             {"at": "sample", "text": "*2* calls per frame · imagination *15.4×* faster", "side": "left", "key": True},
         ],
-        "feedback": "next step",
+        "feedback": "next-frame tokens",
     },
+    "audit": {"date": "2026-10-23", "checked": 45, "stated": 37, "code": 6, "derived": 2, "assumed": 0, "fixed": 6},
 }
