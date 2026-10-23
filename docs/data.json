@@ -1572,7 +1572,7 @@
    ],
    [
     "Core",
-    "2B diffusion transformer: 48 layers, d 1600, 25 heads (n_layer=48, n_head=25, n_embd=1600), 'adapted to 3 dimensional data'; norm and MLP details not disclosed, so the MLP and the drawn block layout (AdaLN-single before attention and MLP, residual adds) are assumed from DiT/PixArt-α"
+    "2B diffusion transformer: 48 layers, d 1600, 25 heads (n_layer=48, n_head=25, n_embd=1600), 'adapted to 3 dimensional data'; norm, MLP and residual layout not disclosed, so the diagram draws only AdaLN-single and the attention layer; the post does not say what is written to the KV cache or when"
    ],
    [
     "Attention",
@@ -1642,40 +1642,28 @@
       {
        "group": [
         {
-         "residual": [
-          {
-           "box": "AdaLN-single",
-           "id": "ada",
-           "side": "Pose + noise level",
-           "basis": "stated",
-           "side_basis": "stated"
-          },
-          {
-           "box": "Block-causal attention",
-           "id": "attn",
-           "style": "dark",
-           "basis": "stated"
-          }
-         ]
+         "box": "AdaLN-single",
+         "id": "ada",
+         "side": "Pose + noise level",
+         "basis": "stated",
+         "side_basis": "stated"
         },
         {
-         "residual": [
-          {
-           "box": "AdaLN-single",
-           "minor": true,
-           "basis": "stated"
-          },
-          {
-           "box": "MLP",
-           "id": "mlp",
-           "basis": "assumed"
-          }
-         ]
+         "box": "Block-causal attention",
+         "id": "attn",
+         "style": "dark",
+         "basis": "stated"
+        },
+        {
+         "box": "Rest of block not stated",
+         "id": "rest",
+         "style": "soft",
+         "basis": "stated"
         }
        ],
        "repeat": "48 ×",
        "id": "block",
-       "basis": "assumed"
+       "basis": "stated"
       },
       {
        "box": "Predicted velocity",
@@ -1694,12 +1682,6 @@
      "tint": "grey",
      "id": "denoise",
      "basis": "stated"
-    },
-    {
-     "box": "Write frame to KV cache",
-     "id": "kv",
-     "minor": true,
-     "basis": "assumed"
     }
    ],
    "above": [
@@ -1737,7 +1719,7 @@
      "key": true
     },
     {
-     "at": "kv",
+     "at": "noisy",
      "text": "Context of *2* s past + *1* s future frames",
      "side": "right"
     },
@@ -1751,13 +1733,14 @@
    "feedback": "next latent frame"
   },
   "audit": {
-   "date": "2026-10-22",
+   "date": "2026-10-23",
    "checked": 42,
    "stated": 34,
    "code": 0,
    "derived": 3,
-   "assumed": 5,
-   "fixed": 5
+   "assumed": 0,
+   "removed": 5,
+   "fixed": 6
   }
  },
  {
@@ -3302,7 +3285,7 @@
    ],
    [
     "Core",
-    "1.6B dynamics transformer: pre-RMSNorm, RoPE (layers and axes not given), SwiGLU, QKNorm, attention logit soft-capping; layer, head and width counts not disclosed in the paper; repeat unit of 3 space layers + 1 causal time layer (Fig. 2b); the drawn residual adds and one SwiGLU MLP per layer are assumed (standard pre-norm layout)"
+    "1.6B dynamics transformer: pre-RMSNorm, RoPE (layers and axes not given), SwiGLU, QKNorm, attention logit soft-capping; layer, head and width counts not disclosed in the paper; repeat unit of 3 space layers + 1 causal time layer (Fig. 2b); each layer is drawn as a pre-norm residual block with a SwiGLU MLP, as the paper starts from 'a standard transformer with pre-layer RMSNorm, RoPE, and SwiGLU' and names 'the FLOPs of the MLPs'"
    ],
    [
     "Attention",
@@ -3342,10 +3325,11 @@
   "audit": {
    "date": "2026-10-23",
    "checked": 55,
-   "stated": 44,
+   "stated": 48,
    "code": 0,
    "derived": 1,
-   "assumed": 10,
+   "assumed": 0,
+   "removed": 6,
    "fixed": 9
   },
   "flow": {
@@ -3414,7 +3398,7 @@
          ],
          "repeat": "3 ×",
          "id": "space",
-         "basis": "assumed"
+         "basis": "stated"
         },
         {
          "residual": [
@@ -3450,7 +3434,7 @@
        ],
        "repeat": "L/4 ×",
        "id": "block",
-       "basis": "assumed"
+       "basis": "stated"
       },
       {
        "box": "Predict clean latents",
@@ -3517,41 +3501,6 @@
     },
     {
      "text": "Next frame 360×640"
-    }
-   ],
-   "insets": [
-    {
-     "for": "mlp",
-     "stack": [
-      {
-       "fanout": [
-        [
-         {
-          "box": "Linear",
-          "basis": "assumed"
-         }
-        ],
-        [
-         {
-          "box": "Linear",
-          "basis": "assumed"
-         },
-         {
-          "box": "SiLU",
-          "basis": "assumed"
-         }
-        ]
-       ]
-      },
-      {
-       "merge": "x",
-       "basis": "assumed"
-      },
-      {
-       "box": "Linear",
-       "basis": "assumed"
-      }
-     ]
     }
    ],
    "annotations": [
@@ -4888,8 +4837,8 @@
    "checked": 44,
    "stated": 22,
    "code": 15,
-   "derived": 6,
-   "assumed": 1,
+   "derived": 7,
+   "assumed": 0,
    "fixed": 8
   }
  },
@@ -5657,7 +5606,7 @@
    ],
    [
     "Core",
-    "8B MMDiT-style diffusion transformer with 36 blocks (base model not named); width and heads not stated; text tokens and visual tokens in one sequence; the discriminator reuses the same causal architecture (generator + discriminator = 16B in training); norm, FFN and residual layout not stated, so the drawn pre-norm block is assumed"
+    "8B MMDiT-style diffusion transformer with 36 blocks (base model not named); width and heads not stated; text tokens and visual tokens in one sequence; the discriminator reuses the same causal architecture (generator + discriminator = 16B in training); norm, FFN and residual layout not stated, so the diagram draws only the attention layer"
    ],
    [
     "Attention",
@@ -5726,40 +5675,23 @@
       {
        "group": [
         {
-         "residual": [
-          {
-           "box": "Norm",
-           "minor": true,
-           "basis": "assumed"
-          },
-          {
-           "box": "Block-causal attention",
-           "id": "attn",
-           "style": "dark",
-           "side": "3D RoPE",
-           "basis": "stated",
-           "side_basis": "stated"
-          }
-         ]
+         "box": "Block-causal attention",
+         "id": "attn",
+         "style": "dark",
+         "side": "3D RoPE",
+         "basis": "stated",
+         "side_basis": "stated"
         },
         {
-         "residual": [
-          {
-           "box": "Norm",
-           "minor": true,
-           "basis": "assumed"
-          },
-          {
-           "box": "Feed forward",
-           "id": "ffn",
-           "basis": "assumed"
-          }
-         ]
+         "box": "Rest of block not stated",
+         "id": "rest",
+         "style": "soft",
+         "basis": "stated"
         }
        ],
        "repeat": "36 ×",
        "id": "block",
-       "basis": "assumed"
+       "basis": "stated"
       },
       {
        "box": "Clean latent frame",
@@ -5820,13 +5752,14 @@
    ]
   },
   "audit": {
-   "date": "2026-10-22",
+   "date": "2026-10-23",
    "checked": 42,
-   "stated": 34,
+   "stated": 35,
    "code": 0,
    "derived": 2,
-   "assumed": 6,
-   "fixed": 9
+   "assumed": 0,
+   "removed": 5,
+   "fixed": 10
   }
  },
  {
@@ -5869,7 +5802,7 @@
    ],
    [
     "Decoder",
-    "Not described (the paper never mentions a decoder); outputs are scored as frames, so the same VAE's decoder is assumed"
+    "Not described: the paper never mentions a decoder, although outputs are scored as frames"
    ],
    [
     "Memory",
@@ -5888,11 +5821,12 @@
   "audit": {
    "date": "2026-10-23",
    "checked": 47,
-   "stated": 43,
+   "stated": 44,
    "code": 0,
    "derived": 0,
-   "assumed": 4,
-   "fixed": 13
+   "assumed": 0,
+   "removed": 3,
+   "fixed": 14
   },
   "sources": [
    "arXiv 2505.20171 Sec. 3-4 (architecture, block-wise scan, frame-local attention, action condition, fixed-length state), Table 1",
@@ -5995,19 +5929,12 @@
        "repeat": "N ×",
        "id": "block",
        "basis": "stated"
-      },
-      {
-       "box": "Denoising update",
-       "id": "upd",
-       "minor": true,
-       "basis": "assumed"
       }
      ],
-     "loop": "K denoising steps",
-     "loop_short": "K steps",
+     "label": "denoiser",
      "tint": "grey",
      "id": "denoise",
-     "basis": "assumed"
+     "basis": "stated"
     },
     {
      "box": "Update KV + SSM states",
@@ -6018,13 +5945,7 @@
    ],
    "above": [
     {
-     "box": "VAE decoder",
-     "id": "dec",
-     "style": "teal",
-     "basis": "assumed"
-    },
-    {
-     "text": "Next frame"
+     "text": "Next frame; decoder not described"
     }
    ],
    "insets": [
@@ -6072,8 +5993,8 @@
      "key": true
     },
     {
-     "at": "upd",
-     "text": "*5*-frame chunks; steps not disclosed",
+     "at": "denoise",
+     "text": "Sampler and step count not disclosed",
      "side": "right"
     },
     {
@@ -6781,7 +6702,7 @@
    ],
    [
     "Core",
-    "22 space-time factorized transformer blocks, d 4096, 32 heads, 8.4B parameters; each block adds the position, timestamp and camera encodings, then runs spatial attention (over space and cameras), temporal attention, cross-attention and an MLP with adaptive LayerNorm; QK-norm before each attention. Assumed in the diagram (not described): adaptive LayerNorm before each attention layer and the residual connections, as in DiT"
+    "22 space-time factorized transformer blocks, d 4096, 32 heads, 8.4B parameters; each block adds the position, timestamp and camera encodings, then runs spatial attention (over space and cameras), temporal attention, cross-attention and an MLP with adaptive LayerNorm; QK-norm before each attention. Not described, so not drawn: where else adaptive LayerNorm sits, and the residual connections"
    ],
    [
     "Attention",
@@ -6849,73 +6770,42 @@
          "basis": "stated"
         },
         {
-         "residual": [
-          {
-           "box": "Adaptive LayerNorm",
-           "id": "ada",
-           "minor": true,
-           "basis": "assumed"
-          },
-          {
-           "box": "Space + camera attention",
-           "short": "Spatial attention",
-           "id": "sattn",
-           "style": "dark",
-           "basis": "stated"
-          }
-         ]
+         "box": "Space + camera attention",
+         "short": "Spatial attention",
+         "id": "sattn",
+         "style": "dark",
+         "basis": "stated"
         },
         {
-         "residual": [
-          {
-           "box": "Adaptive LayerNorm",
-           "minor": true,
-           "basis": "assumed"
-          },
-          {
-           "box": "Temporal attention",
-           "id": "tattn",
-           "style": "dark",
-           "basis": "stated"
-          }
-         ]
+         "box": "Temporal attention",
+         "id": "tattn",
+         "style": "dark",
+         "basis": "stated"
         },
         {
-         "residual": [
-          {
-           "box": "Adaptive LayerNorm",
-           "minor": true,
-           "basis": "assumed"
-          },
-          {
-           "box": "Cross-attention",
-           "id": "xattn",
-           "side": "Agents + metadata",
-           "basis": "stated",
-           "side_basis": "stated"
-          }
-         ]
+         "box": "Cross-attention",
+         "id": "xattn",
+         "side": "Agents + metadata",
+         "basis": "stated",
+         "side_basis": "stated"
         },
         {
-         "residual": [
-          {
-           "box": "Adaptive LayerNorm",
-           "side": "Ego action + time",
-           "basis": "stated",
-           "side_basis": "stated"
-          },
-          {
-           "box": "MLP",
-           "id": "mlp",
-           "minor": true,
-           "basis": "stated"
-          }
-         ]
+         "box": "Adaptive LayerNorm",
+         "id": "ada",
+         "side": "Ego action + time",
+         "basis": "stated",
+         "side_basis": "stated"
+        },
+        {
+         "box": "MLP",
+         "id": "mlp",
+         "minor": true,
+         "basis": "stated"
         }
        ],
        "repeat": "22 ×",
        "id": "block",
-       "basis": "assumed"
+       "basis": "stated"
       },
       {
        "box": "Predicted velocity",
@@ -6980,12 +6870,13 @@
    "feedback": "next set of latents"
   },
   "audit": {
-   "date": "2026-10-22",
+   "date": "2026-10-23",
    "checked": 47,
    "stated": 34,
    "code": 1,
    "derived": 5,
-   "assumed": 7,
+   "assumed": 0,
+   "removed": 7,
    "fixed": 10
   }
  },
@@ -9981,7 +9872,7 @@
    ],
    [
     "Attention",
-    "ST-transformer block: spatial self-attention over one frame's tokens, causal temporal attention over the same position across 16 frames, then FFW; QK-norm; the spatial term scales linearly with frames; norm type and positional encoding not disclosed. Block norms and residuals are drawn as a pre-norm convention (assumed); Table 12 gives num_layers 48 without saying whether it counts ST blocks"
+    "ST-transformer block: spatial self-attention over one frame's tokens, causal temporal attention over the same position across 16 frames, then FFW; QK-norm; the spatial term scales linearly with frames; norm type and positional encoding not disclosed. Block norms and residuals are not described, so they are not drawn; Table 12 gives num_layers 48 without saying whether it counts ST blocks"
    ],
    [
     "Actions",
@@ -10027,12 +9918,6 @@
      "basis": "stated"
     },
     {
-     "box": "Nearest codebook entry",
-     "id": "vq",
-     "minor": true,
-     "basis": "assumed"
-    },
-    {
      "group": [
       {
        "box": "Add action embedding",
@@ -10054,54 +9939,27 @@
         {
          "group": [
           {
-           "residual": [
-            {
-             "box": "Norm",
-             "minor": true,
-             "basis": "assumed"
-            },
-            {
-             "box": "Spatial attention",
-             "id": "sattn",
-             "style": "dark",
-             "basis": "stated"
-            }
-           ]
+           "box": "Spatial attention",
+           "id": "sattn",
+           "style": "dark",
+           "basis": "stated"
           },
           {
-           "residual": [
-            {
-             "box": "Norm",
-             "minor": true,
-             "basis": "assumed"
-            },
-            {
-             "box": "Temporal attention",
-             "id": "tattn",
-             "style": "dark",
-             "basis": "stated"
-            }
-           ]
+           "box": "Temporal attention",
+           "id": "tattn",
+           "style": "dark",
+           "basis": "stated"
           },
           {
-           "residual": [
-            {
-             "box": "Norm",
-             "minor": true,
-             "basis": "assumed"
-            },
-            {
-             "box": "Feed forward",
-             "id": "ffw",
-             "minor": true,
-             "basis": "stated"
-            }
-           ]
+           "box": "Feed forward",
+           "id": "ffw",
+           "minor": true,
+           "basis": "stated"
           }
          ],
          "repeat": "L ×",
          "id": "block",
-         "basis": "assumed"
+         "basis": "stated"
         },
         {
          "box": "Sample (temperature 2)",
@@ -10172,11 +10030,12 @@
   "audit": {
    "date": "2026-10-23",
    "checked": 44,
-   "stated": 33,
+   "stated": 34,
    "code": 0,
    "derived": 3,
-   "assumed": 8,
-   "fixed": 8
+   "assumed": 0,
+   "removed": 7,
+   "fixed": 9
   }
  },
  {
@@ -10458,7 +10317,7 @@
    ],
    [
     "Core",
-    "6.5B decoder-only transformer with causal masking, width d = 4,096 (shared embedding dimension); layer and head counts not disclosed; norms, feed-forward and residual layout not described, drawn as a standard pre-norm block"
+    "6.5B decoder-only transformer with causal masking, width d = 4,096 (shared embedding dimension); layer and head counts not disclosed; norms, feed-forward and residual layout not described, so the diagram draws only the masked attention layer"
    ],
    [
     "Attention",
@@ -10531,38 +10390,21 @@
       {
        "group": [
         {
-         "residual": [
-          {
-           "box": "Norm",
-           "minor": true,
-           "basis": "assumed"
-          },
-          {
-           "box": "Masked self-attention",
-           "id": "attn",
-           "style": "dark",
-           "basis": "stated"
-          }
-         ]
+         "box": "Masked self-attention",
+         "id": "attn",
+         "style": "dark",
+         "basis": "stated"
         },
         {
-         "residual": [
-          {
-           "box": "Norm",
-           "minor": true,
-           "basis": "assumed"
-          },
-          {
-           "box": "Feed forward",
-           "id": "ffn",
-           "basis": "assumed"
-          }
-         ]
+         "box": "Rest of block not stated",
+         "id": "rest",
+         "style": "soft",
+         "basis": "stated"
         }
        ],
        "repeat": "N ×",
        "id": "block",
-       "basis": "assumed"
+       "basis": "stated"
       },
       {
        "box": "Sample next image token",
@@ -10627,13 +10469,14 @@
    ]
   },
   "audit": {
-   "date": "2026-10-22",
+   "date": "2026-10-23",
    "checked": 40,
-   "stated": 31,
+   "stated": 32,
    "code": 0,
    "derived": 3,
-   "assumed": 6,
-   "fixed": 4
+   "assumed": 0,
+   "removed": 5,
+   "fixed": 5
   }
  },
  {

@@ -30,8 +30,7 @@ MODEL = {
         ("Prediction", "Diffusion forcing: frames generated autoregressively, denoised conditioned on clean past frames; the "
                        "implementation groups frames into bidirectional 5-frame chunks for training and sampling; training "
                        "keeps a random clean prefix (p = 0.5, longer than half the sequence); number of denoising steps not disclosed"),
-        ("Decoder", "Not described (the paper never mentions a decoder); outputs are scored as frames, so the same VAE's "
-                    "decoder is assumed"),
+        ("Decoder", "Not described: the paper never mentions a decoder, although outputs are scored as frames"),
         ("Memory", "Per layer: a KV cache for the last k frames plus one fixed-size SSM state per block, so memory and per-frame "
                    "time are constant in rollout length (Table 1: linear training, constant per-frame inference, long memory); "
                    "recalls content from 400+ frames back"),
@@ -43,7 +42,7 @@ MODEL = {
                        "full-context causal transformer and 163 for plain Mamba2 (authors, Table S1)"),
     ],
     "evidence": "read",
-    "audit": {"date": "2026-10-23", "checked": 47, "stated": 43, "code": 0, "derived": 0, "assumed": 4, "fixed": 13},
+    "audit": {"date": "2026-10-23", "checked": 47, "stated": 44, "code": 0, "derived": 0, "assumed": 0, "removed": 3, "fixed": 14},
     "sources": ["arXiv 2505.20171 Sec. 3-4 (architecture, block-wise scan, frame-local attention, action condition, fixed-length state), Table 1",
                 "arXiv 2505.20171 Sec. 5.1 (datasets), Sec. 5.3 and Fig. 8 (costs), Supp. S1 Table S1 (FVD)",
                 "arXiv 2505.20171 Supp. S2 (VAEs, CogVideoX-style blocks, 200M, k = 10, chunks of 5, training schedule); Fig. 3 (block layout)",
@@ -81,11 +80,10 @@ MODEL = {
                     {"residual": [{"box": "AdaLN", "minor": True, "basis": "stated"}, {"box": "Feed forward", "id": "ffn", "basis": "stated"},
                                   {"box": "Scale", "minor": True, "basis": "stated"}]},
                 ], "repeat": "N ×", "id": "block", "basis": "stated"},
-                {"box": "Denoising update", "id": "upd", "minor": True, "basis": "assumed"},
-            ], "loop": "K denoising steps", "loop_short": "K steps", "tint": "grey", "id": "denoise", "basis": "assumed"},
+            ], "label": "denoiser", "tint": "grey", "id": "denoise", "basis": "stated"},
             {"box": "Update KV + SSM states", "id": "state", "minor": True, "basis": "stated"},
         ],
-        "above": [{"box": "VAE decoder", "id": "dec", "style": "teal", "basis": "assumed"}, {"text": "Next frame"}],
+        "above": [{"text": "Next frame; decoder not described"}],
         "insets": [
             {"for": "ssm", "label": "block-wise scan", "stack": [{"box": "Split frame into blocks", "basis": "stated"}, {"box": "Scan blocks over time", "basis": "stated"}, {"box": "One SSM state per block", "basis": "stated"}]},
         ],
@@ -94,7 +92,7 @@ MODEL = {
             {"at": "ssm", "text": "Fixed state recalls *400+* frames back", "side": "left", "key": True},
             {"at": "attn", "text": "*10*-frame window, *5*-frame chunks", "side": "left"},
             {"at": "block", "text": "*200M* parameters · layers not disclosed", "side": "right", "key": True},
-            {"at": "upd", "text": "*5*-frame chunks; steps not disclosed", "side": "right"},
+            {"at": "denoise", "text": "Sampler and step count not disclosed", "side": "right"},
             {"at": "state", "text": "*10*-frame KV + *1* state per block", "side": "right"},
         ],
         "feedback": "next frame",

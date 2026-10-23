@@ -24,8 +24,8 @@ upward; numbers live in annotations outside the model, not inside the boxes.
     }
 
 Node kinds: box (label; id; style = plain|dark|teal|orange|soft; side = label of a side-input box; minor = dropped
-in condensed mode; short = label used in condensed mode; w = fixed width; basis = "stated" | "code" | "assumed",
-where "assumed" draws a dashed outline; side_basis likewise for the side box), text (unboxed, monospace), group (children; repeat "N ×"; loop "4 steps";
+in condensed mode; short = label used in condensed mode; w = fixed width; basis = "stated" | "code",
+the evidence for the box; side_basis likewise for the side box; only sourced elements are drawn, and the lint warns on "assumed"), text (unboxed, monospace), group (children; repeat "N ×"; loop "4 steps";
 tint navy|orange|teal|grey; label; id), residual (children; draws the ⊕ merge and the skip line), fanout (list
 of branches, each a stack; a branch whose top node has "terminal": True ends there), merge ("x" or "+", a circled
 operator joining the branches below it), gap (n). Annotation text: *…* marks numbers (accent colour); "key": True keeps the
@@ -375,6 +375,18 @@ class StackLayout:
             for n in _flatten([Node(x) for x in ins["stack"]], []):
                 if n.kind == "box" and len(n.spec["box"]) > L["box_chars"]:
                     self.warnings.append("%s: inset box %r is longer than %d characters" % (slug, n.spec["box"], L["box_chars"]))
+        # Only what a source states is drawn: an element no paper, page, code or config states is left out,
+        # and a block whose remaining layers are undisclosed gets a plain "Rest of block not stated" box.
+        unsourced = []
+        nodes = _flatten(self.below + self.stack + self.above, [])
+        for ins in self.flow.get("insets", []):
+            nodes += _flatten([Node(x) for x in ins["stack"]], [])
+        for n in nodes:
+            if n.spec.get("basis") == "assumed" or n.spec.get("side_basis") == "assumed":
+                unsourced.append(n.spec.get("box") or n.spec.get("repeat") or n.spec.get("label") or n.kind)
+        for u in unsourced:
+            self.warnings.append("%s: %r is tagged assumed; draw only what a source states (remove it or cite a source)"
+                                 % (slug, u))
         tl = self.spec.get("tagline")
         if not tl:
             self.warnings.append("%s: no tagline" % slug)

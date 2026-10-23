@@ -23,8 +23,8 @@ MODEL = {
                            "step, 2,100 across 5 cameras [D]"),
         ("Core", "22 space-time factorized transformer blocks, d 4096, 32 heads, 8.4B parameters; each block adds the position, "
                  "timestamp and camera encodings, then runs spatial attention (over space and cameras), temporal attention, "
-                 "cross-attention and an MLP with adaptive LayerNorm; QK-norm before each attention. Assumed in the diagram "
-                 "(not described): adaptive LayerNorm before each attention layer and the residual connections, as in DiT"),
+                 "cross-attention and an MLP with adaptive LayerNorm; QK-norm before each attention. Not described, so not drawn: "
+                 "where else adaptive LayerNorm sits, and the residual connections"),
         ("Attention", "Factorized: spatial attention over 2,100 tokens (5 cameras × 420) [D], temporal attention over 6 latent steps; "
                       "training window 48 frames × 5 cameras = 12,600 tokens; no full 3D attention; sinusoidal space and "
                       "timestamp encodings plus learned camera geometry, re-added at the start of every block"),
@@ -73,18 +73,15 @@ MODEL = {
                 {"box": "Noisy + context latents", "id": "noisy", "style": "soft", "minor": True, "basis": "stated"},
                 {"group": [
                     {"box": "Positions + camera emb.", "id": "pos", "minor": True, "basis": "stated"},
-                    {"residual": [{"box": "Adaptive LayerNorm", "id": "ada", "minor": True, "basis": "assumed"},
-                                  {"box": "Space + camera attention", "short": "Spatial attention", "id": "sattn", "style": "dark",
-                                   "basis": "stated"}]},
-                    {"residual": [{"box": "Adaptive LayerNorm", "minor": True, "basis": "assumed"},
-                                  {"box": "Temporal attention", "id": "tattn", "style": "dark", "basis": "stated"}]},
-                    {"residual": [{"box": "Adaptive LayerNorm", "minor": True, "basis": "assumed"},
-                                  {"box": "Cross-attention", "id": "xattn", "side": "Agents + metadata", "basis": "stated",
-                                   "side_basis": "stated"}]},
-                    {"residual": [{"box": "Adaptive LayerNorm", "side": "Ego action + time", "basis": "stated",
-                                   "side_basis": "stated"},
-                                  {"box": "MLP", "id": "mlp", "minor": True, "basis": "stated"}]},
-                ], "repeat": "22 ×", "id": "block", "basis": "assumed"},
+                    {"box": "Space + camera attention", "short": "Spatial attention", "id": "sattn", "style": "dark",
+                     "basis": "stated"},
+                    {"box": "Temporal attention", "id": "tattn", "style": "dark", "basis": "stated"},
+                    {"box": "Cross-attention", "id": "xattn", "side": "Agents + metadata", "basis": "stated",
+                     "side_basis": "stated"},
+                    {"box": "Adaptive LayerNorm", "id": "ada", "side": "Ego action + time", "basis": "stated",
+                     "side_basis": "stated"},
+                    {"box": "MLP", "id": "mlp", "minor": True, "basis": "stated"},
+                ], "repeat": "22 ×", "id": "block", "basis": "stated"},
                 {"box": "Predicted velocity", "id": "vel", "minor": True, "basis": "stated"},
                 {"box": "Update latents", "id": "upd", "minor": True, "basis": "stated"},
             ], "loop": "50 denoising steps", "tint": "grey", "id": "denoise", "basis": "stated"},
@@ -100,5 +97,5 @@ MODEL = {
         ],
         "feedback": "next set of latents",
     },
-    "audit": {"date": "2026-10-22", "checked": 47, "stated": 34, "code": 1, "derived": 5, "assumed": 7, "fixed": 10},
+    "audit": {"date": "2026-10-23", "checked": 47, "stated": 34, "code": 1, "derived": 5, "assumed": 0, "removed": 7, "fixed": 10},
 }

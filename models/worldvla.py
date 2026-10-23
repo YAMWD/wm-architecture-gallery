@@ -92,5 +92,5 @@ MODEL = {
         ],
         "feedback": "next token",
     },
-    "audit": {"date": "2026-10-23", "checked": 44, "stated": 22, "code": 15, "derived": 6, "assumed": 1, "fixed": 8},
+    "audit": {"date": "2026-10-23", "checked": 44, "stated": 22, "code": 15, "derived": 7, "assumed": 0, "fixed": 8},
 }

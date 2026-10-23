@@ -20,7 +20,7 @@ MODEL = {
     "facts": [
         ("Representation", "Discrete codes from a 200M ST-ViViT VQ-VAE (patch 4, 1,024 codes x 32-d) on 160x90 frames at 10 FPS; the token grid is not stated, ~920 tokens per frame implied by the stated token counts [D]"),
         ("Core", "MaskGIT dynamics transformer: 48 layers, 36 heads, d 5120, k/q size 128; 10.1B (10.7B with tokenizer and LAM, rounded to '11B' in the abstract)"),
-        ("Attention", "ST-transformer block: spatial self-attention over one frame's tokens, causal temporal attention over the same position across 16 frames, then FFW; QK-norm; the spatial term scales linearly with frames; norm type and positional encoding not disclosed. Block norms and residuals are drawn as a pre-norm convention (assumed); Table 12 gives num_layers 48 without saying whether it counts ST blocks"),
+        ("Attention", "ST-transformer block: spatial self-attention over one frame's tokens, causal temporal attention over the same position across 16 frames, then FFW; QK-norm; the spatial term scales linearly with frames; norm type and positional encoding not disclosed. Block norms and residuals are not described, so they are not drawn; Table 12 gives num_layers 48 without saying whether it counts ST blocks"),
         ("Actions", "8 discrete latent actions from a 300M latent action model (patch 16, VQ codebook of 8) learned without action labels; actions enter as additive embeddings on the frame tokens"),
         ("Prediction", "MaskGIT: 25 steps per frame at temperature 2 with random sampling; frames generated autoregressively in token space, decoded by the tokenizer decoder"),
         ("Decoder", "ST-ViViT tokenizer decoder (20 layers, d 1024, 16 heads) → 160x90 frames"),
@@ -51,18 +51,15 @@ MODEL = {
         "below": [{"text": "Frame 160×90 + latent action"}],
         "stack": [
             {"box": "ST-ViViT tokenizer", "id": "tok", "style": "teal", "basis": "stated"},
-            {"box": "Nearest codebook entry", "id": "vq", "minor": True, "basis": "assumed"},
             {"group": [
                 {"box": "Add action embedding", "id": "act", "style": "orange", "side": "Latent action", "basis": "stated", "side_basis": "stated"},
             {"group": [
                 {"box": "Masked frame tokens", "id": "masked", "style": "soft", "minor": True, "basis": "stated"},
                 {"group": [
-                    {"residual": [{"box": "Norm", "minor": True, "basis": "assumed"},
-                                  {"box": "Spatial attention", "id": "sattn", "style": "dark", "basis": "stated"}]},
-                    {"residual": [{"box": "Norm", "minor": True, "basis": "assumed"},
-                                  {"box": "Temporal attention", "id": "tattn", "style": "dark", "basis": "stated"}]},
-                    {"residual": [{"box": "Norm", "minor": True, "basis": "assumed"}, {"box": "Feed forward", "id": "ffw", "minor": True, "basis": "stated"}]},
-                ], "repeat": "L ×", "id": "block", "basis": "assumed"},
+                    {"box": "Spatial attention", "id": "sattn", "style": "dark", "basis": "stated"},
+                    {"box": "Temporal attention", "id": "tattn", "style": "dark", "basis": "stated"},
+                    {"box": "Feed forward", "id": "ffw", "minor": True, "basis": "stated"},
+                ], "repeat": "L ×", "id": "block", "basis": "stated"},
                 {"box": "Sample (temperature 2)", "id": "sample", "minor": True, "basis": "stated"},
             ], "loop": "25 MaskGIT steps", "tint": "grey", "id": "maskgit"},
             ], "loop": "next-frame tokens", "loop_short": "next frame", "tint": "navy", "id": "rollout"},
@@ -77,5 +74,5 @@ MODEL = {
             {"at": "maskgit", "text": "~*1* fps; *25* passes per frame", "side": "right", "key": True},
         ],
     },
-    "audit": {"date": "2026-10-23", "checked": 44, "stated": 33, "code": 0, "derived": 3, "assumed": 8, "fixed": 8},
+    "audit": {"date": "2026-10-23", "checked": 44, "stated": 34, "code": 0, "derived": 3, "assumed": 0, "removed": 7, "fixed": 9},
 }

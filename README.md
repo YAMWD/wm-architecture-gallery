@@ -63,11 +63,12 @@ order of sub-layers, residuals, side inputs, repeat counts, numbers, facts and m
 3. The second checker re-verified those rows and applied the corrections it confirmed.
 4. A third checker reviewed every changed line against its evidence.
 
-Of the 2,340 elements, 1,433 are stated in the paper or report, 677 come from released code or config, 183 are
-our arithmetic and 47 are assumed. 440 elements were corrected. Each box records its basis (`"basis"` in the
-flow spec, see `docs/FLOW.md`); a box no source states is drawn with a dashed outline. A card's *Source check*
-panel gives its own counts. New or edited cards should keep the same standard: tag every box, quote the
-source for every number, and mark our arithmetic.
+Of the 2,340 elements, 1,441 are stated in the paper or report, 677 come from released code or config and 184
+are our arithmetic. 445 elements were corrected, and 38 that no source states were removed from the diagrams.
+The diagrams draw only what a source states: each box records its basis (`"basis"` in the flow spec, see
+`docs/FLOW.md`), and a block whose remaining layers are undisclosed shows a plain "Rest of block not stated" box.
+A card's *Source check* panel gives its own counts. New or edited cards should keep the same standard: tag
+every box, quote the source for every number, and mark our arithmetic.
 
 ## Publish
 

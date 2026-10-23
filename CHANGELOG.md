@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-23 (version 6): only what a source states
+- Diagrams now draw only what a source states. The 38 elements that no source states were removed: guessed norms, feed-forward layers and residual lines in AAPT, comma.ai, GAIA-1, GAIA-2 and Genie, invented steps (a KV-cache write, a codebook lookup, a denoising update), the SwiGLU inset in Dreamer 4, and the decoder and sampling loop of the long-context SSM model.
+- A block whose remaining layers are undisclosed shows one plain "Rest of block not stated" box, and its facts name the missing parts.
+- Dreamer 4 keeps its pre-norm residual layout: the paper starts from "a standard transformer with pre-layer RMSNorm, RoPE, and SwiGLU".
+- The dashed-outline style is gone, the Source check panel reports removed elements, and the renderer warns about any element tagged `assumed`.
+
 ## 2026-10-23 (version 5): source audit
 - Every card was cross-checked against its primary sources in three independent passes: 2,340 elements over 49 cards, 440 of them corrected. Examples: IRIS adds its learned positions at the token embedding and its transformer has about 8.5M parameters (30M is the whole agent); Dreamer 4 runs causal time attention in one layer of four and has a reward head; WorldPlay has no cross-attention in the released code; Matrix-Game 2.0's real-time model has 1.62B parameters.
 - Each box records its basis: stated in the paper, shown in the released code or config, or assumed. Assumed boxes are drawn with a dashed outline, and each card gains a *Source check* panel with its counts.

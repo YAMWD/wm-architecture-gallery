@@ -75,12 +75,13 @@ def audit_html(m):
         return ""
     parts = []
     for key, label in (("stated", "stated in the paper or report"), ("code", "from released code or config"),
-                       ("derived", "our arithmetic"), ("assumed", "not stated, drawn dashed")):
+                       ("derived", "our arithmetic"), ("assumed", "not stated in the sources")):
         if a.get(key):
             parts.append("%d %s" % (a[key], label))
-    fixed = a.get("fixed", 0)
-    text = ("Checked %d elements against the primary sources on %s: %s. %s" %
+    fixed, removed = a.get("fixed", 0), a.get("removed", 0)
+    text = ("Checked %d elements against the primary sources on %s: %s.%s %s" %
             (a.get("checked", 0), a.get("date", ""), ", ".join(parts),
+             (" %d removed because no source states them." % removed) if removed else "",
              ("%d corrected." % fixed) if fixed else "No corrections needed."))
     return '<details class="fact"><summary>Source check</summary><p>%s</p></details>' % h(text)
 
@@ -282,7 +283,7 @@ footer .copy{margin:14px 0 0;font-family:var(--mono);font-size:11px;letter-spaci
 .sw.plus{border-radius:50%;width:18px;text-align:center;line-height:16px;font-weight:700;color:#1E2A3B}
 .sw.acc{border:none;background:none;color:var(--accent-ink);font-weight:700;width:auto;font-family:var(--mono)}
 .sw.loop{border:none;border-top:2px dashed #B95A08;height:0;border-radius:0}
-.sw.dashed{border-style:dashed}
+.sw.soft{background:#EEF1F5;border-color:#5E6B80}
 @media (prefers-reduced-motion: reduce){*{transition:none!important}.card:hover{transform:none}}
 """
 
@@ -408,7 +409,7 @@ Click a card's diagram to open the detailed version; open <i>Details</i> for the
   <li><span class="sw inset"></span> zoom-in on one box</li>
   <li><span class="sw loop"></span> rollout loop: the label names what carries to the next step (tokens, latents)</li>
   <li><span class="sw acc">12</span> numbers sit beside the model</li>
-  <li><span class="sw dashed"></span> dashed: not stated in the source; a standard choice drawn in</li>
+  <li><span class="sw soft"></span> "Rest of block not stated": layers the source does not describe</li>
 </ul>
 <p style="margin:0;font-size:13.5px">Evidence: <b>verified</b> facts passed a 3-vote adversarial check;
 <b>read</b> facts come from the paper or code; <b>claim</b> facts come from a developer page only.

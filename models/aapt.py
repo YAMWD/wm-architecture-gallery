@@ -22,7 +22,7 @@ MODEL = {
                            "own latent; DiT patch size not stated, so tokens per frame are not computed (latent grid 92x52 at 736x416 [D])"),
         ("Core", "8B MMDiT-style diffusion transformer with 36 blocks (base model not named); width and heads not stated; text tokens "
                  "and visual tokens in one sequence; the discriminator reuses the same causal architecture (generator + discriminator "
-                 "= 16B in training); norm, FFN and residual layout not stated, so the drawn pre-norm block is assumed"),
+                 "= 16B in training); norm, FFN and residual layout not stated, so the diagram draws only the attention layer"),
         ("Attention", "Block-causal: text tokens attend only to themselves, visual tokens to the text tokens and to visual tokens of the "
                       "current and previous frames; window N = 30 latent frames (5 s; N = 15 at 1280x720) plus the text tokens and the "
                       "first frame always; FlashAttention-3; 3D RoPE with a fixed temporal interval for arbitrary length"),
@@ -76,12 +76,10 @@ MODEL = {
                  "basis": "stated", "side_basis": "stated"},
                 {"box": "Input projection", "id": "patch", "minor": True, "basis": "stated"},
                 {"group": [
-                    {"residual": [{"box": "Norm", "minor": True, "basis": "assumed"},
-                                  {"box": "Block-causal attention", "id": "attn", "style": "dark", "side": "3D RoPE",
-                                   "basis": "stated", "side_basis": "stated"}]},
-                    {"residual": [{"box": "Norm", "minor": True, "basis": "assumed"},
-                                  {"box": "Feed forward", "id": "ffn", "basis": "assumed"}]},
-                ], "repeat": "36 ×", "id": "block", "basis": "assumed"},
+                    {"box": "Block-causal attention", "id": "attn", "style": "dark", "side": "3D RoPE",
+                     "basis": "stated", "side_basis": "stated"},
+                    {"box": "Rest of block not stated", "id": "rest", "style": "soft", "basis": "stated"},
+                ], "repeat": "36 ×", "id": "block", "basis": "stated"},
                 {"box": "Clean latent frame", "id": "out", "minor": True, "basis": "stated"},
             ], "label": "1 NFE per latent", "loop": "next latent frame", "loop_short": "next latent", "tint": "grey",
                "id": "onepass", "basis": "stated"},
@@ -96,5 +94,5 @@ MODEL = {
             {"at": "dec", "text": "*24* fps · *0.16* s latency", "side": "right", "key": True},
         ],
     },
-    "audit": {"date": "2026-10-22", "checked": 42, "stated": 34, "code": 0, "derived": 2, "assumed": 6, "fixed": 9},
+    "audit": {"date": "2026-10-23", "checked": 42, "stated": 35, "code": 0, "derived": 2, "assumed": 0, "removed": 5, "fixed": 10},
 }

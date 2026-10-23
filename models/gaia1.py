@@ -19,8 +19,8 @@ MODEL = {
     "facts": [
         ("Representation", "576 discrete tokens per 288x512 frame (18x32, downsampling 16), vocabulary 8,192, from a 0.3B image tokenizer trained with a DINO distillation loss"),
         ("Core", "6.5B decoder-only transformer with causal masking, width d = 4,096 (shared embedding dimension); layer and "
-                 "head counts not disclosed; norms, feed-forward and residual layout not described, drawn as a standard "
-                 "pre-norm block"),
+                 "head counts not disclosed; norms, feed-forward and residual layout not described, "
+                 "so the diagram draws only the masked attention layer"),
         ("Attention", "Dense causal attention over 26 frames at 6.25 Hz (4 s): 26 x (32 text + 576 image + 2 action) = 15,860 tokens; FlashAttention v2; sliding window beyond the context"),
         ("Actions", "2 action tokens and 32 T5-large text tokens per step in the interleaved sequence; conditioning tokens are dropped at random in training, giving unconditional, action- and text-conditioned generation"),
         ("Prediction", "Next-token softmax with top-k = 50: 'n forward steps to generate one new image frame', so 576 serial passes per frame; optional classifier-free guidance doubles the evaluations [D]"),
@@ -57,11 +57,9 @@ MODEL = {
             {"group": [
                 {"box": "Space-time position emb.", "id": "emb", "minor": True, "basis": "stated"},
                 {"group": [
-                    {"residual": [{"box": "Norm", "minor": True, "basis": "assumed"},
-                                  {"box": "Masked self-attention", "id": "attn", "style": "dark", "basis": "stated"}]},
-                    {"residual": [{"box": "Norm", "minor": True, "basis": "assumed"},
-                                  {"box": "Feed forward", "id": "ffn", "basis": "assumed"}]},
-                ], "repeat": "N ×", "id": "block", "basis": "assumed"},
+                    {"box": "Masked self-attention", "id": "attn", "style": "dark", "basis": "stated"},
+                    {"box": "Rest of block not stated", "id": "rest", "style": "soft", "basis": "stated"},
+                ], "repeat": "N ×", "id": "block", "basis": "stated"},
                 {"box": "Sample next image token", "short": "Sample next token", "id": "sample", "basis": "stated"},
             ], "loop": "next image token", "loop_short": "next token", "tint": "grey", "id": "ar", "basis": "stated"},
         ],
@@ -76,5 +74,5 @@ MODEL = {
             {"at": "dec", "text": "*2.6B* U-Net, *50* DDIM steps per *7* frames", "side": "left", "key": True},
         ],
     },
-    "audit": {"date": "2026-10-22", "checked": 40, "stated": 31, "code": 0, "derived": 3, "assumed": 6, "fixed": 4},
+    "audit": {"date": "2026-10-23", "checked": 40, "stated": 32, "code": 0, "derived": 3, "assumed": 0, "removed": 5, "fixed": 5},
 }

@@ -22,8 +22,8 @@ MODEL = {
                            "32x16x32 latent; DiT patch size and tokens per frame not stated (comma's later 4B world model uses 2x2 "
                            "latent patches = 128 tokens per frame)"),
         ("Core", "2B diffusion transformer: 48 layers, d 1600, 25 heads (n_layer=48, n_head=25, n_embd=1600), 'adapted to 3 dimensional data'; "
-                 "norm and MLP details not disclosed, so the MLP and the drawn block layout (AdaLN-single before attention and MLP, "
-                 "residual adds) are assumed from DiT/PixArt-α"),
+                 "norm, MLP and residual layout not disclosed, so the diagram draws only AdaLN-single and the attention layer; "
+                 "the post does not say what is written to the KV cache or when"),
         ("Attention", "Block-causal in every layer: tokens attend to their own frame and past frames; a sample = 2 s past context + 1 s "
                       "future conditioning + 0-7 s simulation window at 5 fps (10 context frames [D])"),
         ("Actions", "6-DoF relative positions, diffusion noise level and frame indices injected via AdaLN-single (PixArt-α style)"),
@@ -65,16 +65,14 @@ MODEL = {
             {"group": [
                 {"box": "Noisy latent + context", "id": "noisy", "style": "soft", "minor": True, "basis": "stated"},
                 {"group": [
-                    {"residual": [{"box": "AdaLN-single", "id": "ada", "side": "Pose + noise level",
-                                   "basis": "stated", "side_basis": "stated"},
-                                  {"box": "Block-causal attention", "id": "attn", "style": "dark", "basis": "stated"}]},
-                    {"residual": [{"box": "AdaLN-single", "minor": True, "basis": "stated"},
-                                  {"box": "MLP", "id": "mlp", "basis": "assumed"}]},
-                ], "repeat": "48 ×", "id": "block", "basis": "assumed"},
+                    {"box": "AdaLN-single", "id": "ada", "side": "Pose + noise level",
+                     "basis": "stated", "side_basis": "stated"},
+                    {"box": "Block-causal attention", "id": "attn", "style": "dark", "basis": "stated"},
+                    {"box": "Rest of block not stated", "id": "rest", "style": "soft", "basis": "stated"},
+                ], "repeat": "48 ×", "id": "block", "basis": "stated"},
                 {"box": "Predicted velocity", "id": "vel", "minor": True, "basis": "stated"},
                 {"box": "Euler update with CFG", "id": "upd", "minor": True, "basis": "stated"},
             ], "loop": "15 Euler steps", "tint": "grey", "id": "denoise", "basis": "stated"},
-            {"box": "Write frame to KV cache", "id": "kv", "minor": True, "basis": "assumed"},
         ],
         "above": [{"box": "ViT decoder", "id": "dec", "style": "teal", "basis": "stated"}, {"text": "Next frame, 2 views at 128×256"}],
         "annotations": [
@@ -82,10 +80,10 @@ MODEL = {
             {"at": "ada", "text": "*6*-DoF pose, noise level, frame index", "side": "left"},
             {"at": "attn", "text": "*25* heads, width *1,600*", "side": "left"},
             {"at": "block", "text": "*48* layers, *2B* parameters", "side": "right", "key": True},
-            {"at": "kv", "text": "Context of *2* s past + *1* s future frames", "side": "right"},
+            {"at": "noisy", "text": "Context of *2* s past + *1* s future frames", "side": "right"},
             {"at": "dec", "text": "*12.2* frames/s per GPU at *15* steps", "side": "right", "key": True},
         ],
         "feedback": "next latent frame",
     },
-    "audit": {"date": "2026-10-22", "checked": 42, "stated": 34, "code": 0, "derived": 3, "assumed": 5, "fixed": 5},
+    "audit": {"date": "2026-10-23", "checked": 42, "stated": 34, "code": 0, "derived": 3, "assumed": 0, "removed": 5, "fixed": 6},
 }

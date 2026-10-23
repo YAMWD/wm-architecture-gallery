@@ -116,8 +116,10 @@ the thumbnail is at most 330 units tall.
 
 ## Source basis (set by the architecture audit)
 
-Every box, side input, inset box and group records where it comes from. `"basis": "stated"` means the paper or
-report says it; `"basis": "code"` means the released code or config shows it; `"basis": "assumed"` means no source
-states it and a standard choice was drawn in. Assumed elements render with a dashed outline (`side_basis` for a
-side box). Numbers we computed ourselves are written with "≈" in annotations and tagged [D] in the facts. The audit
-trail for each model is in `research_notes/Architecture audit/<slug>.verify.md`.
+Every box, side input, inset box and group records where it comes from: `"basis": "stated"` means the paper or
+report says it, and `"basis": "code"` means the released code or config shows it; `side_basis` does the same for a
+side box. Only sourced elements are drawn. When a source leaves part of a block undisclosed, the block gets one
+plain box, `{"box": "Rest of block not stated", "style": "soft", "basis": "stated"}`, and the matching fact names
+the missing parts. The renderer warns about any element tagged `"assumed"`. Numbers we computed ourselves are
+written with "≈" in annotations and tagged [D] in the facts. The audit trail for each model is in
+`research_notes/Architecture audit/<slug>.verify.md`.
