@@ -20,8 +20,10 @@ MODEL = {
     "facts": [
         ("Representation", "Causal 3D convolution VAE, 4x temporal and 8x spatial; one latent frame = 4 video frames, the first frame its "
                            "own latent; DiT patch size not stated, so tokens per frame are not computed (latent grid 92x52 at 736x416 [D])"),
-        ("Core", "8B MMDiT-style diffusion transformer with 36 blocks (base model not named); width and heads not stated; text tokens "
-                 "and visual tokens in one sequence; the discriminator reuses the same causal architecture (generator + discriminator "
+        ("Core", "8B MMDiT-style diffusion transformer with 36 blocks (base model not named); width and heads not stated; inputs are text "
+                 "embedding tokens, noisy visual tokens and diffusion timesteps (Sec. 2.1), with text and visual tokens in one sequence; "
+                 "where the timestep enters the block, and its value in the 1-NFE generator, are not stated (listed with the figure "
+                 "inputs only); the discriminator reuses the same causal architecture (generator + discriminator "
                  "= 16B in training); norm, FFN and residual layout not stated, so the diagram draws only the attention layer"),
         ("Attention", "Block-causal: text tokens attend only to themselves, visual tokens to the text tokens and to visual tokens of the "
                       "current and previous frames; window N = 30 latent frames (5 s; N = 15 at 1280x720) plus the text tokens and the "
@@ -49,32 +51,16 @@ MODEL = {
                 "App. A (8B, 36 blocks, FlashAttention-3, RoPE, Ulysses), App. C (lightweight decoder), App. F (N = 15 at 1280x720), "
                 "App. G (camera conditioning), Fig. 1-2, Table 4 (latency)",
                 "NeurIPS 2025 camera-ready, Paper Checklist Q5 (no release)", "Project page https://seaweed-apt.com/2"],
-    "diagram": {
-        "encoder": {"text": "Frames → causal 3D conv VAE (4x8x8)", "sub": "one latent frame = 4 video frames; 92x52 latent grid at 736x416 [D]",
-                    "short": "Causal 3D VAE, 4 frames per latent"},
-        "tokens": {"groups": [("latent", 8, "1 latent frame = 4 frames"), ("text", 2, "text tokens")],
-                   "note": "patch size not stated; window 30 latent frames"},
-        "core": {"title": "Block-causal MMDiT ×36 · 8B (width not stated)",
-                 "rows": [("attn", "Block-causal attn, window 30 latents"),
-                          ("action", "Camera or pose → input channels"),
-                          ("note", "previous frame recycled via channel concat"),
-                          ("mlp", "MLP")],
-                 "notes": ["KV cache; text tokens and first frame always attended",
-                           "temporal RoPE with a fixed interval for arbitrary length"]},
-        "sampling": {"kind": "diffusion", "text": "Adversarial post-training: 1 step (1 NFE) per latent frame",
-                     "sub": "one pass per 4 video frames; student forcing", "short": "1 pass per latent frame"},
-        "decoder": {"text": "Lightweight VAE decoder → 4 frames at 736x416", "sub": "blocks 3 → 2 per scale, channels halved: ≈3x faster",
-                    "short": "Light VAE decoder → 4 frames"},
-        "loop": "AR rollout",
-    },
+    "figure_variant": "Paper: 8B, 36-block causal adversarial generator",
     "flow": {
-        "below": [{"text": "First frame + camera/pose + text"}],
+        "below": [{"text": "Frame + cam/pose + text + timestep", "short": "Frame + camera/pose + text"}],
         "stack": [
             {"box": "Causal 3D VAE encoder", "id": "vae", "style": "teal", "basis": "stated"},
             {"group": [
                 {"box": "Concat noise+cond+frame", "id": "cond", "style": "orange", "side": "Camera or pose",
                  "basis": "stated", "side_basis": "stated"},
                 {"box": "Input projection", "id": "patch", "minor": True, "basis": "stated"},
+                {"box": "Concat text tokens", "minor": True, "side": "Text embeddings", "basis": "stated", "side_basis": "stated"},
                 {"group": [
                     {"box": "Block-causal attention", "id": "attn", "style": "dark", "side": "3D RoPE",
                      "basis": "stated", "side_basis": "stated"},
@@ -94,5 +80,4 @@ MODEL = {
             {"at": "dec", "text": "*24* fps · *0.16* s latency", "side": "right", "key": True},
         ],
     },
-    "audit": {"date": "2026-10-23", "checked": 42, "stated": 35, "code": 0, "derived": 2, "assumed": 0, "removed": 5, "fixed": 10},
 }

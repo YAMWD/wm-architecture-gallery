@@ -43,21 +43,7 @@ MODEL = {
                 "arXiv 2305.14992 App. A (MCTS changes), App. B.1-B.2 (decoding limit, 4× A5000), Algorithm 1",
                 "LLaMA arXiv 2302.13971 Sec. 2 and Table 2 (33B config); LLaMA v1 model.py",
                 "llm-reasoners code: examples/rap_gsm8k/world_model.py, reasoners/lm/llama_model.py"],
-    "diagram": {
-        "encoder": {"text": "Prompt text → LLaMA tokenizer", "sub": "in-context demonstrations + state + action, all natural language",
-                    "short": "Text prompt → LLaMA tokenizer"},
-        "tokens": {"groups": [("text", 8, "state (text)"), ("text", 4, "action (text)")],
-                   "note": "one LLM generation per transition, ≤ 2,048 tokens"},
-        "core": {"title": "LLaMA-33B (frozen, prompted)",
-                 "rows": [("attn", "Causal self-attention, RoPE"),
-                          ("mlp", "SwiGLU MLP")],
-                 "notes": ["60 layers · d 6656 · 52 heads (LLaMA paper)", "one LLM: policy, world model and reward"]},
-        "sampling": {"kind": "search", "text": "MCTS over text states, 10–20 iterations",
-                     "sub": "per expansion: d actions × (propose + next state + reward), T 0.8",
-                     "short": "MCTS, 10–20 iterations"},
-        "decoder": {"none": "states are text"},
-        "loop": "MCTS",
-    },
+    "figure_variant": "Paper BlocksWorld RAP with frozen LLaMA-33B",
     "flow": {
         "below": [{"text": "Prompt: examples + state + action"}],
         "stack": [
@@ -89,7 +75,8 @@ MODEL = {
             {"at": "out", "text": "≤ *2,048* tokens per call, cut at newline", "side": "left"},
             {"at": "sample", "text": "*10–20* MCTS iterations per answer", "side": "left", "key": True},
         ],
-        "feedback": "MCTS",
+        "feedback": "MCTS prompts",
+        "feedback_from": "sample",
+        "feedback_to": "tok",
     },
-    "audit": {"date": "2026-10-23", "checked": 47, "stated": 34, "code": 12, "derived": 1, "assumed": 0, "fixed": 7},
 }

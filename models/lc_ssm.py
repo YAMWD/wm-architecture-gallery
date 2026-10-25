@@ -31,7 +31,7 @@ MODEL = {
                        "implementation groups frames into bidirectional 5-frame chunks for training and sampling; training "
                        "keeps a random clean prefix (p = 0.5, longer than half the sequence); number of denoising steps not disclosed"),
         ("Decoder", "Not described: the paper never mentions a decoder, although outputs are scored as frames"),
-        ("Memory", "Per layer: a KV cache for the last k frames plus one fixed-size SSM state per block, so memory and per-frame "
+        ("Memory", "Per layer: a KV cache for the last k frames plus one fixed-size SSM state per spatial scan block, so memory and per-frame "
                    "time are constant in rollout length (Table 1: linear training, constant per-frame inference, long memory); "
                    "recalls content from 400+ frames back"),
         ("Speed", "No speed numbers in the text. Fig. 8 plots training time per iteration at 160-800 training frames (linear "
@@ -42,32 +42,16 @@ MODEL = {
                        "full-context causal transformer and 163 for plain Mamba2 (authors, Table S1)"),
     ],
     "evidence": "read",
-    "audit": {"date": "2026-10-23", "checked": 47, "stated": 44, "code": 0, "derived": 0, "assumed": 0, "removed": 3, "fixed": 14},
     "sources": ["arXiv 2505.20171 Sec. 3-4 (architecture, block-wise scan, frame-local attention, action condition, fixed-length state), Table 1",
                 "arXiv 2505.20171 Sec. 5.1 (datasets), Sec. 5.3 and Fig. 8 (costs), Supp. S1 Table S1 (FVD)",
                 "arXiv 2505.20171 Supp. S2 (VAEs, CogVideoX-style blocks, 200M, k = 10, chunks of 5, training schedule); Fig. 3 (block layout)",
                 "ICCV 2025 paper (CVF Open Access, pp. 8733-8744) and supp. S2 (H100 GPU-days)"],
-    "diagram": {
-        "encoder": {"text": "Frames → video VAE latents", "sub": "spatio-temporal VAE (Memory Maze) or DFoT image VAE (Minecraft)",
-                    "tag": "pretrained", "short": "Video VAE latents"},
-        "tokens": {"groups": [("latent", 8, "latent tokens per frame"), ("noise", 1, "per-frame noise level")],
-                   "note": "spatial-major token order; actions enter via AdaLN"},
-        "core": {"title": "Hybrid SSM/attention blocks · 200M",
-                 "rows": [("ssm", "Block-wise Mamba scan over frames"),
-                          ("attn", "Frame-local attention, last 10 frames"),
-                          ("action", "Action MLP + noise level → AdaLN"),
-                          ("mlp", "FFN")],
-                 "notes": ["per layer: KV cache of 10 frames + fixed SSM state per block", "block size (b_h, b_w) varies by layer"]},
-        "sampling": {"kind": "diffusion", "text": "Diffusion forcing denoising", "sub": "steps not disclosed; one frame per AR step, clean past frames as context",
-                     "short": "Diffusion, 1 frame per AR step"},
-        "decoder": {"text": "VAE decoder → frame", "sub": "low-resolution synthetic video", "tag": "pretrained"},
-        "loop": "AR rollout",
-    },
+    "figure_variant": "Paper: 200M block-wise SSM/local-attention denoiser",
     "flow": {
         "below": [{"text": "Past frames + action"}],
         "stack": [
             {"box": "VAE encoder", "id": "vae", "style": "teal", "basis": "stated"},
-            {"box": "Spatial-major tokens", "id": "order", "minor": True, "basis": "stated"},
+            {"box": "Spatial-major tokens", "id": "order", "basis": "stated"},
             {"group": [
                 {"box": "Noisy latent frame", "id": "noisy", "style": "soft", "minor": True, "basis": "stated"},
                 {"group": [
@@ -81,7 +65,6 @@ MODEL = {
                                   {"box": "Scale", "minor": True, "basis": "stated"}]},
                 ], "repeat": "N ×", "id": "block", "basis": "stated"},
             ], "label": "denoiser", "tint": "grey", "id": "denoise", "basis": "stated"},
-            {"box": "Update KV + SSM states", "id": "state", "minor": True, "basis": "stated"},
         ],
         "above": [{"text": "Next frame; decoder not described"}],
         "insets": [
@@ -90,11 +73,13 @@ MODEL = {
         "annotations": [
             {"at": "vae", "text": "Resolution not disclosed", "side": "left", "key": True},
             {"at": "ssm", "text": "Fixed state recalls *400+* frames back", "side": "left", "key": True},
-            {"at": "attn", "text": "*10*-frame window, *5*-frame chunks", "side": "left"},
+            {"at": "attn", "text": "*10*-frame KV cache, *5*-frame chunks", "side": "left"},
             {"at": "block", "text": "*200M* parameters · layers not disclosed", "side": "right", "key": True},
             {"at": "denoise", "text": "Sampler and step count not disclosed", "side": "right"},
-            {"at": "state", "text": "*10*-frame KV + *1* state per block", "side": "right"},
+            {"at": "ssm", "text": "*1* fixed SSM state per scan block", "side": "right"},
         ],
-        "feedback": "next frame",
+        "feedback": "clean next frame",
+        "feedback_from": "denoise",
+        "feedback_to": "order",
     },
 }

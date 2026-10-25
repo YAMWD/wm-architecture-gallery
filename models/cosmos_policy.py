@@ -18,8 +18,9 @@ MODEL = {
                "are injected as extra latent frames: blank images are VAE-encoded and their latents overwritten with tiled "
                "copies of the vectors, so the denoising process that predicts future images also predicts actions. As a "
                "direct policy it denoises everything in parallel in 5 steps on LIBERO and RoboCasa (0.61 s per chunk on one "
-               "H100; 10 steps and 0.95 s on ALOHA) and discards the future state and value; planning mode decodes them "
-               "autoregressively for best-of-N search.",
+               "H100; 10 steps and 0.95 s on ALOHA) and discards the future state and value; the figure draws this LIBERO direct policy. Not drawn: on ALOHA a "
+               "separately fine-tuned planning model predicts future states and values for best-of-8 search (4.9 s on 8 "
+               "H100s).",
     "facts": [
         ("Representation", "Wan2.1 VAE latent frames (8x spatial, 4x temporal, 16 channels); one latent frame per modality and "
                            "camera view, e.g. 9 for LIBERO (blank, proprio, 2 views, action chunk, future proprio, 2 future "
@@ -41,7 +42,8 @@ MODEL = {
         ("Memory", "None: the input is the current observation only, no history; 6.0-8.9 GB VRAM at inference without "
                    "planning (README)"),
         ("Speed", "Per action chunk on one H100 (authors): 0.61 s at 5 steps, 0.95 s at 10, 0.16 s at 1 step (RoboCasa still "
-                  "66.4% success at 1 step); best-of-8 planning 4.9 s on 8 parallel H100s"),
+                  "66.4% success at 1 step); ALOHA planning setup (not drawn; separate refined planning model): best-of-8 "
+                  "search with 10-step proposals and 5-step state/value ensembles takes 4.9 s on 8 parallel H100s"),
         ("Key detail", "Every step also denoises the future-state and value frames the policy throws away"),
     ],
     "evidence": "read",
@@ -50,24 +52,7 @@ MODEL = {
                 "GitHub NVlabs/cosmos-policy README (VRAM), net.py (COSMOS_V1_2B: 2048 channels, 28 blocks, 16 heads, patch 2, "
                 "rope3d, adaln_lora 256), minimal_v4_dit.py (block order, AdaLN, no mask, patch embed per step) and "
                 "cosmos_policy_experiment_configs.py (resolution 224, state_t 9)"],
-    "diagram": {
-        "encoder": {"text": "Images + blank placeholders → Wan2.1 VAE",
-                    "sub": "9 latent frames (LIBERO); proprio, action chunk and value overwrite the blanks", "tag": "frozen",
-                    "short": "Wan2.1 VAE; blanks → action, state, value"},
-        "tokens": {"groups": [("latent", 8, "image + proprio frames"), ("action", 1, "action chunk"), ("reward", 1, "value")],
-                   "note": "one latent frame per modality and view"},
-        "core": {"title": "Cosmos-Predict2 DiT ×28 · d 2048 · 16 heads",
-                 "rows": [("attn", "Bidirectional 3D self-attention over all latent frames, 3D RoPE"),
-                          ("xattn", "Cross-attention to T5 text"),
-                          ("action", "Actions, proprio and value as latent frames (no new modules)"),
-                          ("mlp", "MLP")],
-                 "notes": ["AdaLN-LoRA timestep conditioning"]},
-        "sampling": {"kind": "diffusion", "text": "EDM denoising, 5 steps (10 on ALOHA; 1 works)",
-                     "sub": "all frames in parallel; future state and value discarded", "short": "EDM, 5 steps per chunk"},
-        "heads": ["action chunk", "future state", "value"],
-        "decoder": {"text": "Wan2.1 VAE decoder → future images", "sub": "visualisation only; actions are read from latents",
-                    "tag": "frozen", "short": "Wan VAE decoder (not needed for actions)"},
-    },
+    "figure_variant": "Released LIBERO policy: Predict2-2B, 28 blocks, 5 EDM steps",
     "flow": {
         "below": [{"text": "Images + blank frames + text"}],
         "stack": [
@@ -81,12 +66,15 @@ MODEL = {
                     {"residual": [{"box": "AdaLN (scale, shift)", "minor": True, "side": "Noise level σ",
                                    "basis": "code", "side_basis": "stated"},
                                   {"box": "Bidirectional attention", "id": "attn", "style": "dark", "side": "3D RoPE",
-                                   "basis": "code", "side_basis": "code"}]},
+                                   "basis": "code", "side_basis": "code"},
+                                  {"box": "Scale by gate", "minor": True, "basis": "code"}]},
                     {"residual": [{"box": "AdaLN (scale, shift)", "minor": True, "basis": "code"},
                                   {"box": "Cross-attention", "id": "xattn", "side": "T5-XXL text",
-                                   "basis": "stated", "side_basis": "stated"}]},
+                                   "basis": "stated", "side_basis": "stated"},
+                                  {"box": "Scale by gate", "minor": True, "basis": "code"}]},
                     {"residual": [{"box": "AdaLN (scale, shift)", "minor": True, "basis": "code"},
-                                  {"box": "Feed forward", "id": "ffn", "basis": "code"}]},
+                                  {"box": "Feed forward", "id": "ffn", "basis": "code"},
+                                  {"box": "Scale by gate", "minor": True, "basis": "code"}]},
                 ], "repeat": "28 ×", "id": "block", "basis": "code"},
                 {"box": "Update latent frames", "id": "upd", "minor": True, "basis": "stated"},
             ], "loop": "5 EDM steps", "tint": "grey", "id": "denoise", "basis": "code"},
@@ -103,9 +91,8 @@ MODEL = {
             {"at": "inject", "text": "*1* frame each: proprio, actions, value", "side": "left"},
             {"at": "attn", "text": "*16* heads · width *2,048*", "side": "left", "key": True},
             {"at": "block", "text": "*28* layers · *2B* parameters", "side": "right", "key": True},
-            {"at": "fut", "text": "Best of *8* plans in *4.9* s", "side": "left"},
-            {"at": "act", "text": "*0.61* s per action chunk", "side": "right", "key": True},
+            {"at": "fut", "text": "LIBERO: *16* actions per chunk", "side": "left"},
+            {"at": "act", "text": "LIBERO: *0.61* s per chunk, *1* H100", "side": "right", "key": True},
         ],
     },
-    "audit": {"date": "2026-10-22", "checked": 53, "stated": 29, "code": 22, "derived": 2, "assumed": 0, "fixed": 3},
 }

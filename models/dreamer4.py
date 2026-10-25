@@ -29,34 +29,20 @@ MODEL = {
         ("Speed", "21 FPS at 640x360 on one H100 (authors, Table 1); the design cascade runs 0.8 → 9.1 (4-step shortcut) → 18.9 (temporal attention every 4 layers) → 23.2 (GQA) → … → 21.4 FPS at 256 tokens (Table 2)"),
         ("Key detail", "Agent tokens attend to everything but nothing attends back to them, so policy, reward and value heads share the world model's trunk and read the agent-token outputs; the transformer stays frozen during imagination training"),
     ],
-    "evidence": "verified",
+    "evidence": "read",
     "sources": ["arXiv 2509.24527 Sec. 3.1-3.4, Sec. 4, App. A, Fig. 2, Tables 1-2",
                 "danijar.com/project/dreamer4 (official page; no code released)",
                 "Shazeer 2020, GLU variants (SwiGLU, ref. [34])"],
-    "audit": {"date": "2026-10-23", "checked": 55, "stated": 48, "code": 0, "derived": 1, "assumed": 0, "removed": 6, "fixed": 9},
-    "diagram": {
-        "encoder": {"text": "Frame 360x640 → block-causal tokenizer (400M)", "sub": "256 spatial tokens × 32 channels per frame; MAE-trained, tanh bottleneck",
-                    "tag": "frozen", "short": "Causal tokenizer, 256 tokens/frame"},
-        "tokens": {"groups": [("latent", 24, "256 spatial tokens"), ("register", 2, "registers"), ("action", 2, "actions")],
-                   "note": "per frame, + 1 shortcut token; context 192 frames (9.6 s)"},
-        "core": {"title": "1.6B transformer · layers not disclosed",
-                 "rows": [("attn", "Space attention within each frame"),
-                          ("attn", "Time attention every 4th layer, GQA"),
-                          ("mlp", "SwiGLU MLP")],
-                 "notes": ["block-causal: bidirectional in a frame, causal over 192 frames", "RMSNorm, RoPE, QKNorm, logit soft-capping"]},
-        "sampling": {"kind": "diffusion", "text": "Shortcut forcing, K = 4 passes", "sub": "per frame; x-prediction flow matching, context re-noised at τ 0.1",
-                     "short": "Shortcut forcing, 4 passes per frame"},
-        "heads": ["policy", "reward", "value"],
-        "decoder": {"text": "Tokenizer decoder → 360x640 frame", "sub": "block-causal transformer, frame by frame", "tag": "frozen"},
-        "loop": "AR rollout",
-    },
+    "figure_variant": "Paper: 1.6B dynamics, 3 spatial layers per causal temporal layer",
     "flow": {
         "below": [{"text": "Frame 360×640 + action"}],
         "stack": [
             {"box": "Causal tokenizer", "id": "tok", "style": "teal", "basis": "stated"},
             {"box": "Tanh bottleneck", "id": "lat", "minor": True, "basis": "stated"},
-            {"box": "Interleave action tokens", "id": "tokens", "side": "Action emb.", "basis": "stated", "side_basis": "stated"},
+            {"box": "Action + task tokens", "id": "tokens", "side": "Action, task emb.", "basis": "stated", "side_basis": "stated"},
             {"group": [
+                {"box": "Noisy visual tokens", "minor": True, "basis": "stated"},
+                {"box": "Shortcut + registers", "minor": True, "side": "Signal lvl + step", "basis": "stated", "side_basis": "stated"},
                 {"group": [
                     {"group": [
                         {"residual": [{"box": "RMSNorm", "minor": True, "basis": "stated"},
@@ -89,5 +75,7 @@ MODEL = {
             {"at": "dec", "text": "*21* fps at *360×640*", "side": "right", "key": True},
         ],
         "feedback": "next latent frame",
+        "feedback_from": "out",
+        "feedback_to": "tokens",
     },
 }

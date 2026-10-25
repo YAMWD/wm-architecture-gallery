@@ -8,7 +8,7 @@ MODEL = {
     "status": "arXiv preprint (company)",
     "params": "14B (Wan2.1-I2V-14B)",
     "params_num": 14e9,
-    "open": "code + weights",
+    "open": "code + weights (non-Flash)",
     "links": {"arXiv": "https://arxiv.org/abs/2602.15922", "code": "https://github.com/dreamzero0/dreamzero",
               "page": "https://dreamzero0.github.io"},
     "tagline": "One 14B DiT denoises video and actions together",
@@ -18,7 +18,9 @@ MODEL = {
                "cache (with the chunk being denoised, at most 4 chunks plus the first frame: 33 raw frames, 6.6 s), and "
                "after each chunk executes the predicted frames are replaced by encoded real observations. Naive inference "
                "costs 5.7 s per chunk; CFG on 2 GPUs, velocity caching (16 → 4 DiT steps), compilation, kernel and "
-               "scheduler tuning, NVFP4 and the 1-step DreamZero-Flash schedule bring it to 150 ms on 2 GB200.",
+               "scheduler tuning, NVFP4 and the 1-step DreamZero-Flash schedule bring it to 150 ms on 2 GB200. The figure draws "
+               "Flash, a paper-only variant: the released DROID and AgiBot checkpoints are not Flash-trained and sample 16 "
+               "steps.",
     "facts": [
         ("Representation", "Frozen Wan2.1 VAE latents (480p model; 8x spatial, 4x temporal); 3 camera views resized to "
                            "176×320 and tiled 2×2 into one frame (code); 880 tokens per latent frame (DreamZero checkpoint "
@@ -37,11 +39,13 @@ MODEL = {
                     "tokens to the action velocity at every step (code)"),
         ("Prediction", "Flow matching: 16 steps baseline → 4 effective with velocity caching (cached velocity reused when "
                        "cosine similarity exceeds a threshold) → 1 step with DreamZero-Flash (video timesteps biased to high "
-                       "noise, t = 1 − Beta(7,1); action timesteps uniform)"),
+                       "noise, t = 1 − Beta(7,1); action timesteps uniform; applied as a final training stage). Released "
+                       "checkpoints: not Flash (decouple_video_action_noise and decouple_inference_noise false in "
+                       "experiment_cfg/conf.yaml), num_inference_steps = 16 with the velocity cache in the action head (code)"),
         ("Decoder", "Wan2.1 VAE decoder turns predicted latents into future frames (Fig. 4 inference panel); not needed for "
                     "control: actions come straight from the denoised action chunk, predicted video latents are discarded, "
                     "and the released server decodes them only to save videos"),
-        ("Memory", "KV cache refreshed with VAE-encoded real observations after every chunk (clean t = 0 pass; predicted "
+        ("Memory", "Closed loop through the robot (Fig. 4, Update with Real Observation): KV cache refreshed with VAE-encoded real observations after every chunk (clean t = 0 pass; predicted "
                    "frames discarded); it holds the first frame plus up to 3 earlier chunks (≤ 7 latent frames [D]), so with "
                    "the chunk being denoised the window is 9 latent frames = 33 raw frames (code: local_attn_size = 4×2 + 1); "
                    "cache reset every 4 chunks (code)"),
@@ -60,26 +64,9 @@ MODEL = {
                 "github.com/dreamzero0/dreamzero: modules/wan_video_dit_action_casual_chunk.py, "
                 "action_head/wan_flow_matching_action_tf.py, socket_test_optimized_AR.py",
                 "Hugging Face GEAR-Dreams/DreamZero-DROID and DreamZero-AgiBot config.json, experiment_cfg/conf.yaml"],
-    "diagram": {
-        "encoder": {"text": "Frames (views tiled) → Wan2.1 VAE", "sub": "4x temporal; tokens per latent frame not disclosed",
-                    "tag": "frozen", "short": "Wan2.1 VAE, views tiled"},
-        "tokens": {"groups": [("latent", 16, "2 noisy latent frames"), ("action", 8, "48-action chunk (1.6 s)")],
-                   "note": "per chunk; cache ≤ 8 clean latent frames"},
-        "core": {"title": "Wan2.1 I2V DiT ×40 · d 5120 · 40 heads",
-                 "rows": [("attn", "Chunk-causal self-attention: noisy chunk → clean cached chunks", "Chunk-causal attention, cached chunks"),
-                          ("xattn", "Cross-attention to text and image-encoder features", "Cross-attention: text + image features"),
-                          ("action", "Action latents denoised in the same blocks, shared timestep", "Action latents denoised jointly"),
-                          ("mlp", "MLP (FFN 13,824)")],
-                 "notes": ["KV cache ≤ 8 latent frames, refreshed with real frames"]},
-        "sampling": {"kind": "diffusion", "text": "Flow matching, 16 → 4 cached → 1 step (Flash)",
-                     "sub": "per chunk; CFG passes on 2 GPUs", "short": "Flow matching, 4 or 1 step"},
-        "heads": ["action chunk"],
-        "decoder": {"text": "Wan VAE decoder → video frames", "sub": "not needed for control: real frames replace predictions",
-                    "tag": "frozen", "short": "Wan VAE decoder (optional)"},
-        "loop": "closed loop with real frames",
-    },
+    "figure_variant": "DreamZero-Flash (paper only, no released weights): Wan2.1-I2V-14B, one denoising step",
     "flow": {
-        "below": [{"text": "Tiled camera views + text + state"}],
+        "below": [{"text": "Real views per chunk + text, state"}],
         "stack": [
             {"box": "Wan2.1 VAE encoder", "id": "vae", "style": "teal", "basis": "code"},
             {"box": "Real frames → KV cache", "id": "kv", "minor": True, "basis": "stated"},
@@ -90,17 +77,20 @@ MODEL = {
                     {"residual": [{"box": "AdaLN (scale, shift)", "minor": True, "side": "Timestep emb.",
                                    "basis": "code", "side_basis": "code"},
                                   {"box": "Chunk-causal attention", "id": "attn", "style": "dark", "side": "RoPE",
-                                   "basis": "stated", "side_basis": "code"}]},
-                    {"residual": [{"box": "Cross-attention", "id": "xattn", "side": "Text + image",
+                                   "basis": "stated", "side_basis": "code"},
+                                  {"box": "Scale by gate", "minor": True, "basis": "code"}]},
+                    {"residual": [{"box": "LayerNorm", "minor": True, "basis": "code"},
+                                  {"box": "Cross-attention", "id": "xattn", "side": "Text + image",
                                    "basis": "code", "side_basis": "code"}]},
                     {"residual": [{"box": "AdaLN (scale, shift)", "minor": True, "basis": "code"},
-                                  {"box": "Feed forward", "id": "ffn", "basis": "code"}]},
+                                  {"box": "Feed forward", "id": "ffn", "basis": "code"},
+                                  {"box": "Scale by gate", "minor": True, "basis": "code"}]},
                 ], "repeat": "40 ×", "id": "block", "basis": "code"},
                 {"fanout": [[{"box": "Video head", "id": "vhead", "basis": "code"}],
                             [{"box": "Action decoder", "id": "adec", "style": "orange", "basis": "code"}]], "minor": True},
                 {"box": "Video + action velocity", "id": "vel", "minor": True, "basis": "stated"},
                 {"box": "Update latents", "id": "upd", "minor": True, "basis": "stated"},
-            ], "loop": "16 → 4 → 1 steps", "tint": "grey", "id": "denoise", "basis": "stated"},
+            ], "loop": "1 step (Flash)", "tint": "grey", "id": "denoise", "basis": "stated"},
             {"fanout": [[{"box": "Next-chunk video latents", "short": "Video latents", "id": "vid", "basis": "stated"}],
                         [{"box": "Action chunk", "id": "act", "style": "orange", "terminal": True, "basis": "stated"}]]},
         ],
@@ -110,11 +100,9 @@ MODEL = {
             {"at": "vae", "text": "*880* tokens per latent frame (*3* views)", "side": "left", "key": True},
             {"at": "attn", "text": "*40* heads · width *5,120*", "side": "left"},
             {"at": "block", "text": "*40* layers · *14B* parameters", "side": "left", "key": True},
-            {"at": "denoise", "text": "*16* steps, *4* with caching, *1* with Flash", "side": "right", "key": True},
+            {"at": "denoise", "text": "*1* Flash step (base *16*, cached *4*)", "side": "right", "key": True},
             {"at": "kv", "text": "Context ≤ *33* raw frames (*6.6* s)", "side": "right"},
-            {"at": "act", "text": "*48* actions in *150* ms (naive *5.7* s)", "side": "right", "key": True},
+            {"at": "act", "text": "*48* actions in *150* ms (*2* GB200, NVFP4)", "side": "right", "key": True},
         ],
-        "feedback": "next chunk",
     },
-    "audit": {"date": "2026-10-22", "checked": 49, "stated": 23, "code": 23, "derived": 3, "assumed": 0, "fixed": 11},
 }

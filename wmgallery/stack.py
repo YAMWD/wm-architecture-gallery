@@ -20,7 +20,8 @@ upward; numbers live in annotations outside the model, not inside the boxes.
       "insets": [{"for": "ffn", "stack": [{"box": "Linear"}, {"box": "GELU"}, {"box": "Linear"}]}],
       "annotations": [{"at": "enc", "text": "*16* codes per frame, vocabulary *512*", "side": "left", "key": True},
                       {"at": "attn", "text": "*4* heads · context *20* steps = *340* tokens"}],
-      "feedback": "next step",                                               # optional dashed loop, top -> bottom
+      "feedback": "next code",                                               # named tensor route, not a generic control loop
+      "feedback_from": "sample", "feedback_to": "emb",
     }
 
 Node kinds: box (label; id; style = plain|dark|teal|orange|soft; side = label of a side-input box; minor = dropped
@@ -122,7 +123,10 @@ def condense(nodes):
         if n.kind == "residual":
             out.extend(condense(n.children))
         elif n.kind == "group":
-            n.children = condense(n.children)
+            if n.spec.get("condensed_box"):
+                n.children = [Node({"box": n.spec["condensed_box"], "basis": n.spec["basis"]})]
+            else:
+                n.children = condense(n.children)
             if n.children:
                 out.append(n)
         elif n.kind == "fanout":
@@ -306,8 +310,11 @@ class StackLayout:
         self.inset_layouts = []
         for ins in self.insets:
             nodes = [Node(s) for s in ins["stack"]]
-            w, h = self._stack_size(nodes)
-            self.inset_layouts.append({"spec": ins, "nodes": nodes, "w": w + 2 * 14, "h": h + 2 * 14})
+            _, h = self._stack_size(nodes)
+            self._place_stack(nodes, 0.0, 0.0)
+            left, right = self._extents(nodes)
+            self.inset_layouts.append({"spec": ins, "nodes": nodes, "w": right - left + 2 * 14,
+                                       "h": h + 2 * 14, "cx": 14 - left})
         # annotation text blocks
         self.ann_layouts = []
         for a in self.annotations:
@@ -330,6 +337,10 @@ class StackLayout:
         # the column may be wider than the container when below/above stacks are wider
         extra = max(0, max(self.below_w, self.above_w) - self.cont_w)
         self.W = 10 + self.left_w + self.cont_w + extra + self.right_w + self.fb_w + 10
+        self.variant_lines = []
+        if self.show_title and not self.condensed and self.spec.get("figure_variant"):
+            self.variant_lines = wrap("Figure: " + self.spec["figure_variant"], "body", 10, self.W - 24)
+            self.title_h += len(self.variant_lines) * 13 + 4
         self.H = (self.title_h + self.above_h + (p.gap if self.above else 0) + self.cont_h
                   + (p.gap if self.below else 0) + self.below_h + (16 if (self.mini and not self.below) else 12))
         if not self.condensed:
@@ -337,7 +348,7 @@ class StackLayout:
         right_items = ([i["h"] + (14 if i["spec"].get("label") else 0) for i in self.inset_layouts]
                        + [a["h"] for a in self.ann_layouts if a["side"] == "right"])
         left_items = [a["h"] for a in self.ann_layouts if a["side"] == "left"]
-        # the dashed feedback line runs across the right column at the height of the top output node
+        # Reserve space above the right column for external routing.
         self.col_floor = self.title_h
         if self.flow.get("feedback") and not self.condensed:
             top = (self.above or self.stack)[-1]
@@ -520,6 +531,8 @@ class StackLayout:
             size = _re.sub(r"\s*\[D[^\]]*\]", "", str(spec.get("params", ""))).split(" (")[0].split(",")[0]
             sub = " · ".join(str(v) for v in (org, spec.get("year"), size) if v)
             cv.text(ox + self.cx, oy + 38, sub, "body", 10.5, C["grey"])
+            if self.variant_lines:
+                cv.lines(ox + self.W / 2, oy + 45, self.variant_lines, "body", 10, C["grey"], lh=13)
         cv.rect(ox + self.cont_x, oy + self.cont_y, self.cont_w, self.cont_h, fill=C["soft"], stroke=C["slate"], sw=1.0, rx=20)
         self._draw_stack(self.stack)
         if self.below:
@@ -830,7 +843,7 @@ class StackLayout:
                 self._box(x0, y - it["lab"], x0 + il["w"], y + il["h"], itag)
                 self.geo_leaders.append((pre + [(ax + 1, ay), (x0 - 1, y + il["h"] / 2)], {tgt, itag}))
                 cv.rect(x0, y, il["w"], il["h"], fill=C["soft"], stroke=C["slate"], sw=1.0, rx=12, dash="4 3")
-                self._place_stack(il["nodes"], x0 + il["w"] / 2 - ox, y + il["h"] - 14 - oy)
+                self._place_stack(il["nodes"], x0 + il["cx"] - ox, y + il["h"] - 14 - oy)
                 self._draw_stack(il["nodes"])
                 if il["spec"].get("label"):
                     cv.text(x0 + il["w"] / 2, y - 5, il["spec"]["label"], "body", p.box - 1, C["grey"])
@@ -878,13 +891,17 @@ class StackLayout:
     def _draw_feedback(self):
         cv, p = self.cv, self.p
         ox, oy = self.ox, self.oy
-        top = (self.above or self.stack)[-1]
-        bottom = (self.below or self.stack)[0]
+        top = self.by_id[self.flow["feedback_from"]]
+        bottom = self.by_id[self.flow["feedback_to"]]
         x = ox + self.W - 26
-        y_top = oy + top.y + top.h / 2
-        y_bot = oy + bottom.y + bottom.h / 2
-        cv.path("M %.1f %.1f L %.1f %.1f L %.1f %.1f L %.1f %.1f" % (
-            ox + top.x + top.w + 4, y_top, x, y_top, x, y_bot, ox + bottom.x + bottom.w + 5, y_bot),
+        # Join the named tensor ports between rows.  Returning every output to
+        # the pixel encoder incorrectly depicted re-encoding in latent rollouts.
+        y_top = oy + top.y - p.gap * 0.35
+        y_bot = oy + bottom.y + bottom.h + p.gap * 0.35
+        cv.path("M %.1f %.1f L %.1f %.1f L %.1f %.1f L %.1f %.1f L %.1f %.1f L %.1f %.1f" % (
+            ox + top.cx, oy + top.y - 1, ox + top.cx, y_top,
+            x, y_top, x, y_bot, ox + bottom.cx, y_bot,
+            ox + bottom.cx, oy + bottom.y + bottom.h + 1),
             stroke=ACCENT, sw=1.1, dash="4 3", marker=True)
         cv.text(x + 15, (y_top + y_bot) / 2, self.flow["feedback"], "body", p.ann - 0.5, ACCENT, anchor="middle", rotate=-90)
 
@@ -895,7 +912,8 @@ def render_stack_svg(spec, condensed=False, background=True, fonts=True, mini=Fa
     if background:
         cv.rect(0, 0, math.ceil(lay.W) + 1, math.ceil(lay.H) + 1, fill=C["white"], rx=0)
     lay.draw(cv, 0, 0)
-    svg = D.svg_head(math.ceil(lay.W), math.ceil(lay.H), cv.markers, fonts) + "\n".join(cv.parts) + "\n</svg>\n"
+    description = "<desc>%s — %s</desc>\n" % (esc(spec["name"]), esc(spec.get("figure_variant", "")))
+    svg = D.svg_head(math.ceil(lay.W), math.ceil(lay.H), cv.markers, fonts) + description + "\n".join(cv.parts) + "\n</svg>\n"
     return svg, cv.warnings, (lay.W, lay.H)
 
 

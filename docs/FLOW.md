@@ -6,7 +6,7 @@ repeated blocks sit in a tinted container with an "N ×" marker, residual connec
 lines into a ⊕, and every number lives in an annotation outside the model, not inside a box. Finished
 examples: `models/iris.py` (token model with heads), `models/matrix_game_2.py` (diffusion transformer with
 a denoising loop), `models/vjepa2_ac.py` (embedding predictor with a planning inset), `models/dreamer4.py`
-(factorized attention, shortcut steps, SwiGLU inset).
+(factorized attention and shortcut steps).
 
 Render and check (from the repository root):
 
@@ -30,10 +30,9 @@ the condensed warnings: give long annotations and wide input or output lines a `
     "above": [{"box": "VQ-VAE decoder", "style": "teal"}, {"text": "Next frame"}],   # outputs
     "insets": [{"for": "ffn", "stack": [{"box": "Linear"}, {"box": "GELU"}, {"box": "Linear"}]}],
     "annotations": [{"at": "attn", "text": "*4* heads · context *340* tokens", "side": "left", "key": True}],
-    "feedback": "next step",                                  # optional dashed loop from output to input; it means
-                                                              # "repeat for the next step"; name what carries over
-                                                              # ("next-frame tokens", "next z, no encoder"), since
-                                                              # most models keep latents in context, not re-encoded frames
+    "feedback": "next-frame codes",                         # optional outer rollout; name the tensor
+    "feedback_from": "sample",                              # actual source node id
+    "feedback_to": "emb",                                   # actual destination node id
 }
 ```
 
@@ -43,7 +42,7 @@ Nodes:
 |---|---|---|
 | `{"box": "Label"}` | one rounded box | `id`, `style` (`plain`, `dark` for the attention operator, `teal` for encoders and decoders, `orange` for action or conditioning modules, `soft` for data such as noisy latents), `side` (label of a small side-input box with an arrow into this box, e.g. `"RoPE"`, `"Timestep emb."`, `"Keys + mouse"`), `minor` (dropped in the condensed version), `short` (label used in the condensed version), `terminal` (a branch that ends here) |
 | `{"text": "..."}` | unboxed monospace text (inputs and outputs) | `short` (used in the condensed version) |
-| `{"group": [...]}` | tinted container around a sub-stack | `repeat` (`"30 ×"`, drawn left of the border), `loop` (`"3 denoising steps"`: the label sits in the group's header strip and a dashed loop arrow runs down the right side), `tint` (`navy` for the transformer block, `grey` for a sampling loop, `orange`, `teal`), `label` (header strip, left), `id` |
+| `{"group": [...]}` | tinted container around a sub-stack | `repeat` (`"30 ×"`, drawn left of the border), `loop` (`"3 denoising steps"`: the label sits in the group's header strip and a dashed loop arrow runs down the right side), `tint` (`navy` for the transformer block, `grey` for a sampling loop, `orange`, `teal`), `label` (header strip, left), `id`, `condensed_box` (a sourced module summary replacing children in compact exports; retains the group/repeat) |
 | `{"residual": [...]}` | the sub-stack, then ⊕ with a skip line from below the first node | |
 | `{"fanout": [[...], [...]]}` | parallel branches side by side, joined by diagonal arrows | each branch is a stack; its top node may be `terminal` |
 | `{"merge": "x"}` or `{"merge": "+"}` | a circled operator that joins the branches below it | |
@@ -87,9 +86,10 @@ when they are the point (`Patchify 1×2×2`, `256 latent tokens`). Keep the main
 between input and output in the full version, and use `minor` and `short` so the condensed version has at
 most six or seven boxes and stays under 430 units tall.
 
-Say what is not disclosed in an annotation (`layers and heads not disclosed`) rather than guessing a block
-structure; when the paper gives no block details, draw the standard pre-norm block and annotate it as
-`block details not disclosed`.
+Say what is not disclosed in an annotation (`layers and heads not disclosed`). When sources give no block
+details, draw one opaque box for the named core or its undisclosed remainder. Never draw a standard pre-norm
+block, a residual, or an FFN as a substitute for missing evidence. Inspect official code where available and
+record any disagreement with the publication in the source review.
 
 ## Concision rules (checked by the renderer)
 
@@ -106,9 +106,9 @@ The detailed diagram is read like a figure, not a paragraph. The renderer warns 
 | group label | at most 16 characters | `single-stream` |
 | `tagline` (card) | at most 52 characters, plain words | `GPT over VQ codes, one token at a time` |
 
-No caveats in the figure: sources, "[D]", "company claim", hardware and quality notes belong in `facts`, which
-the page shows on request. "not disclosed" is fine in an annotation (`Layers not disclosed`). An annotation
-does not need a `short` text once it fits the limit.
+Keep long citations and performance qualifications in `facts` and the source review. The figure and its
+caption must still make the chosen variant clear. Use `not disclosed` rather than guessing. Do not strip a
+qualification if that would make the picture misleading. An annotation needs no `short` text once it fits.
 
 The card thumbnail (`--stack --mini`) draws only the boxes: no annotations, side boxes, insets or input and
 output text; a loop shows as "N steps" (set `loop_short` on the group to override). Mark boxes `minor` until
@@ -121,5 +121,23 @@ report says it, and `"basis": "code"` means the released code or config shows it
 side box. Only sourced elements are drawn. When a source leaves part of a block undisclosed, the block gets one
 plain box, `{"box": "Rest of block not stated", "style": "soft", "basis": "stated"}`, and the matching fact names
 the missing parts. The renderer warns about any element tagged `"assumed"`. Numbers we computed ourselves are
-written with "≈" in annotations and tagged [D] in the facts. The audit trail for each model is in
-`research_notes/Architecture audit/<slug>.verify.md`.
+written with "≈" in annotations and tagged [D] in the facts. The current per-model evidence and limitations
+are in [architecture_audit.md](architecture_audit.md), with immutable code revisions and source hashes in
+[architecture_audit.json](architecture_audit.json). A basis tag is a locator, not proof of correctness.
+
+## Tensor routes and variant consistency
+
+An outer `feedback` requires `feedback_from` and `feedback_to` naming existing main-flow node IDs. Route
+sampled codes to embeddings, predicted features to predictor history, and cached keys/values to attention,
+as the actual implementation does. Do not connect actions to an image encoder to stand for robot execution.
+If an external environment/control loop is outside the tensor graph, describe it in facts instead.
+
+A sampling `group` repeats every operator inside it. Put cached work outside the loop and patchification of
+changing noisy latents inside it. Its noisy-input box represents the current noisy state, not fresh random
+noise injected on every pass. Include extra clean/cache-refresh evaluations when the implementation uses
+them. Do not combine base-model operators or latency with a distilled variant's step count.
+
+A module box may encapsulate internal projections/norms, but an expanded residual must span the actual
+input saved for the skip. Check the forward expression, including output gates and nested residuals.
+Parallel branches mean simultaneous paths unless explicitly joined with `or` for a layer-type choice.
+Both full and compact exports come from this one `flow`; compact drawings are summaries, not extra variants.

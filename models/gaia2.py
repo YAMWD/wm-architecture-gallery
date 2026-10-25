@@ -47,24 +47,7 @@ MODEL = {
                 "(22 blocks, C=4096, 32 heads, conditioning), 4 training (12,600 tokens, 256 H100), 5 inference (50 steps, k=3, "
                 "CFG), 8 future work; Fig. 2, Fig. 3",
                 "Wayve GAIA-2 page, https://wayve.ai/thinking/gaia-2/"],
-    "diagram": {
-        "encoder": {"text": "5 cameras 448x960 → video tokenizer (85M)", "sub": "8x temporal, 32x spatial, 64 ch; 420 latents per camera per step",
-                    "tag": "frozen", "short": "Video tokenizer → 420 latents/camera"},
-        "tokens": {"groups": [("latent", 24, "2,100 latents (5 cameras)")],
-                   "note": "per latent step; 6 steps = 12,600 tokens"},
-        "core": {"title": "Space-time transformer ×22 · d 4096 · 32 heads",
-                 "rows": [("attn", "Spatial attention: space + cameras"),
-                          ("attn", "Temporal attention over latent steps"),
-                          ("xattn", "Cross-attn to agents and metadata"),
-                          ("action", "Ego action + time → adaptive LN"),
-                          ("mlp", "MLP")],
-                 "notes": ["QK-norm; context k=3 latent steps, sliding window; no KV cache described"]},
-        "sampling": {"kind": "diffusion", "text": "Flow matching, 50 steps, linear-quadratic schedule", "sub": "no distillation; CFG off by default",
-                     "short": "Flow matching, 50 steps"},
-        "decoder": {"text": "Tokenizer decoder (200M) → 24 frames at 448x960", "sub": "per camera; 3 latents decoded jointly, sliding window",
-                    "tag": "frozen", "short": "Decoder (200M) → 24 frames"},
-        "loop": "AR rollout",
-    },
+    "figure_variant": "Paper: 8.4B, 22 factorized space-time blocks, 50 flow steps",
     "flow": {
         "below": [{"text": "5 cameras 448×960 + ego action"}],
         "stack": [
@@ -96,6 +79,7 @@ MODEL = {
             {"at": "dec", "text": "Speed not disclosed; *200M* decoder", "side": "right", "key": True},
         ],
         "feedback": "next set of latents",
+        "feedback_from": "upd",
+        "feedback_to": "noisy",
     },
-    "audit": {"date": "2026-10-23", "checked": 47, "stated": 34, "code": 1, "derived": 5, "assumed": 0, "removed": 7, "fixed": 10},
 }

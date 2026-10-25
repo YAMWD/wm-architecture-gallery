@@ -1,99 +1,46 @@
-# Writing a model card
+# Model card specification
 
-A model card is one Python file `models/<slug>.py` that defines a dict `MODEL`. The site and the slides show
-its `flow` stack diagram (grammar in `docs/FLOW.md`) and its facts. The `diagram` key described below is the
-older token-square summary card: it is still required by the loader, but it is not published and was not
-part of the October 2026 source audit, so treat its text as unchecked.
-Start from `models/_TEMPLATE.py`; `models/iris.py`, `models/matrix_game_2.py` and `models/vjepa2_ac.py`
-are complete examples for the three main shapes (token model, diffusion transformer, embedding predictor).
+Each `models/<slug>.py` defines one `MODEL` dictionary. Files beginning with `_` are templates and are not loaded. The `slug` must match the filename. The required architecture is `MODEL["flow"]`, described in [FLOW.md](FLOW.md). The obsolete duplicate `diagram` key is rejected.
 
-Render and check:
+## Card fields
 
-```bash
-python3 -m wmgallery.render <slug>            # writes site/svg/<slug>.svg and site/png/<slug>.png, prints WARN lines
-python3 -m wmgallery.render <slug> --compact  # the slide version (site/png/compact/<slug>.png)
-```
-
-Open the PNGs and look at them. A card is done when there are no WARN lines, no text touches a box edge,
-the title bar text fits, and the compact version still reads correctly.
-
-## Keys
-
-| key | meaning |
+| Field | Meaning |
 |---|---|
-| `slug` | file name without `.py`; lowercase, digits, underscores |
-| `name` | as the authors write it (`Dreamer 4`, `V-JEPA 2-AC`) |
-| `year`, `month` | first public release (arXiv v1 or announcement) |
-| `org` | developer, short (`Google DeepMind`, `Skywork AI`, `NYU`) |
-| `family` | `rl`, `token`, `dit`, `driving`, `jepa`, `wam`, `llm`, `object`, `ssm` |
-| `role` | the transformer's role, one of: `Discrete-token model`, `Per-step latent model`, `Diffusion transformer`, `Embedding predictor`, `LLM or mixture of transformers`, `Object-centric model`, `SSM hybrid` |
-| `status` | venue if peer-reviewed (`ICLR 2023`), else `arXiv preprint`, `company technical report`, `blog post` |
-| `params` | short string for the header (`~30M`, `1.3B`, `8.4B + 285M tokenizer`); keep under ~30 characters |
-| `params_num` | number for sorting, or `None` |
-| `open` | `code + weights`, `code`, `weights`, `closed` |
-| `links` | dict of label -> URL (`arXiv`, `code`, `page`, `report`) |
-| `summary` | 2-4 sentences: what it is, what the transformer does inside it, why it matters for compute |
-| `facts` | list of `(label, text)`; use the nine labels below in this order, drop a label only if nothing is known |
-| `evidence` | `verified` (adversarially verified findings), `read` (read from the primary paper or code), `claim` (developer blog or page only) |
-| `sources` | list of short strings naming paper sections, tables, config files |
-| `diagram` | see below |
+| `slug`, `name` | Stable identifier and display name |
+| `year`, `month`, `org` | First public release and organization; cite publication metadata |
+| `family` | `rl`, `token`, `dit`, `driving`, `jepa`, `wam`, `llm`, `object`, or `ssm` |
+| `role` | One of `wmgallery.registry.ROLES` |
+| `status` | Publication/report status |
+| `params` | Display size, with the counted component and variant made clear; say undisclosed when necessary |
+| `params_num` | Numeric sorting value, or `None` when unknown |
+| `open` | Availability such as `code + weights`, `code`, `weights`, or `closed` |
+| `links` | Original paper/report, official code, weights and project page |
+| `tagline`, `summary` | Short description and scope; identify important paper/code differences |
+| `facts` | Ordered `(label, text)` pairs: representation, core, attention, actions, prediction, decoder, memory, speed, key detail |
+| `evidence` | `read` for primary-source reading; `claim` for an official technical page only |
+| `sources` | Human-readable primary-source locators, including relevant sections and files |
+| `figure_variant` | Exact configuration drawn; must agree with the source review |
+| `flow` | The single canonical figure specification |
 
-Fact labels: `Representation`, `Core`, `Attention`, `Actions`, `Prediction`, `Decoder`, `Memory`, `Speed`, `Key detail`.
+The `source_review` field is added during the site build from the review ledger. It is not authored in the model file. Historical `audit` counters are not current evidence.
 
-## Diagram grammar
+## Evidence and configuration rules
 
-The card is read from the bottom up. Each row is optional except `core`.
+- Read the original publication and, where available, the official implementation. Inspect constructor/configuration, the executed forward path, sampling and cache updates. A class name or a matching word is insufficient.
+- Pick one configuration for the figure. State its variant in the review. Report paper/code disagreement explicitly; do not silently manufacture agreement or combine incompatible variants.
+- Trace dimensions, layer/head counts, modulation, residual boundaries, attention masks, action/text input locations, sampler repetitions and output roles to sources.
+- Distinguish a total agent size from its dynamics transformer, backbone from added modules, training path from inference, and an external robot loop from a tensor edge.
+- Every numeric claim needs a source. Arithmetic is labelled `[D]` in facts and uses an approximate sign where appropriate. Do not assign a paper's runtime to a different released sampler or configuration.
+- Do not borrow undisclosed architecture from a familiar transformer. Keep one opaque module box for a named but unexpanded component, and say what is unknown. Add no speculative normalization, FFN, residual, cache or decoder.
+- `read` is a description of evidence consulted, not a certificate that the source discloses everything. Official-page-only descriptions remain `claim`.
 
-```python
-"diagram": {
-    "encoder":  {"text": "Frames → Wan2.1 3D causal VAE", "sub": "880 latents per latent frame",
-                 "tag": "frozen", "short": "Wan2.1 3D VAE"},
-    "tokens":   {"groups": [("latent", 24, "2,640 latents per chunk"), ("action", 3, "actions")],
-                 "note": "window 6 latent frames = 5,280 tokens"},
-    "core":     {"title": "Wan-style DiT ×30 · d 1536 · 12 heads",
-                 "rows": [("attn", "Block-causal self-attention, 3D RoPE"),
-                          ("xattn", "Cross-attention to first-frame CLIP features"),
-                          ("action", "Action modules in blocks 1–15"),
-                          ("mlp", "MLP")],
-                 "notes": ["rolling KV cache: 6 latent frames"]},
-    "sampling": {"kind": "diffusion", "text": "DMD Self-Forcing, 3 denoising steps", "sub": "per 12-frame chunk",
-                 "short": "3 DMD steps per chunk"},
-    "heads":    ["reward", "value"],
-    "decoder":  {"text": "Wan VAE decoder → 12 frames", "sub": "352×640", "tag": "frozen"},
-    "loop":     "AR rollout",
-}
-```
+## Review ledger
 
-- `encoder.text`: observation → encoder, one line (`Frame 64×64 → VQ-VAE (CNN)`). `sub`: what comes out
-  (tokens per frame, latent shape). `tag`: `frozen`, `trained jointly`, `pretrained`. `short`: compact-mode text.
-- `tokens.groups`: what one step (one frame, one chunk, one environment step) puts into the sequence. Each
-  group is `(kind, count, label)`. Kinds: `frame` discrete codes, `latent` continuous latents or features,
-  `action`, `state`, `reward`, `text`, `register`, `slot`, `noise`, `audio`. The count drives the squares
-  (capped at 8 drawn); put the real number in the label. Keep labels under ~25 characters; 2-3 groups.
-  When actions do not enter as tokens (AdaLN, cross-attention, channel concatenation), do not add an action
-  group; add an `action` row inside `core` instead.
-- `core.title`: `<name> ×<layers> · d <width> · <heads> heads` when known; otherwise the shortest honest
-  description (`Transformer, size not disclosed`). It must fit one line.
-- `core.rows`: 2-5 rows, each `(kind, text)` or `(kind, text, short)`, where `short` replaces `text` in
-  compact mode (keep it under ~34 characters so the row stays on one line). Kinds: `attn` self-attention (say the mask: causal over tokens,
-  block-causal over frames, spatial / temporal factorized, bidirectional), `xattn` cross-attention (say to what),
-  `mlp`, `action` (how actions enter: AdaLN, action modules, mixer, channel concat), `ssm` (Mamba, GDN,
-  retention), `moe` (experts or a second stream), `note` (grey text, no box).
-- `core.notes`: short grey lines for KV cache, context, position encoding.
-- `sampling.kind`: `ar` (one token per pass), `parallel` (MaskGIT-style, all tokens per pass), `diffusion`
-  (denoising or flow steps), `regress` (one deterministic pass), `search` (planning loop over the model).
-  `text` names the objective and step count; `sub` gives passes per frame or per chunk.
-- `heads`: short names only (`reward`, `done`, `value`, `policy`, `action chunk`).
-- `decoder`: `text` says what produces pixels and at what resolution. `{"none": "reason"}` draws a dashed
-  box (`planning in feature space`, `video head skipped at deployment`).
-- `loop`: label of the feedback arrow (`AR rollout`, `CEM rollout`, `MCTS`, `closed loop with real frames`).
-  Omit for offline clip generators.
+[architecture_audit.json](architecture_audit.json) covers exactly the loaded models. Each entry contains:
 
-## Style
+- `variant`, `architecture`, `checked`, `changes` and `limitations`;
+- the complete card/flow's `model_sha256`, produced by `wmgallery.audit.fingerprint`;
+- primary `references` with kind, URL, source-byte SHA-256 and a relative `cached_as` path;
+- an immutable revision for released code, and a versioned paper link when available.
 
-- Terse. Numbers with units. `×` for multiplication, `→` for flow, `d` for width, `~` for approximations.
-- Every number must come from `sources`. Your own arithmetic is marked `[D]` in `facts` (not in the diagram).
-- In `Speed`, say whose number it is: `(authors)`, `(company claim)`, `(measured by WorldKV on 4×H200)`.
-- Do not copy marketing. Say what is not disclosed: `size not disclosed`.
-- `evidence` describes the whole card: `verified` only if the architecture facts come from the adversarially
-  verified findings; `read` if you read the paper or code; `claim` for blog-only systems.
+No-code reviews must state that limit. Updating a fingerprint requires reviewing the actual change; blindly accepting a new hash is not a source check. The site build rejects missing or stale reviews. `python3 -m wmgallery.audit --artifacts` also compares all four SVG exports and the published model data with the reviewed source.

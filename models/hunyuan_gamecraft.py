@@ -42,28 +42,12 @@ MODEL = {
                        "of the 8-step model re-processes the history tokens through all layers (the 50-step model's DeepCache "
                        "skips most blocks on 15 of 50 steps)"),
     ],
-    "audit": {"date": "2026-10-23", "checked": 53, "stated": 17, "code": 31, "derived": 5, "assumed": 0, "fixed": 14},
     "evidence": "read",
     "sources": ["arXiv 2506.17201 Sec. 4.1-4.3, 5.1 (implementation), Table 2, Table 4, Fig. 4-5",
                 "HunyuanVideo arXiv 2412.03603 Sec. 4.1 (VAE 4x8x8, 16 ch), Table 2 (13B, 20 double + 40 single blocks)",
                 "GitHub Tencent-Hunyuan/Hunyuan-GameCraft-1.0: README, hymm_sp/modules/models.py, "
                 "hymm_sp/diffusion/pipelines/pipeline_hunyuan_video_game.py, hymm_sp/config.py"],
-    "diagram": {
-        "encoder": {"text": "Frames → HunyuanVideo 3D causal VAE", "sub": "≈3,344 latents per latent frame at 704x1216 [D]",
-                    "short": "HunyuanVideo VAE → latents"},
-        "tokens": {"groups": [("latent", 24, "≈30,100 latents per chunk"), ("latent", 8, "history latents + mask")],
-                   "note": "history concatenated, no KV cache"},
-        "core": {"title": "HunyuanVideo MM-DiT, size not restated (13B)",
-                 "rows": [("attn", "Full attention over chunk + history"),
-                          ("action", "Camera Plücker map added to tokens"),
-                          ("xattn", "Text via MM-DiT double stream"),
-                          ("mlp", "MLP")],
-                 "notes": ["binary mask: 1 = history latents, 0 = predicted", "history re-processed at every step (8-step model)"]},
-        "sampling": {"kind": "diffusion", "text": "PCM-distilled consistency model, 8 steps", "sub": "per chunk of 33 frames (1.32 s at 25 fps)",
-                     "short": "8 steps per 33-frame chunk"},
-        "decoder": {"text": "HunyuanVideo VAE decoder → 33 frames at 720p", "short": "VAE decoder → 33 frames"},
-        "loop": "AR rollout",
-    },
+    "figure_variant": "Released HunyuanVideo GameCraft: 20 double + 40 single blocks, 8 PCM steps",
     "flow": {
         "below": [{"text": "History frames + keys/mouse + text"}],
         "stack": [
@@ -104,6 +88,8 @@ MODEL = {
             {"at": "upd", "text": "*0.25* fps before distillation", "side": "right"},
             {"at": "dec", "text": "*6.6* fps · ≈*5* s per *33*-frame chunk", "side": "right", "key": True},
         ],
-        "feedback": "next chunk (latents)",
+        "feedback": "history latents",
+        "feedback_from": "upd",
+        "feedback_to": "hist",
     },
 }

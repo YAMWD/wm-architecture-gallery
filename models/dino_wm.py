@@ -15,7 +15,8 @@ MODEL = {
     "summary": "A task-agnostic latent world model that predicts future DINOv2 patch features instead of pixels. A frozen "
                "DINOv2 turns each 196x196 frame into 196 patch features of width 384, and a small ViT predictor "
                "(6 layers, ~19M parameters) regresses the next frame's features from a history of up to 3 frames, with the "
-               "action and proprioception embeddings concatenated onto every patch vector rather than added as tokens. "
+               "10-d action and 10-d proprioception embeddings concatenated onto every patch vector rather than added as "
+               "tokens, so predictor tokens are 404 wide. "
                "Goals are images; planning is cross-entropy-method search in feature space, and the pixel decoder "
                "exists only for visualization.",
     "facts": [
@@ -53,21 +54,7 @@ MODEL = {
                 "planning/cem.py, conf/encoder/dino.yaml, conf/predictor/vit.yaml, conf/train.yaml, conf/plan_pusht.yaml",
                 "Released checkpoints (OSF bmw48 checkpoints/outputs.zip: hydra.yaml configs, tensor shapes)",
                 "LeWM arXiv 2603.19312 Sec. 3.1, Fig. 3 (47 s vs 0.98 s per plan)"],
-    "audit": {"date": "2026-10-22", "checked": 45, "stated": 27, "code": 16, "derived": 2, "assumed": 0, "fixed": 10},
-    "diagram": {
-        "encoder": {"text": "Frame 196x196 → DINOv2 encoder", "sub": "196 patch features × 384 per frame", "tag": "frozen",
-                    "short": "DINOv2, 196 patch features"},
-        "tokens": {"groups": [("latent", 14, "196 patch features")],
-                   "note": "per frame; history H = 3 frames = 588 tokens"},
-        "core": {"title": "ViT predictor ×6 · 16 heads · MLP 2048",
-                 "rows": [("attn", "Frame-level causal self-attention"),
-                          ("action", "Action + proprio embeddings (10-d) concatenated to every patch"),
-                          ("mlp", "MLP (2048)")],
-                 "notes": ["window H = 3 frames; no KV cache"]},
-        "sampling": {"kind": "regress", "text": "Next-frame features, MSE regression", "sub": "1 pass per step; no sampling"},
-        "decoder": {"none": "planning by CEM in feature space: 100 samples × 10 iterations; decoder only for visualization"},
-        "loop": "CEM rollout",
-    },
+    "figure_variant": "Released DINO-WM predictor: 6 layers, DINOv2 patch features",
     "flow": {
         "below": [{"text": "Frame 196×196 + action + proprio"}],
         "stack": [
@@ -75,11 +62,13 @@ MODEL = {
             {"box": "Patch features", "id": "feat", "minor": True, "basis": "stated"},
             {"box": "Concat action + proprio", "id": "cat", "style": "orange", "side": "Linear embeddings",
              "basis": "stated", "side_basis": "code"},
+            {"box": "Add learned positions", "minor": True, "basis": "code"},
             {"group": [
                 {"residual": [{"box": "LayerNorm", "minor": True, "basis": "code"},
                               {"box": "Frame-causal attention", "id": "attn", "style": "dark", "basis": "stated"}]},
                 {"residual": [{"box": "LayerNorm", "minor": True, "basis": "code"}, {"box": "MLP", "id": "mlp", "basis": "stated"}]},
             ], "repeat": "6 ×", "id": "block", "basis": "code"},
+            {"box": "Final LayerNorm", "minor": True, "basis": "code"},
             {"box": "Next-frame features", "id": "pred", "basis": "stated"},
         ],
         "above": [{"text": "MSE distance to the goal features"}],
@@ -91,12 +80,14 @@ MODEL = {
                                                                        {"box": "Refit Gaussian to top K", "basis": "stated"}]}],
         "annotations": [
             {"at": "enc", "text": "*196* tokens per frame · width *384*", "side": "left", "key": True},
-            {"at": "cat", "text": "*10*-d action + proprio on each patch", "side": "left"},
+            {"at": "cat", "text": "*10*-d action + *10*-d proprio → width *404*", "side": "left"},
             {"at": "attn", "text": "*16* heads · up to *588* tokens (*3* frames)", "side": "left", "key": True},
             {"at": "mlp", "text": "MLP hidden size *2,048*", "side": "left"},
             {"at": "block", "text": "*6* layers · ~*19M* parameters", "side": "right", "key": True},
             {"at": "pred", "text": "*15.89* s per plan: *100* samples × *10* steps", "side": "left", "key": True},
         ],
-        "feedback": "CEM rollout",
+        "feedback": "predicted features",
+        "feedback_from": "pred",
+        "feedback_to": "cat",
     },
 }

@@ -9,14 +9,14 @@ MODEL = {
     "params": "2.6B (+17B optional refiner)",
     "params_num": 2.6e9,
     "open": "code + weights",
-    "links": {"arXiv": "https://arxiv.org/abs/2605.15178"},
+    "links": {"code": "https://github.com/NVlabs/Sana", "arXiv": "https://arxiv.org/abs/2605.15178"},
     "tagline": "Hybrid linear DiT with a fixed-size state",
     "summary": "A minute-scale camera-controlled world model whose DiT replaces most softmax attention with frame-wise "
                "Gated DeltaNet: 15 of 20 blocks keep a D×D recurrent state per head, updated once per latent frame, and "
                "only 5 blocks use softmax attention, run at deployment with an attention sink plus a local window. The "
                "LTX2 VAE packs 8 raw frames into one 128-channel latent frame, so 60 s of 720p fits one GPU. Self Forcing "
-               "distillation gives a 4-step chunk-causal generator; with NVFP4 on one RTX 5090 it denoises 60 s of 720p "
-               "in 34 s (authors).",
+               "distillation gives a 4-step chunk-causal generator; with the attention sink it makes 60 s of 720p in 34 s "
+               "end to end on one H100 (authors; NVFP4 on an RTX 5090: 34 s of denoising, 42 s with VAE decode).",
     "facts": [
         ("Representation", "LTX2 VAE, 128 latent channels, one latent frame per 8 raw frames; spatial stride and tokens per "
                            "latent frame at 720p are not stated in the paper, which calls the representation 8x smaller than Wan2.1-VAE's"),
@@ -52,44 +52,30 @@ MODEL = {
                 "5.1 (backbone), 5.4 and Fig. 7 (speed path), Tables 2-3, App. C.1 (head dim 112)",
                 "NVlabs/Sana code: sana_multi_scale_video_camctrl.py, sana_gdn_camctrl_blocks.py, fused_streaming.py, "
                 "inference_sana_wm_streaming.py, sana_wm_streaming_1600m_720p.yaml; HF model card (CLI --action)"],
-    "diagram": {
-        "encoder": {"text": "Frames → LTX2 VAE (128 ch, 8 frames per latent)", "sub": "spatial stride and tokens per frame not stated",
-                    "tag": "pretrained", "short": "LTX2 VAE, 8 frames per latent"},
-        "tokens": {"groups": [("latent", 8, "S latents per frame"), ("text", 2, "text tokens")],
-                   "note": "tokens per frame not stated"},
-        "core": {"title": "GDN/softmax DiT ×20 · d 2240 · 20 heads",
-                 "rows": [("ssm", "Frame-wise GDN in 15 of 20 blocks"),
-                          ("attn", "Softmax attention in 5 of 20 blocks"),
-                          ("action", "Camera: UCPE attention + Plücker"),
-                          ("mlp", "MLP")],
-                 "notes": ["GDN: D×D state per head, updated once per latent frame",
-                           "softmax layers: first latent frame as sink + local window"]},
-        "sampling": {"kind": "diffusion", "text": "Self Forcing distilled flow, 4 denoising steps",
-                     "sub": "per chunk (size not stated); 60 steps before distillation", "short": "4 steps per chunk"},
-        "decoder": {"text": "LTX2 VAE decoder → 720p at 16 fps", "sub": "optional LTX-2 17B refiner (LoRA), 3 Euler steps",
-                    "tag": "pretrained", "short": "LTX2 VAE decoder → 720p"},
-        "loop": "AR rollout",
-    },
+    "figure_variant": "Released stage-one 2.6B SANA-WM, 20 hybrid blocks, 4 distilled steps",
     "flow": {
         "below": [{"text": "First frame + text + 6-DoF camera"}],
         "stack": [
             {"box": "LTX2 VAE encoder", "id": "vae", "style": "teal", "basis": "stated"},
-            {"box": "Patchify", "id": "patch", "minor": True, "basis": "stated"},
             {"group": [
                 {"box": "Noisy latent chunk", "id": "noisy", "style": "soft", "minor": True, "basis": "stated"},
+                {"box": "Patchify", "id": "patch", "minor": True, "basis": "stated"},
                 {"group": [
-                    {"residual": [{"box": "Norm", "minor": True, "side": "Timestep emb.", "basis": "code", "side_basis": "code"},
+                    {"residual": [{"box": "AdaLN (scale, shift)", "minor": True, "side": "Timestep emb.", "basis": "code", "side_basis": "code"},
                                   {"fanout": [[{"box": "UCPE camera attention", "id": "ucpe", "style": "orange", "side": "6-DoF poses",
                                                 "basis": "stated", "side_basis": "stated"}],
                                               [{"fanout": [[{"box": "Softmax attention", "id": "sattn", "style": "dark", "basis": "stated"}],
                                                            [{"box": "Gated DeltaNet", "id": "gdn", "style": "dark", "basis": "stated"}]]},
                                                {"merge": "or", "id": "pick", "basis": "stated"}]]},
-                                  {"merge": "+", "id": "camsum", "basis": "stated"}]},
+                                  {"merge": "+", "id": "camsum", "basis": "stated"},
+                                  {"box": "Scale by gate", "minor": True, "basis": "code"}]},
                     {"box": "Add Plücker mixing", "id": "pl", "style": "orange", "minor": True, "side": "Plücker raymaps",
                      "basis": "stated", "side_basis": "stated"},
                     {"residual": [{"box": "Cross-attention", "id": "xattn", "minor": True, "side": "Text tokens",
                                    "basis": "stated", "side_basis": "stated"}]},
-                    {"residual": [{"box": "Norm", "minor": True, "basis": "code"}, {"box": "Mix-FFN", "id": "ffn", "basis": "stated"}]},
+                    {"residual": [{"box": "AdaLN (scale, shift)", "minor": True, "basis": "code"},
+                                  {"box": "Mix-FFN", "id": "ffn", "basis": "stated"},
+                                  {"box": "Scale by gate", "minor": True, "basis": "code"}]},
                 ], "repeat": "20 ×", "id": "block", "basis": "code"},
                 {"box": "Predicted velocity", "id": "vel", "minor": True, "basis": "code"},
                 {"box": "Update latents", "id": "upd", "minor": True, "basis": "code"},
@@ -101,9 +87,10 @@ MODEL = {
             {"at": "gdn", "text": "*15* GDN (state ≈*30 MB*) + *5* softmax", "side": "right", "key": True},
             {"at": "block", "text": "*20* heads of *112* · *2.6B* parameters", "side": "right", "key": True},
             {"at": "upd", "text": "*4* steps, distilled from *60*", "side": "right"},
-            {"at": "dec", "text": "*60* s of *720p* in *34* s", "side": "right", "key": True},
+            {"at": "dec", "text": "*60* s of *720p* in *34* s, one H100", "side": "right", "key": True},
         ],
-        "feedback": "next chunk",
+        "feedback": "GDN state + KV cache",
+        "feedback_from": "upd",
+        "feedback_to": "block",
     },
-    "audit": {"date": "2026-10-23", "checked": 51, "stated": 36, "code": 12, "derived": 3, "assumed": 0, "fixed": 10},
 }

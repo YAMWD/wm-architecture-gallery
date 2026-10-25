@@ -9,7 +9,7 @@ MODEL = {
     "params": "0.5B (MAR-B init)",
     "params_num": 0.5e9,
     "open": "code + weights",
-    "links": {"arXiv": "https://arxiv.org/abs/2503.00200", "page": "https://unified-video-action-model.github.io"},
+    "links": {"code": "https://github.com/ShuangLI59/unified_video_action", "arXiv": "https://arxiv.org/abs/2503.00200", "page": "https://unified-video-action-model.github.io"},
     "tagline": "Video and action heads on one masked transformer",
     "summary": "A masked-autoencoder-style transformer, initialised from MAR-B, that fuses a history of kl-f16 VAE latents and "
                "action chunks into a joint video-action latent, which two lightweight diffusion heads decode into video "
@@ -33,7 +33,8 @@ MODEL = {
                     "times, FC-projected to N action tokens and concatenated channel-wise with the visual tokens"),
         ("Prediction", "Video: MAR-style masked generation from an empty sequence in 1 to 8 autoregressive stages; actions: a "
                        "conv + MLP pool the N latents into one action latent that conditions the action diffusion head, "
-                       "16 denoising steps on the robot (100 in simulation)"),
+                       "16 denoising steps on the robot (paper; 100 in simulation); the released config/model/uva.yaml sets "
+                       "act_diff_testing_steps 100, and no released task config overrides it"),
         ("Decoder", "Video diffusion head + VAE decoder exist but are skipped at deployment (100 ms at 16 steps, 625 ms at 100)"),
         ("Memory", "History window of h frames and action chunks; no KV cache"),
         ("Speed", "Per 16-action trajectory on an RTX 3080 (authors, Table VI): VAE encoder 40 ms, transformer 40 ms (30 with "
@@ -49,21 +50,7 @@ MODEL = {
                 "concatenated), config/model/uva.yaml (256x256, vae_stride 16, 4 frames), timm 0.9.7 ViT Block",
                 "GitHub README (MAR + VAE initialisation, checkpoints, 8 H100 x 4 days); LTH14/mar models/mar.py",
                 "Project page (RSS 2025)"],
-    "diagram": {
-        "encoder": {"text": "Frames → kl-f16 VAE → FC projection", "sub": "N = 256 tokens of width d per frame (official config)",
-                    "tag": "pretrained", "short": "kl-f16 VAE, 256 tokens per frame"},
-        "tokens": {"groups": [("latent", 6, "history tokens"), ("action", 6, "action tokens"), ("noise", 6, "masked future")],
-                   "note": "per frame, concatenated channel-wise"},
-        "core": {"title": "MAR-B transformer ×24 · d 768 · 12 heads",
-                 "rows": [("attn", "Bidirectional self-attention over N × h video-action tokens"),
-                          ("xattn", "Language: CLIP text token ×M, concatenated (Libero10)"),
-                          ("mlp", "MLP")],
-                 "notes": ["no KV cache; flash attention cuts 40 → 30 ms"]},
-        "sampling": {"kind": "diffusion", "text": "Action diffusion head, 16 steps (100 in simulation)",
-                     "sub": "video head: MAR masked stages, skipped at deployment", "short": "Action head 16 steps; video head skipped"},
-        "heads": ["action chunk"],
-        "decoder": {"none": "video diffusion head + VAE decoder skipped at deployment (100 ms at 16 steps)"},
-    },
+    "figure_variant": "MAR-B (released code): 12 encoder + 12 decoder blocks; 16 action steps as on the robot (paper)",
     "flow": {
         "below": [{"text": "History frames + actions + text"}],
         "stack": [
@@ -78,12 +65,22 @@ MODEL = {
                               {"box": "Bidirectional attention", "id": "attn", "style": "dark", "basis": "code"}]},
                 {"residual": [{"box": "LayerNorm", "minor": True, "basis": "code"},
                               {"box": "Feed forward", "id": "ffn", "basis": "code"}]},
-            ], "repeat": "24 ×", "id": "block", "basis": "code"},
-            {"box": "Video-action latents", "short": "Joint latents", "id": "z", "basis": "stated"},
-            {"fanout": [[{"box": "Video diffusion head", "short": "Video head (skipped)", "id": "vhead", "terminal": True,
+            ], "repeat": "12 ×", "label": "encoder", "id": "encoder", "basis": "code", "condensed_box": "Attention + FFN"},
+            {"box": "Final encoder LayerNorm", "minor": True, "basis": "code"},
+            {"box": "Projection + positions", "minor": True, "basis": "code"},
+            {"group": [
+                {"residual": [{"box": "LayerNorm", "minor": True, "basis": "code"},
+                              {"box": "Bidirectional attention", "style": "dark", "basis": "code"}]},
+                {"residual": [{"box": "LayerNorm", "minor": True, "basis": "code"},
+                              {"box": "Feed forward", "basis": "code"}]},
+            ], "repeat": "12 ×", "label": "decoder", "id": "block", "basis": "code", "condensed_box": "Attention + FFN"},
+            {"box": "Final decoder LayerNorm", "minor": True, "basis": "code"},
+            {"box": "Video-action latents", "short": "Joint latents", "id": "z", "minor": True, "basis": "stated"},
+            {"fanout": [[{"box": "Video diffusion head", "short": "Video head (skipped)", "id": "vhead", "terminal": True, "minor": True,
                           "basis": "stated"}],
                         [{"box": "Conv + MLP pool", "id": "pool", "minor": True, "basis": "stated"},
-                         {"box": "Action diffusion head", "id": "ahead", "style": "orange", "basis": "stated"}]]},
+                         {"group": [{"box": "Action diffusion head", "id": "ahead", "style": "orange", "basis": "stated"}],
+                          "loop": "16 steps (paper)", "tint": "grey", "basis": "stated"}]]},
         ],
         "above": [{"text": "16-action trajectory", "id": "out"}],
         "annotations": [
@@ -91,9 +88,8 @@ MODEL = {
             {"at": "attn", "text": "*12* heads · width *768* (MAR-B)", "side": "left"},
             {"at": "block", "text": "*40* ms (*30* flash) · *12* enc + *12* dec", "side": "right", "key": True},
             {"at": "vhead", "text": "Skipped at deployment (*100* ms)", "side": "left"},
-            {"at": "ahead", "text": "*16* steps in *15* ms", "side": "right", "key": True},
+            {"at": "ahead", "text": "*16* steps in *15* ms (paper, robot)", "side": "right", "key": True},
             {"at": "out", "text": "*95* ms per trajectory", "side": "right", "key": True},
         ],
     },
-    "audit": {"date": "2026-10-23", "checked": 44, "stated": 28, "code": 15, "derived": 1, "assumed": 0, "fixed": 12},
 }

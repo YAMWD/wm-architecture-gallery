@@ -28,7 +28,9 @@ MODEL = {
                     "3 distributional heads; 40M and 70M: 1 head, hidden 768 and 1,024) trained by TD with CQL"),
         ("Prediction", "Next observation token autoregressive within a frame, z_t^k | z_≤t-1, z_t^<k, a_≤t-1, so 36 serial "
                        "decodes per imagined frame [D]; reward sign {-1, 0, 1} and termination as classification; "
-                       "distributional Q-head (3-layer MLP, hidden 1792, 3 heads for 150M) trained by TD learning"),
+                       "distributional Q-head (3-layer MLP, hidden 1792, 3 heads for 150M) trained by TD learning; the released "
+                       "world_model_env.step samples each code from the categorical (should_sample=True by default) and "
+                       "takes the mode only when should_sample is False"),
         ("Decoder", "VQ-VAE CNN decoder; decisions use only token-space heads, but the released code decodes every "
                     "imagined frame during beam search (K + K² frames per action, output discarded) and turns decoded "
                     "imagined frames into synthetic fine-tuning data"),
@@ -47,23 +49,7 @@ MODEL = {
     "sources": ["arXiv 2410.00564 Sec. 3 (84×84, 18 actions), Sec. 4.1-4.2 (architecture, Eq. 4-6, beam search cost), Sec. 5 (K = 36, L = 8, H = 2)",
                 "arXiv 2410.00564 Table 5 (FPS), Tables 9-12 (VQ-VAE, transformer, Q-head configs), Table 17 (beam widths), Sec. 5 (pretraining about 12 days on A100 GPUs)",
                 "github.com/CJReinforce/JOWA src/models/jowa_model.py, transformer.py, kv_caching.py, src/envs/world_model_env.py, src/agent.py, src/utils.py"],
-    "diagram": {
-        "encoder": {"text": "Frame 84×84 → VQ-VAE (CNN)", "sub": "36 codes per frame, vocab 2048", "tag": "frozen",
-                    "short": "VQ-VAE, 36 codes per frame"},
-        "tokens": {"groups": [("frame", 36, "36 frame codes"), ("action", 1, "action")],
-                   "note": "per step; context 8 steps = 296 tokens"},
-        "core": {"title": "GPT-2 ×12 · d 768 · 12 heads (150M)",
-                 "rows": [("attn", "Causal self-attention over tokens"),
-                          ("mlp", "MLP")],
-                 "notes": ["learnable task embedding on observation and action tokens", "variants: 6 × 768 (70M), 4 × 512 (40M)"]},
-        "sampling": {"kind": "search", "text": "Beam search on Q + reward, horizon 2",
-                     "sub": "36 serial token decodes per imagined frame; beams batched",
-                     "short": "Beam search, horizon 2, width 2–4"},
-        "heads": ["reward", "termination", "Q-values"],
-        "decoder": {"text": "VQ decoder (CNN) → 84×84 frame", "sub": "decisions stay in token space; imagined frames decoded for fine-tuning data", "tag": "frozen",
-                    "short": "VQ decoder (not used in planning)"},
-        "loop": "beam search",
-    },
+    "figure_variant": "Released JOWA-150M: 12x768, task-conditioned GPT",
     "flow": {
         "below": [{"text": "Frame 84×84 + action + task ID"}],
         "stack": [
@@ -76,7 +62,8 @@ MODEL = {
                               {"box": "Masked self-attention", "id": "attn", "style": "dark", "basis": "code"}]},
                 {"residual": [{"box": "LayerNorm", "minor": True, "basis": "code"}, {"box": "Feed forward", "id": "ffn", "basis": "code"}]},
             ], "repeat": "12 ×", "id": "block"},
-            {"fanout": [[{"box": "Next-code head", "id": "out", "minor": True, "basis": "stated"}, {"box": "Next code (argmax)", "id": "sample", "basis": "code"}],
+            {"box": "Final LayerNorm", "minor": True, "basis": "code"},
+            {"fanout": [[{"box": "Next-code head", "id": "out", "minor": True, "basis": "stated"}, {"box": "Sample next code", "id": "sample", "basis": "code"}],
                         [{"box": "Reward head", "id": "rew", "terminal": True, "minor": True, "basis": "stated"}],
                         [{"box": "Done head", "terminal": True, "minor": True, "basis": "stated"}],
                         [{"box": "Q-value head", "id": "q", "terminal": True, "basis": "stated"}]]},
@@ -94,7 +81,8 @@ MODEL = {
             {"at": "sample", "text": "*37* serial passes per imagined frame", "side": "left", "key": True},
             {"at": "q", "text": "*10.8* FPS · *1.26* FPS with planning", "side": "right", "key": True},
         ],
-        "feedback": "next step",
+        "feedback": "next code token",
+        "feedback_from": "sample",
+        "feedback_to": "emb",
     },
-    "audit": {"date": "2026-10-23", "checked": 50, "stated": 24, "code": 25, "derived": 1, "assumed": 0, "fixed": 8},
 }

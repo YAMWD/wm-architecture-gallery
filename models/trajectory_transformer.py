@@ -30,14 +30,16 @@ MODEL = {
         ("Prediction", "Next-token softmax, one token per pass, teacher-forced training; planning = beam search, horizon 15 "
                        "transitions, observations decoded greedily (k_obs 1); paper (App. E): width 256, actions from the top 20 "
                        "tokens; released code: 128 beams × 2 expansions, actions sampled after dropping the least likely tokens "
-                       "holding 60% of the mass (cdf_act 0.6); offline RL ranks transitions by reward plus reward-to-go instead "
+                       "holding 60% of the mass (cdf_act 0.6), rewards sampled unfiltered; released HalfCheetah configs override "
+                       "the base: 32 beams, and horizon 5 for medium and medium-replay; offline RL ranks transitions by reward plus reward-to-go instead "
                        "of log-probability"),
         ("Decoder", "None; states are discretized scalars, decoded back by bin centres"),
         ("Memory", "Fixed context of 5 transitions; no KV-cache details given"),
         ("Speed", "'Up to multiple seconds for action selection when the context window grows too large', hardware not stated "
                   "(authors, Sec. 5); training 6-12 h per model on one V100 for 80 epochs (authors, App. A)"),
         ("Key detail", "Per executed action: 15 × (N + M + 2) − N sequential single-token decodes (the current state is given "
-                       "and the last state is not sampled), e.g. 358 for HalfCheetah at horizon 15 [D]; code batches 256 rows "
+                       "and the last state is not sampled), e.g. 358 for HalfCheetah at horizon 15 (paper and code default) and 108 at the horizon 5 of the "
+                       "released HalfCheetah medium config [D]; code batches 256 rows "
                        "for action and reward tokens, 128 for state tokens; a latency-bound ~1.5M-parameter workload [D]"),
     ],
     "evidence": "read",
@@ -45,20 +47,7 @@ MODEL = {
                 "arXiv 2106.02039 App. A (d 128, dropout 0.1, V100 6-12 h), App. E (beam width 256, horizon 15, V 100, context 5, k_obs, k_act)",
                 "Official code jannerm/trajectory-transformer: trajectory/models/transformers.py (pre-norm blocks, GELU MLP, R-to-go key mask, position embedding), trajectory/search/core.py and sampling.py (beam plan, cdf filter), config/offline.py, scripts/train.py, README (hyperparameters differ from paper)",
                 "Environment dimensions for the [D] examples: D4RL HalfCheetah (17-D state, 6-D action)"],
-    "diagram": {
-        "encoder": {"text": "State and action scalars → uniform/quantile bins", "sub": "no learned encoder; V = 100 bins per dimension",
-                    "short": "Per-dimension bins, V = 100"},
-        "tokens": {"groups": [("state", 5, "N state dims"), ("action", 2, "M action dims"), ("reward", 2, "r, reward-to-go")],
-                   "note": "N + M + 2 tokens per step; context 5 transitions"},
-        "core": {"title": "GPT ×4 · d 128 · 4 heads",
-                 "rows": [("attn", "Causal self-attention over all tokens"),
-                          ("mlp", "MLP")],
-                 "notes": ["context 5 × (N + M + 2) tokens; dropout 0.1", "output logits over V = 100 bins"]},
-        "sampling": {"kind": "search", "text": "Beam search, width 256, horizon 15", "sub": "1 token per pass: 15 × (N + M + 2) serial passes per action",
-                     "short": "Beam search, width 256, H 15"},
-        "decoder": {"none": "states are discretized scalars"},
-        "loop": "beam search",
-    },
+    "figure_variant": "Released code defaults: 4-layer GPT; beam plan 128 × 2, horizon 15",
     "flow": {
         "below": [{"text": "State, action, reward, R-to-go"}],
         "stack": [
@@ -70,6 +59,7 @@ MODEL = {
                               {"box": "Masked self-attention", "id": "attn", "style": "dark", "basis": "stated"}]},
                 {"residual": [{"box": "LayerNorm", "minor": True, "basis": "code"}, {"box": "Feed forward", "id": "ffn", "basis": "code"}]},
             ], "repeat": "4 ×", "id": "block"},
+            {"box": "Final LayerNorm", "minor": True, "basis": "code"},
             {"box": "Linear output layer", "id": "out", "minor": True, "basis": "stated"},
             {"box": "Sample next token", "id": "sample", "basis": "stated"},
         ],
@@ -78,8 +68,9 @@ MODEL = {
             {"for": "ffn", "stack": [{"box": "Linear", "basis": "code"}, {"box": "GELU", "basis": "code"},
                                      {"box": "Linear", "basis": "code"}]},
             {"for": "sample", "label": "beam search", "stack": [{"box": "Grow each beam one token", "basis": "stated"},
-                                                                 {"box": "Sample from top-k tokens", "basis": "stated"},
+                                                                 {"box": "Sample actions (CDF cut)", "basis": "code"},
                                                                  {"box": "Rank by reward + R-to-go", "basis": "stated"},
+                                                                 {"box": "Greedy state tokens", "basis": "code"},
                                                                  {"box": "Repeat to the horizon", "basis": "stated"}]},
         ],
         "annotations": [
@@ -88,9 +79,10 @@ MODEL = {
             {"at": "attn", "text": "*4* heads · context of *5* transitions", "side": "left", "key": True},
             {"at": "block", "text": "*4* layers · ~*0.8M* block weights", "side": "left", "key": True},
             {"at": "sample", "text": "*15 × (N + M + 2) − N* passes per action", "side": "left", "key": True},
-            {"at": "sample", "text": "*256* beams · horizon *15* (paper)", "side": "right"},
+            {"at": "sample", "text": "*128* beams × *2* · horizon *15* (code default)", "side": "right"},
         ],
-        "feedback": "receding horizon",
+        "feedback": "beam tokens",
+        "feedback_from": "sample",
+        "feedback_to": "emb",
     },
-    "audit": {"date": "2026-10-23", "checked": 46, "stated": 25, "code": 15, "derived": 6, "assumed": 0, "fixed": 10},
 }

@@ -16,7 +16,7 @@ MODEL = {
                "token vocabulary: it predicts the next frame's VQ-GAN codes as a world model and the next action's 7 tokens "
                "as a VLA, and the authors report that training both together helps both. There are no diffusion steps; "
                "everything is next-token decoding, so an action costs 9 serial passes ([BOA], 7 action tokens, [EOA]) and "
-               "an imagined frame about 277 (256×256) or 1,061 (512×512). A custom mask hides the earlier actions of a "
+               "an imagined frame about 277 at the drawn 256×256 setting (512×512 setting: about 1,061). A custom mask hides the earlier actions of a "
                "chunk so that each action depends only on text and images, which, the authors say, lets the chunk be "
                "generated in parallel; the released code still decodes it token by token.",
     "facts": [
@@ -30,8 +30,9 @@ MODEL = {
         ("Actions", "7 discrete tokens per action (3 relative positions, 3 relative angles, 1 gripper), 256 bins per dimension; "
                     "chunks of K = 5 (K = 10 on LIBERO-Long)"),
         ("Prediction", "Next-token softmax, greedy in the released code; 9 passes per action ([BOA], 7 tokens, [EOA]) [D]; "
-                       "the masked chunk can be generated in parallel (authors); about 277 or 1,061 serial passes per "
-                       "generated frame (256 / 1,024 VQ codes plus row-end, size, [BOI], [EOI] and end tokens) [D]"),
+                       "the masked chunk can be generated in parallel (authors); about 277 serial passes per generated frame at "
+                       "256×256 (256 VQ codes plus row-end, size, [BOI], [EOI] and end tokens) [D]; 512×512 setting: about "
+                       "1,061 (1,024 codes) [D]"),
         ("Decoder", "VQ-GAN decoder for predicted image tokens (world-model mode); actions need only a de-binning lookup "
                     "(token → bin centre → min-max un-normalisation), no neural decoder"),
         ("Memory", "LLM KV cache over the prompt (history frames + text); 1, 2 or 4 history frames evaluated, 2 by default"),
@@ -49,22 +50,7 @@ MODEL = {
                 "GitHub alibaba-damo-academy/WorldVLA: README; item_processor.py (process_image, process_action); "
                 "libero_util/Chameleon_utils.py (GenerationConfig, greedy); modeling_xllmx_chameleon_ck.py "
                 "(decode_token_ids_to_actions)"],
-    "diagram": {
-        "encoder": {"text": "Frame 256x256 or 512x512 → VQ-GAN tokenizer", "sub": "256 or 1,024 codes per frame, codebook 8192",
-                    "tag": "pretrained", "short": "VQ-GAN, 256 / 1,024 codes per frame"},
-        "tokens": {"groups": [("text", 3, "text"), ("frame", 16, "256–1,024 codes"), ("action", 7, "7 action tokens")],
-                   "note": "M = 2 history frames; chunk K = 5"},
-        "core": {"title": "Chameleon LLM ×32 · d 4096 · 32 heads",
-                 "rows": [("attn", "Causal self-attention; action mask: actions see text + images, not earlier actions"),
-                          ("mlp", "MLP (FFN 11,008)")],
-                 "notes": ["KV cache over the prompt"]},
-        "sampling": {"kind": "ar", "text": "Next-token softmax over 65,536 tokens",
-                     "sub": "7 passes per action (chunk in parallel); 256-1,024 per frame",
-                     "short": "Next token: 7 per action, 256+ per frame"},
-        "decoder": {"text": "VQ-GAN decoder → 256x256 / 512x512 frame", "sub": "world-model mode only", "tag": "pretrained",
-                    "short": "VQ-GAN decoder (world-model mode)"},
-        "loop": "AR rollout",
-    },
+    "figure_variant": "Released Chameleon-based ~7B, 256×256 setting, two-frame input",
     "flow": {
         "below": [{"text": "Text + 2 frames (current + 1 past)"}],
         "stack": [
@@ -87,10 +73,11 @@ MODEL = {
             {"at": "seq", "text": "Vocabulary of *65,536*", "side": "left"},
             {"at": "attn", "text": "*32* heads · width *4,096*", "side": "left"},
             {"at": "block", "text": "*32* layers · ≈*7B* parameters", "side": "right", "key": True},
-            {"at": "sample", "text": "*9* passes per action · ≈*277* / *1,061* per frame", "side": "right", "key": True},
+            {"at": "sample", "text": "*9* passes per action · ≈*277* per frame", "side": "right", "key": True},
             {"at": "act", "text": "*3.13* FPS with chunking (*1.77* without)", "side": "right", "key": True},
         ],
         "feedback": "next token",
+        "feedback_from": "sample",
+        "feedback_to": "emb",
     },
-    "audit": {"date": "2026-10-23", "checked": 44, "stated": 22, "code": 15, "derived": 7, "assumed": 0, "fixed": 8},
 }

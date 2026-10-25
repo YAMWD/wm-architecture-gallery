@@ -4,103 +4,101 @@ MODEL = {
     "year": 2026, "month": 1,
     "org": "Robbyant",
     "family": "wam",
-    "role": "LLM or mixture of transformers",
-    "status": "RSS 2026 (arXiv 2601.21998, v2 Mar 2026)",
-    "params": "5.3B (5B video + 0.35B action)",
-    "params_num": 5.3e9,
-    "open": "code + weights (shared-backbone variant only)",
+    "role": "Diffusion transformer",
+    "status": "RSS 2026; arXiv 2601.21998",
+    "params": "≈5.1B shared (released)",
+    "params_num": 5.089e9,
+    "open": "code + weights (shared backbone only)",
     "links": {"arXiv": "https://arxiv.org/abs/2601.21998", "code": "https://github.com/robbyant/lingbot-va",
-              "weights": "https://huggingface.co/robbyant/lingbot-va", "page": "https://technology.robbyant.com/lingbot-va"},
-    "tagline": "Interleaves video and actions in one causal sequence",
-    "summary": "A causal world-action model that interleaves video latents and actions in one autoregressive sequence with "
-               "a KV cache. Two parallel transformer streams of the same depth, a 5B video stream initialised from Wan2.2-5B "
-               "(d 3072) and a 0.35B action stream (d 768), are joined by shared attention. Each step denoises the next chunk "
-               "(K = 4) with 3 Euler steps only to s = 0.6 (partial denoising, enabled by noisy-history "
-               "augmentation), then decodes the chunk's actions (τK = 16 by the paper's formula) as inverse dynamics "
-               "in 10 steps; real observations re-enter the "
-               "cache in closed loop.",
+              "weights": "https://huggingface.co/robbyant/lingbot-va-base", "page": "https://technology.robbyant.com/lingbot-va"},
+    "tagline": "Released video and action paths share one Wan DiT",
+    "summary": "An autoregressive video-action model with a causal KV cache. The paper describes separate video and narrow "
+               "action transformer streams joined by attention. The released implementation instead embeds both modalities "
+               "into one 3072-wide, 30-block Wan transformer and selects video or action input/output projections with "
+               "action_mode; only this shared-backbone version is released (README: separated version still to come). The figure "
+               "follows it with va_demo_cfg.py: 5 video Euler updates, then 10 action updates, each stage ending with a "
+               "t=0 pass that caches the predicted chunk. After execution, the server VAE-encodes the real frames, embeds "
+               "the executed actions and overwrites those predictions with 2 cache-write passes. The paper's 3-step "
+               "partial-video schedule is a different configuration.",
     "facts": [
-        ("Representation", "Wan2.2 causal VAE (4x16x16) plus 2x patchify; all camera views concatenated along the width → "
-                           "192 spatial tokens per latent frame; video at 12.5 Hz with 4 actions per frame (50 Hz)"),
-        ("Core", "MoT: video stream from Wan2.2-5B, 30 layers, d 3072 (24 heads, FFN 14,336 per the Wan2.2-TI2V-5B "
-                 "config); action stream of the same depth at d 768 (~350M), initialised by interpolating the video weights "
-                 "scaled by sqrt(d_v/d_a); RoPE in both; T5 text through cross-attention (which stream reads it is not "
-                 "stated); norms and timestep modulation not given in the paper"),
-        ("Attention", "Causal over the interleaved video-action sequence (teacher forcing), bidirectional inside a chunk; "
-                      "action tokens are projected to d 3072 for the joint attention and back; training packs episodes "
-                      "into sequences of up to 10K tokens"),
-        ("Actions", "Action tokens in the sequence (single-layer MLP encoder and decoder, hidden 256; quantile-normalised), "
-                    "decoded by inverse dynamics conditioned on the predicted visual transition; chunk K = 4 video frames = "
-                    "τK = 16 actions by the paper's formula [D]; released configs give 16-80 actions per chunk"),
-        ("Prediction", "Flow matching with an Euler solver: video 3 steps to s = 0.6 (partial denoising) at CFG 5.0, actions "
-                       "10 steps to s = 1.0 at CFG 1.0; a forward-dynamics step re-grounds the cache on the latest real frame"),
-        ("Decoder", "Wan2.2 VAE decoder exists for visualisation, but actions are read from latents and the partially "
-                    "denoised video is never decoded for control"),
-        ("Memory", "Causal KV cache over the interleaved history (released server: FIFO of the last 36 chunks for "
-                   "RoboTwin, 15 otherwise); the async-pipeline prose limits the active context to the last step, "
-                   "but Alg. 2 and Sec. 4.5.2 keep all cached history"),
-        ("Speed", "Not disclosed: no latency, control rate or GPU is given; the authors name video-token denoising as the "
-                  "primary inference bottleneck"),
-        ("Key detail", "Per chunk: 3 video steps x 2 CFG passes = 6 passes of the 5B stream over the new video tokens "
-                       "(768 if K = 4 latent frames of 192), plus 10 passes of the 0.35B stream, plus a cache-write "
-                       "pass over the encoded real frames and executed actions [D]"),
+        ("Representation", "Released demo: two 256x256 camera views encoded separately with the Wan2.2 VAE and concatenated "
+                           "in latent width; 4x16x16 VAE and 1x2x2 patching give 128 tokens per latent frame, 512 for the "
+                           "4-latent-frame chunk [D]. The paper reports 192 tokens in its experimental setup"),
+        ("Core", "Released WanTransformer3DModel: one shared ModuleList of 30 blocks, width 3072, 24 heads of 128, FFN "
+                 "14336. Both action_mode branches execute this same block list. Each block has gated adaptive LayerNorm "
+                 "self-attention, text cross-attention with LayerNorm, then gated adaptive LayerNorm GELU FFN. "
+                 "Separate modality timestep embedders and input/output projections are retained. The released checkpoint "
+                 "has 5,089,465,566 transformer parameters [D from safetensors tensor shapes]. The paper instead describes "
+                 "a 3072-wide video tower and 768-wide action tower; these are not drawn as released-code architecture"),
+        ("Attention", "Chunk-causal attention with RoPE and a shared history cache. Training concatenates noisy and clean "
+                      "video/action sequences and applies a structured mask. Inference processes video and actions in "
+                      "separate calls to the shared transformer, reading cached history; T5 reaches both modes through "
+                      "the same cross-attention layers"),
+        ("Actions", "Released demo: action_dim 30, 4 latent frames per chunk and action_per_frame 8 give 32 action vectors "
+                    "[D]. Linear action_embedder maps 30 to 3072, action_proj_out maps back. Quantile denormalization and "
+                    "selection of used action channels follow generation. Other robot configurations have different horizons"),
+        ("Prediction", "Released demo: 5 video Euler updates plus a t=0 pass that caches the predicted video chunk, then 10 "
+                       "action Euler updates plus a t=0 pass that caches the predicted actions (is_pred entries). Chunk 0 "
+                       "pins its first latent frame to the VAE encoding of the initial observation. Video guidance 5, action guidance 1. The paper reports 3 video steps to "
+                       "s=0.6 and 10 action steps to s=1; this is not the demo configuration shown"),
+        ("Decoder", "VAE decoding is optional visualization; control reads the action projection directly. Executed "
+                    "actions return through the action embedding into the cache write, not into the image encoder"),
+        ("Memory", "Per-layer causal KV cache with FIFO eviction; attn_window 30 gives (30//2) x (512 + 32) = 8,160 "
+                   "token slots [D]. Every chunk, _compute_kv_cache drops the predicted (is_pred) entries, VAE-encodes "
+                   "the real frames, normalizes the executed state/actions and writes both with 2 transformer passes "
+                   "(video, then action; update_cache=2). Paper Alg. 1 likewise appends E(o) and executed actions to the cache"),
+        ("Speed", "No inference latency is disclosed for the released demo configuration"),
+        ("Key detail", "Per chunk, released demo: 6 video + 11 action passes of the 30-block DiT plus 2 cache-write passes, "
+                       "all at batch 2 because video guidance 5 enables CFG [D]. Paper/code difference: separate towers in "
+                       "the paper versus shared block weights in the released forward_train and forward(action_mode=...) "
+                       "paths. Paper: 5.3B total (5B video stream + about 350M for the 768-wide action stream), video at "
+                       "12.5 Hz and actions at 50 Hz, noisy-history augmentation to allow partial video denoising"),
     ],
     "evidence": "read",
-    "sources": ["arXiv 2601.21998 Sec. 1, 3.2-3.4 (interleaving, MoT block, noisy-history augmentation, KV cache, async "
-                "pipeline), Sec. 4.2 (dimensions, VAE, 192 tokens, sampling), Sec. 4 (12.5 Hz video / 50 Hz actions)",
-                "Hugging Face Wan-AI/Wan2.2-TI2V-5B config.json (30 layers, d 3072, 24 heads, FFN 14336)",
-                "github.com/robbyant/lingbot-va README, wan_va/configs/*.py, modules/model.py, wan_va_server.py",
-                "Project page technology.robbyant.com/lingbot-va (RSS 2026)"],
-    "diagram": {
-        "encoder": {"text": "Frames (views side by side) → Wan2.2 causal VAE",
-                    "sub": "4x16x16 + 2x patchify = 192 tokens per latent frame", "tag": "frozen",
-                    "short": "Wan2.2 VAE, 192 tokens per frame"},
-        "tokens": {"groups": [("latent", 16, "4 × 192 video latents"), ("action", 8, "4 × 4 action tokens")],
-                   "note": "per chunk K = 4, interleaved sequence"},
-        "core": {"title": "Wan2.2 DiT ×30 · d 3072 · 24 heads",
-                 "rows": [("attn", "Causal self-attention over the interleaved sequence, shared by both streams, RoPE"),
-                          ("xattn", "Cross-attention to T5 text"),
-                          ("moe", "Action stream: same 30 layers at d 768 (~350M), projected into the joint attention"),
-                          ("mlp", "Video MLP (FFN 14,336)")],
-                 "notes": ["causal KV cache; training sequences up to 10K tokens"]},
-        "sampling": {"kind": "diffusion", "text": "Euler flow matching: video 3 steps to s = 0.6, actions 10 steps",
-                     "sub": "per chunk; video CFG 5.0, action CFG 1.0", "short": "Video 3 partial steps, actions 10 steps"},
-        "heads": ["action chunk"],
-        "decoder": {"none": "actions read from latents; the partially denoised video is not decoded for control"},
-        "loop": "closed loop with real frames",
-    },
+    "sources": ["arXiv 2601.21998 Sec. 3.3 (paper MoT architecture), Sec. 4.2 (paper sampling and dimensions)",
+                "robbyant/lingbot-va commit 7c6ffa9: wan_va/modules/model.py, modules/utils.py, wan_va_server.py, "
+                "configs/va_demo_cfg.py, configs/shared_config.py",
+                "HF robbyant/lingbot-va-base commit 68b7bc1: transformer/config.json and three safetensors headers"],
+    "figure_variant": "Released va_demo_cfg.py: shared 30x3072 DiT, 5 video + 10 action updates",
     "flow": {
-        "below": [{"text": "Camera views + task text"}],
+        "below": [{"text": "Real 256×256 views ×2 + task text"}],
         "stack": [
-            {"box": "Wan2.2 causal VAE", "id": "vae", "style": "teal", "basis": "stated"},
-            {"box": "Patchify (2× spatial)", "id": "patch", "minor": True, "basis": "stated"},
+            {"box": "Wan2.2 VAE encoder", "id": "vae", "style": "teal", "basis": "code"},
+            {"box": "Real-obs K/V write", "id": "write", "basis": "code"},
             {"group": [
-                {"box": "Interleave noisy tokens", "short": "Interleave tokens", "id": "seq", "style": "soft", "side": "Action MLP enc.", "basis": "stated", "side_basis": "stated"},
-                {"group": [
-                    {"fanout": [[{"box": "Video QKV", "id": "vqkv", "minor": True, "basis": "stated"}],
-                                [{"box": "Action QKV", "id": "aqkv", "style": "orange", "minor": True, "basis": "stated"}]]},
-                    {"box": "Shared causal attention", "id": "attn", "style": "dark", "side": "RoPE", "basis": "stated", "side_basis": "stated"},
-                    {"box": "Cross-attention", "id": "xattn", "side": "T5 text", "minor": True, "basis": "stated", "side_basis": "stated"},
-                    {"fanout": [[{"box": "Video MLP", "id": "vmlp", "basis": "stated"}],
-                                [{"box": "Action MLP", "id": "amlp", "style": "orange", "basis": "stated"}]]},
-                ], "repeat": "30 ×", "id": "block", "basis": "code"},
-                {"box": "Action head (linear)", "id": "ahead", "style": "orange", "minor": True, "basis": "stated"},
-                {"box": "Euler update", "id": "upd", "minor": True, "basis": "stated"},
-            ], "loop": "3 + 10 Euler steps", "loop_short": "3 + 10 steps", "tint": "grey", "id": "denoise", "basis": "stated"},
-            {"box": "Append chunk to KV cache", "id": "kv", "minor": True, "basis": "code"},
-            {"fanout": [[{"box": "Partly denoised video", "short": "Video latents", "id": "vid", "terminal": True, "basis": "stated"}],
-                        [{"box": "De-normalise actions", "id": "act", "style": "orange", "basis": "code"}]]},
+                {"box": "Noisy video latents", "style": "soft", "minor": True, "basis": "code"},
+                {"box": "Patchify + projection", "id": "patch", "minor": True, "basis": "code"},
+                {"box": "Shared Wan DiT", "id": "vdit", "style": "dark", "basis": "code"},
+                {"box": "Video velocity head", "minor": True, "basis": "code"},
+                {"box": "Euler update", "minor": True, "basis": "code"},
+            ], "loop": "5 video steps", "tint": "grey", "basis": "code"},
+            {"box": "t=0 pass, cache video", "id": "kv", "minor": True, "basis": "code"},
+            {"group": [
+                {"box": "Action linear embedding", "minor": True, "side": "Noisy actions", "basis": "code", "side_basis": "code"},
+                {"box": "Same shared Wan DiT", "id": "block", "style": "dark", "basis": "code"},
+                {"box": "Action velocity head", "minor": True, "basis": "code"},
+                {"box": "Euler update", "minor": True, "basis": "code"},
+            ], "loop": "10 action steps", "tint": "orange", "basis": "code"},
+            {"box": "t=0 pass, cache actions", "minor": True, "basis": "code"},
+            {"box": "Denormalize actions", "id": "act", "style": "orange", "basis": "code"},
         ],
-        "above": [{"text": "16 actions; video not decoded"}],
+        "above": [{"text": "32 actions (demo configuration)"}],
+        "insets": [{"for": "block", "label": "shared block ×30", "stack": [
+            {"residual": [{"box": "AdaLN", "minor": True, "side": "Modality timestep", "basis": "code", "side_basis": "code"},
+                          {"box": "Chunk-causal attention", "side": "RoPE + cached K/V", "style": "dark", "basis": "code", "side_basis": "code"},
+                          {"box": "Scale by gate", "minor": True, "basis": "code"}]},
+            {"residual": [{"box": "LayerNorm + cross-attn", "side": "T5 text", "basis": "code", "side_basis": "code"}]},
+            {"residual": [{"box": "AdaLN-gated GELU FFN", "basis": "code"}]}]}],
         "annotations": [
-            {"at": "vae", "text": "*192* tokens per latent frame = *4* video frames", "side": "left", "key": True},
-            {"at": "seq", "text": "*4* actions per video frame (≈*16* per latent)", "side": "left"},
-            {"at": "attn", "text": "*24* heads · width *3,072* (actions *768*)", "side": "left"},
-            {"at": "block", "text": "*30* layers · *5.3B* parameters", "side": "right", "key": True},
-            {"at": "denoise", "text": "Video *3* steps to s = *0.6*, actions *10* steps", "side": "right", "key": True},
-            {"at": "act", "text": "Latency not disclosed", "side": "right", "key": True},
+            {"at": "vae", "text": "*2* views · ≈*512* tokens per *4*-frame chunk", "side": "left", "key": True},
+            {"at": "write", "text": "*2* passes · cache ≈*8,160* tokens", "side": "left"},
+            {"at": "vdit", "text": "*30* layers · *24* heads · width *3,072*", "side": "left", "key": True},
+            {"at": "kv", "text": "Predicted K/V, replaced by real K/V", "side": "left"},
+            {"at": "block", "text": "Same weights · ≈*5.1B* parameters", "side": "left", "key": True},
+            {"at": "act", "text": "*32* actions · latency not disclosed", "side": "left", "key": True},
         ],
-        "feedback": "next chunk",
+        "feedback": "executed actions",
+        "feedback_from": "act",
+        "feedback_to": "write",
     },
-    "audit": {"date": "2026-10-23", "checked": 47, "stated": 40, "code": 4, "derived": 3, "assumed": 0, "fixed": 8},
 }

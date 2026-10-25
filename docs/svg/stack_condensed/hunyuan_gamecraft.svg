@@ -1,6 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="588" height="403" viewBox="0 0 588 403" font-family="IBM Plex Sans">
 <style>@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;700&amp;family=Saira+Semi+Condensed:wght@500;600&amp;display=swap");</style>
 <defs><marker id="ah_1E2A3B" markerWidth="7" markerHeight="7" refX="5.5" refY="3.5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0 L7,3.5 L0,7 z" fill="#1E2A3B"/></marker><marker id="ah_B95A08" markerWidth="7" markerHeight="7" refX="5.5" refY="3.5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0 L7,3.5 L0,7 z" fill="#B95A08"/></marker></defs>
+<desc>Hunyuan-GameCraft — Released HunyuanVideo GameCraft: 20 double + 40 single blocks, 8 PCM steps</desc>
 <rect x="0.0" y="0.0" width="589.0" height="404.0" rx="0.0" fill="#FFFFFF"/>
 <text x="269.6" y="18.0" font-family="Saira SemiCondensed" font-weight="600" font-size="17.0" fill="#1D3E72" text-anchor="middle">Hunyuan-GameCraft</text>
 <text x="269.6" y="31.0" font-family="IBM Plex Sans" font-weight="400" font-size="10.0" fill="#5E6B80" text-anchor="middle">Tencent Hunyuan and HUST · 2025</text>

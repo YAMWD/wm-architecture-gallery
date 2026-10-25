@@ -17,6 +17,7 @@ import datetime
 from . import diagram as D
 from . import registry as R
 from . import stack as S
+from . import audit as A
 
 ROOT = R.ROOT
 SITE_TITLE = "World Model Architecture Gallery"
@@ -27,8 +28,7 @@ FAMILY_SHORT = {"rl": "RL world model", "token": "Token video", "dit": "Causal D
                 "ssm": "State-space"}
 FAMILY_COLOUR = {"rl": "#1D3E72", "token": "#5E6B80", "dit": "#C46A12", "driving": "#007F7C", "jepa": "#9A7300",
                  "wam": "#8A8418", "llm": "#6B4FA0", "object": "#B4436C", "ssm": "#2F7D32"}
-EVIDENCE_TEXT = {"verified": "Facts passed a 3-vote adversarial check",
-                 "read": "Facts read from the paper or code",
+EVIDENCE_TEXT = {"read": "Architecture compared with the primary publication and available code; see Source check for limits",
                  "claim": "Facts from a developer page only"}
 
 
@@ -70,20 +70,13 @@ def read_changelog():
 
 
 def audit_html(m):
-    a = m.get("audit")
-    if not a:
-        return ""
-    parts = []
-    for key, label in (("stated", "stated in the paper or report"), ("code", "from released code or config"),
-                       ("derived", "our arithmetic"), ("assumed", "not stated in the sources")):
-        if a.get(key):
-            parts.append("%d %s" % (a[key], label))
-    fixed, removed = a.get("fixed", 0), a.get("removed", 0)
-    text = ("Checked %d elements against the primary sources on %s: %s.%s %s" %
-            (a.get("checked", 0), a.get("date", ""), ", ".join(parts),
-             (" %d removed because no source states them." % removed) if removed else "",
-             ("%d corrected." % fixed) if fixed else "No corrections needed."))
-    return '<details class="fact"><summary>Source check</summary><p>%s</p></details>' % h(text)
+    review = m["source_review"]
+    limits = " ".join(review["limitations"])
+    link = "architecture_audit.md#" + m["slug"].replace("_", "-")
+    return ('<details class="fact source-review"><summary>Source check</summary>'
+            '<p>Reviewed %s · %s. Figure: %s.</p><p>%s</p>'
+            '<p><a href="%s" target="_blank" rel="noopener">Findings and pinned primary sources</a></p></details>'
+            % (h(review["date"]), h(review["coverage"]), h(review["variant"]), h(limits), h(link)))
 
 
 def card_html(m, mini_svg, artifact=False):
@@ -266,6 +259,9 @@ footer .copy{margin:14px 0 0;font-family:var(--mono);font-size:11px;letter-spaci
 .vbody .pane{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;padding:14px}
 .vbody .pane+.pane{border-left:1px solid #DCE2EB}
 .vbody .fig{flex:1;width:100%;min-height:0;display:flex;justify-content:center}
+.vbody .source-review{flex:none;width:100%;max-width:760px;margin-top:12px;color:#0F1B2D}
+.vbody .source-review>summary{color:#5B6779}
+.vbody .source-review a{color:#1D3E72}
 .vbody.fit .fig svg{width:100%;height:100%;max-height:100%}
 .vbody.zoom{display:block}
 .vbody.zoom .pane{display:inline-flex;vertical-align:top;min-width:max-content}
@@ -336,7 +332,11 @@ JS = r"""
     if(svg&&zoom){const w=+svg.dataset.w;svg.style.width=Math.round(w*1.6)+'px'}
     return wrap;
   }
-  function pane(slug){const p=document.createElement('div');p.className='pane';p.appendChild(figure(slug));return p}
+  function pane(slug){
+    const p=document.createElement('div');p.className='pane';p.appendChild(figure(slug));
+    const review=document.getElementById(slug).querySelector('.source-review').cloneNode(true);
+    review.open=true;p.appendChild(review);return p;
+  }
   function render(){
     const c=document.getElementById(cur);
     vtitle.textContent=c.dataset.name+(cmp?'  ·  '+document.getElementById(cmp).dataset.name:'');
@@ -411,8 +411,9 @@ Click a card's diagram to open the detailed version; open <i>Details</i> for the
   <li><span class="sw acc">12</span> numbers sit beside the model</li>
   <li><span class="sw soft"></span> "Rest of block not stated": layers the source does not describe</li>
 </ul>
-<p style="margin:0;font-size:13.5px">Evidence: <b>verified</b> facts passed a 3-vote adversarial check;
-<b>read</b> facts come from the paper or code; <b>claim</b> facts come from a developer page only.
+<p style="margin:0;font-size:13.5px">Evidence: <b>read</b> means the primary publication and available code were read;
+<b>claim</b> means an official developer page only. Each Source check names the figure's configuration,
+paper/code differences and missing evidence. Undisclosed details are not inferred from other models.
 Keys: <b>/</b> search, <b>← →</b> previous and next, <b>Esc</b> close.</p>
 """
 
@@ -430,6 +431,9 @@ def build(out_dir=DEFAULT_OUT, artifact=None):
             print("INVALID %s: no flow diagram" % m["slug"])
     if bad:
         sys.exit(1)
+    ledger = A.load_reviews(specs)
+    for m in specs:
+        m["source_review"] = dict(ledger["models"][m["slug"]], date=ledger["date"])
     specs.sort(key=R.sort_key, reverse=True)
     for sub in ("stack", "mini"):
         os.makedirs(os.path.join(out_dir, "svg", sub), exist_ok=True)
@@ -449,12 +453,15 @@ def build(out_dir=DEFAULT_OUT, artifact=None):
         cards_site.append(card_html(m, mini_web, artifact=False))
         cards_art.append(card_html(m, mini_web, artifact=True))
         templates.append('<template id="full-%s">%s</template>' % (h(slug), full_web))
-        # the legacy token-square "diagram" spec was not part of the source audit, so it is not published
-        d = {k: v for k, v in m.items() if not k.startswith("_") and k != "diagram"}
+        d = {k: v for k, v in m.items() if not k.startswith("_")}
         d["facts"] = [list(f) for f in m["facts"]]
         data.append(d)
     with open(os.path.join(out_dir, "data.json"), "w", encoding="utf-8") as f:
         json.dump(data, f, indent=1, ensure_ascii=False)
+    A.write_report(ledger, os.path.join(out_dir, "architecture_audit.md"))
+    with open(os.path.join(out_dir, "architecture_audit.json"), "w", encoding="utf-8") as f:
+        json.dump(ledger, f, indent=2, ensure_ascii=False)
+        f.write("\n")
 
     fams = [k for k in R.FAMILIES if any(m["family"] == k for m in specs)]
     fam_chips = "".join('<button type="button" class="chip" data-fam="%s" aria-pressed="false" style="--fc:%s">'
@@ -479,7 +486,7 @@ def build(out_dir=DEFAULT_OUT, artifact=None):
     <label class="search"><svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="5.2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M11 11l3.6 3.6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><input type="search" id="q" placeholder="Search {n} models" aria-label="Search models"></label>
     <details class="filters"><summary>Filters</summary><div class="menu">
       <select id="role" aria-label="Role"><option value="">Any role</option>{role_opts}</select>
-      <select id="ev" aria-label="Evidence"><option value="">Any evidence</option><option value="verified">verified</option><option value="read">read</option><option value="claim">claim</option></select>
+      <select id="ev" aria-label="Evidence"><option value="">Any evidence</option><option value="read">read</option><option value="claim">claim</option></select>
       <select id="open" aria-label="Availability"><option value="">Any availability</option><option value="weights">open weights</option><option value="code">code</option><option value="closed">closed</option></select>
       <button type="button" id="clear">Clear filters</button>
     </div></details>
@@ -495,6 +502,7 @@ def build(out_dir=DEFAULT_OUT, artifact=None):
   <div class="fl">
     <details><summary>About</summary><div class="fold">
       <p>Architecture diagrams for world models whose dynamics model or generative backbone is a transformer, drawn in one visual language after the <a href="https://sebastianraschka.com/llm-architecture-gallery/" target="_blank" rel="noopener">LLM Architecture Gallery</a>. Numbers marked [D] in the details are our own arithmetic; speeds are the developers' own figures on their own hardware.</p>
+      <p>Source review: all 49 original publications or official technical pages; matching released code for 42 models. Seven have no matching official implementation in the consulted sources. See the <a href="architecture_audit.md">per-model findings</a> for configurations, differences and pinned sources.</p>
       <p>Corrections and new models are welcome as issues or pull requests.</p>
     </div></details>
     <details><summary>Changelog</summary><div class="fold">{read_changelog()}</div></details>

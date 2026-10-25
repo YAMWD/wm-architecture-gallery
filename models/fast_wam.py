@@ -9,7 +9,7 @@ MODEL = {
     "params": "6B (5B video DiT + 1B action expert)",
     "params_num": 6e9,
     "open": "code + weights",
-    "links": {"arXiv": "https://arxiv.org/abs/2603.16666", "page": "https://yuantianyuan01.github.io/FastWAM"},
+    "links": {"code": "https://github.com/yuantianyuan01/FastWAM", "arXiv": "https://arxiv.org/abs/2603.16666", "page": "https://yuantianyuan01.github.io/FastWAM"},
     "tagline": "Video DiT plus action expert, no imagined video",
     "summary": "A mixture-of-transformers world-action model that keeps video co-training but drops test-time imagination. "
                "A Wan2.2-5B video DiT and a 1B action-expert DiT (the same architecture at d 1024) share attention; in "
@@ -23,8 +23,11 @@ MODEL = {
                            "LIBERO (224x448 input) and 120 on RoboTwin (384x320) [D from released config]; a "
                            "proprioceptive-state token joins the T5 context (code)"),
         ("Core", "Video DiT from Wan2.2-5B (30 layers, d 3072, 24 heads, FFN 14,336 per its config.json) plus an action "
-                 "expert with the same architecture at d 1024 (1B); T5 text reaches all tokens through cross-attention; "
-                 "norms and timestep modulation not detailed in the paper"),
+                 "expert with the same architecture at d 1024 (1B); T5 text reaches all tokens through cross-attention. "
+                 "The paper does not detail norms or timestep modulation; the released code uses the same Wan DiTBlock "
+                 "for both experts: AdaLN-modulated LayerNorm, gated self-attention residual, LayerNorm cross-attention "
+                 "residual, AdaLN-modulated gated GELU FFN residual. The video pass runs at timestep 0; the action expert "
+                 "has its own timestep embedder and a Linear output head"),
         ("Attention", "Shared attention with a structured mask: clean first-frame tokens attend to nothing else; future video "
                       "tokens (training only) attend within the video branch and to the first frame; action tokens attend "
                       "within the action branch and to the first frame, never to future video"),
@@ -47,24 +50,10 @@ MODEL = {
                 "d_a 1024, h 32, 10 steps, CFG 1.0, RTX 5090D), 4.3.3 (190 vs 810 ms)",
                 "Hugging Face Wan-AI/Wan2.2-TI2V-5B config.json (30 layers, d 3072, 24 heads, FFN 14336)",
                 "GitHub yuantianyuan01/FastWAM (MIT): configs/model/fastwam.yaml, configs/data/libero_2cam.yaml and "
-                "robotwin.yaml, src/fastwam/models/wan22/mot.py, fastwam.py, schedulers/scheduler_continuous.py",
+                "robotwin.yaml, src/fastwam/models/wan22/mot.py, fastwam.py, wan_video_dit.py (DiTBlock), action_dit.py (Linear head, "
+                "action timestep embedder), schedulers/scheduler_continuous.py",
                 "Hugging Face yuanty/fastwam LIBERO and RoboTwin checkpoints"],
-    "diagram": {
-        "encoder": {"text": "Observation (cameras tiled) → Wan2.2 VAE", "sub": "clean first-frame latents; ≈98 tokens per latent frame (LIBERO)",
-                    "tag": "frozen", "short": "Wan2.2 VAE, first frame only"},
-        "tokens": {"groups": [("latent", 16, "clean first-frame latents"), ("action", 8, "32 noisy action tokens")],
-                   "note": "training adds noisy future-video tokens"},
-        "core": {"title": "Wan2.2 DiT ×30 · d 3072 · 24 heads",
-                 "rows": [("attn", "Shared attention, structured mask: actions see the first frame, never future video", "Shared attention, structured mask"),
-                          ("xattn", "Cross-attention to T5 text (all tokens)"),
-                          ("moe", "Action expert: same architecture at d 1024 (1B)", "Action expert ×30 · d 1024 (1B)"),
-                          ("mlp", "Video MLP (FFN 14,336)")],
-                 "notes": ["inference: one video pass, no future video tokens"]},
-        "sampling": {"kind": "diffusion", "text": "Flow matching, 10 action steps, CFG 1.0",
-                     "sub": "after one video-DiT pass over the first frame", "short": "1 video pass + 10 action steps"},
-        "heads": ["action chunk"],
-        "decoder": {"none": "no future video is denoised or decoded at deployment"},
-    },
+    "figure_variant": "Released Fast-WAM policy: cached first-frame video K/V, 10 action steps",
     "flow": {
         "below": [{"text": "Cameras tiled + state + text"}],
         "stack": [
@@ -76,19 +65,30 @@ MODEL = {
                 {"box": "Add noisy action tokens", "short": "Add action tokens", "id": "noisy", "style": "soft", "minor": True,
                  "side": "Noisy action chunk", "basis": "stated", "side_basis": "stated"},
                 {"group": [
-                    {"box": "Action QKV", "id": "aqkv", "style": "orange", "minor": True, "basis": "code"},
-                    {"box": "Shared masked attention", "id": "attn", "style": "dark", "basis": "code"},
-                    {"box": "Cross-attention", "id": "xattn", "side": "T5 text", "basis": "stated", "side_basis": "stated"},
-                    {"box": "Action-expert MLP", "short": "Action MLP", "id": "amlp", "style": "orange", "basis": "code"},
+                    {"residual": [{"box": "AdaLN", "minor": True, "side": "Action timestep", "basis": "code", "side_basis": "code"},
+                                  {"box": "Action QKV", "id": "aqkv", "style": "orange", "minor": True, "basis": "code"},
+                                  {"box": "Shared masked attention", "id": "attn", "style": "dark", "side": "Cached video K/V",
+                                   "basis": "code", "side_basis": "code"},
+                                  {"box": "Scale by gate", "minor": True, "basis": "code"}]},
+                    {"residual": [{"box": "LayerNorm", "minor": True, "basis": "code"},
+                                  {"box": "Cross-attention", "id": "xattn", "side": "T5 text", "basis": "stated", "side_basis": "stated"}]},
+                    {"residual": [{"box": "AdaLN", "minor": True, "basis": "code"},
+                                  {"box": "Action-expert MLP", "short": "Action MLP", "id": "amlp", "style": "orange", "basis": "code"},
+                                  {"box": "Scale by gate", "minor": True, "basis": "code"}]},
                 ], "repeat": "30 ×", "id": "block"},
+                {"box": "Action velocity head", "minor": True, "basis": "code"},
                 {"box": "Update action tokens", "id": "upd", "minor": True, "basis": "code"},
             ], "loop": "10 action steps", "tint": "grey", "id": "denoise"},
             {"box": "Action chunk", "id": "act", "style": "orange", "basis": "stated"},
         ],
         "above": [{"text": "32 actions; no video decoded"}],
         "insets": [{"for": "vdit", "label": "per layer, ×30", "stack": [
-            {"box": "Video QKV", "basis": "code"}, {"box": "First-frame self-attn", "basis": "stated"},
-            {"box": "Cross-attention", "basis": "stated"}, {"box": "Video MLP", "basis": "code"}]}],
+            {"residual": [{"box": "AdaLN", "minor": True, "side": "Timestep t=0", "basis": "code", "side_basis": "code"},
+                          {"box": "First-frame self-attn", "style": "dark", "basis": "stated"},
+                          {"box": "Scale by gate", "minor": True, "basis": "code"}]},
+            {"residual": [{"box": "LayerNorm + cross-attn", "side": "T5 text", "basis": "code", "side_basis": "stated"}]},
+            {"residual": [{"box": "AdaLN", "minor": True, "basis": "code"}, {"box": "Video MLP", "basis": "code"},
+                          {"box": "Scale by gate", "minor": True, "basis": "code"}]}]}],
         "annotations": [
             {"at": "vae", "text": "≈*98* tokens per latent frame (RoboTwin *120*)", "side": "left", "key": True},
             {"at": "vdit", "text": "*30* layers · width *3,072* · ≈*5B*", "side": "left", "key": True},
@@ -98,5 +98,4 @@ MODEL = {
             {"at": "act", "text": "*190* ms per chunk · imagine-first *810* ms", "side": "right", "key": True},
         ],
     },
-    "audit": {"date": "2026-10-23", "checked": 42, "stated": 24, "code": 13, "derived": 5, "assumed": 0, "fixed": 9},
 }

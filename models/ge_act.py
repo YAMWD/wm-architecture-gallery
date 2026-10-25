@@ -9,7 +9,7 @@ MODEL = {
     "params": "2B + 160M action decoder",
     "params_num": 2.16e9,
     "open": "code + weights",
-    "links": {"arXiv": "https://arxiv.org/abs/2508.05635", "page": "https://genie-envisioner.github.io"},
+    "links": {"code": "https://github.com/AgibotTech/Genie-Envisioner-V1", "arXiv": "https://arxiv.org/abs/2508.05635", "page": "https://genie-envisioner.github.io"},
     "tagline": "Thin action DiT reads a video DiT's cached latents",
     "summary": "A two-stream world-action model on top of GE-Base, an instruction-conditioned multi-view video DiT built from "
                "LTX-Video 2B and pretrained on ~3,000 h of AgiBot-World-Beta. GE-Act adds a parallel 160M action branch with "
@@ -35,7 +35,9 @@ MODEL = {
                     "xyz/rpy deltas + gripper; the paper intro calls them torque trajectories), denoised by flow matching "
                     "from noise-initialised action tokens; a new action DiT is trained from scratch for each new embodiment"),
         ("Prediction", "Slow-fast asynchronous inference: 1 flow-matching step of the video DiT with its latents cached, then "
-                       "5 action denoising steps on that cache; video DiT at 5 Hz vs action model at 30 Hz (1:6)"),
+                       "5 action denoising steps on that cache; video DiT at 5 Hz vs action model at 30 Hz (1:6); closed loop through "
+                       "the robot: each chunk consumes live camera views (Sec. 3.1), with no tensor path from actions back to "
+                       "the encoder"),
         ("Decoder", "Frozen video VAE decoder, used when GE-Base / GE-Sim generate video; GE-Act deployment skips video "
                     "decoding (return_video=False), though the paper also shows GE-Act generating videos"),
         ("Memory", "Sparse memory: 4 conditioning frames per view (code: 3 sampled earlier frames plus the current one), "
@@ -52,25 +54,9 @@ MODEL = {
                 "Official code github.com/AgibotTech/Genie-Envisioner-V1 @ d41358f (policy_model.yaml, "
                 "transformer_ltx_multiview.py, action_patches/patches.py, custom_pipeline.py)",
                 "OpenReview fHLtSxDFKC (ICLR 2026 venue)"],
-    "diagram": {
-        "encoder": {"text": "3 views → video VAE", "sub": "4 conditioning frames per view (sparse memory); ~48 tokens per latent frame",
-                    "tag": "frozen", "short": "Video VAE, 3 views + memory"},
-        "tokens": {"groups": [("latent", 16, "3-view latents + noise"), ("action", 8, "54 noisy action tokens")],
-                   "note": "video DiT at 5 Hz; action branch at 30 Hz"},
-        "core": {"title": "LTX-Video DiT ×28 · d 2048 · 32 heads",
-                 "rows": [("attn", "Per-view self-attention; all 3 views jointly in every 3rd block"),
-                          ("xattn", "Cross-attention to T5-XXL instruction embeddings"),
-                          ("moe", "GE-Act branch: same depth, smaller width (160M), cross-attends to each block's latents"),
-                          ("mlp", "MLP")],
-                 "notes": ["3D RoPE; view embedding in AdaLN; 1 video step cached for 5 action steps"]},
-        "sampling": {"kind": "diffusion", "text": "Flow matching: 1 video step (cached) + 5 action steps",
-                     "sub": "per 54-step trajectory", "short": "1 video step + 5 action steps"},
-        "heads": ["action chunk"],
-        "decoder": {"none": "GE-Act deployment skips video decoding; the VAE decoder serves GE-Base / GE-Sim generation"},
-        "loop": "closed loop with real frames",
-    },
+    "figure_variant": "Released GE-Base video cache + GE-Act 160M action decoder",
     "flow": {
-        "below": [{"text": "3 views + memory frames + text"}],
+        "below": [{"text": "Live views + memory frames + text"}],
         "stack": [
             {"box": "Video VAE encoder", "id": "vae", "style": "teal", "basis": "stated"},
             {"box": "View tokens + noise maps", "id": "tok", "style": "soft", "minor": True, "basis": "stated"},
@@ -78,22 +64,26 @@ MODEL = {
                 {"residual": [{"box": "AdaLN (scale, shift)", "minor": True, "side": "Timestep + view",
                                "basis": "code", "side_basis": "code"},
                               {"box": "Per-view self-attention", "id": "attn", "style": "dark", "side": "3D RoPE",
-                               "basis": "code", "side_basis": "code"}]},
+                               "basis": "code", "side_basis": "code"},
+                              {"box": "Scale by gate", "minor": True, "basis": "code"}]},
                 {"residual": [{"box": "Cross-attention", "id": "xattn", "side": "T5-XXL text", "minor": True,
                                "basis": "stated", "side_basis": "stated"}]},
                 {"residual": [{"box": "AdaLN (scale, shift)", "minor": True, "basis": "code"},
-                              {"box": "Feed forward", "id": "ffn", "basis": "code"}]},
+                              {"box": "Feed forward", "id": "ffn", "basis": "code"},
+                              {"box": "Scale by gate", "minor": True, "basis": "code"}]},
             ], "repeat": "28 ×", "id": "vblock", "basis": "code"},
             {"box": "Cache all block latents", "id": "cache", "minor": True, "basis": "code"},
             {"group": [
                 {"box": "Noisy action tokens", "id": "noisy", "style": "soft", "minor": True, "basis": "stated"},
                 {"group": [
                     {"residual": [{"box": "AdaLN (scale, shift)", "minor": True, "basis": "code"},
-                                  {"box": "Self-attention", "id": "aattn", "style": "dark", "minor": True, "basis": "code"}]},
+                                  {"box": "Self-attention", "id": "aattn", "style": "dark", "minor": True, "basis": "code"},
+                                  {"box": "Scale by gate", "minor": True, "basis": "code"}]},
                     {"residual": [{"box": "Cross-attention", "id": "axattn", "side": "Video latents",
                                    "basis": "stated", "side_basis": "stated"}]},
                     {"residual": [{"box": "AdaLN (scale, shift)", "minor": True, "basis": "code"},
-                                  {"box": "Feed forward", "id": "affn", "basis": "code"}]},
+                                  {"box": "Feed forward", "id": "affn", "basis": "code"},
+                                  {"box": "Scale by gate", "minor": True, "basis": "code"}]},
                 ], "repeat": "28 ×", "tint": "orange", "id": "ablock", "basis": "code"},
                 {"box": "Update actions", "id": "upd", "minor": True, "basis": "code"},
             ], "loop": "5 action steps", "tint": "grey", "id": "denoise", "basis": "stated"},
@@ -108,7 +98,5 @@ MODEL = {
             {"at": "ablock", "text": "*28* thin blocks · *160M*", "side": "right", "key": True},
             {"at": "out", "text": "*200* ms per trajectory", "side": "left", "key": True},
         ],
-        "feedback": "next chunk",
     },
-    "audit": {"date": "2026-10-23", "checked": 51, "stated": 24, "code": 25, "derived": 2, "assumed": 0, "fixed": 12},
 }

@@ -1,32 +1,34 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="307" height="270" viewBox="0 0 307 270" font-family="IBM Plex Sans">
+<svg xmlns="http://www.w3.org/2000/svg" width="213" height="275" viewBox="0 0 213 275" font-family="IBM Plex Sans">
 <style>@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;700&amp;family=Saira+Semi+Condensed:wght@500;600&amp;display=swap");</style>
-<defs><marker id="ah_1E2A3B" markerWidth="7" markerHeight="7" refX="5.5" refY="3.5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0 L7,3.5 L0,7 z" fill="#1E2A3B"/></marker></defs>
-<rect x="0.0" y="0.0" width="308.0" height="271.0" rx="0.0" fill="#FFFFFF"/>
-<rect x="10.0" y="14.0" width="286.1" height="239.7" rx="20.0" fill="#EEF1F5" stroke="#5E6B80" stroke-width="1.0"/>
-<rect x="94.3" y="220.8" width="117.4" height="24.0" rx="6.0" fill="#DCF2F1" stroke="#00A8A4" stroke-width="1.0"/>
-<text x="153.0" y="236.2" font-family="IBM Plex Sans" font-weight="400" font-size="11.5" fill="#1E2A3B" text-anchor="middle">kl-f16 VAE encoder</text>
-<path d="M 153.0 219.8 L 153.0 211.8" fill="none" stroke="#1E2A3B" stroke-width="1.2" marker-end="url(#ah_1E2A3B)"/>
-<rect x="107.3" y="186.8" width="91.5" height="24.0" rx="6.0" fill="#FFFFFF" stroke="#1E2A3B" stroke-width="1.0"/>
-<text x="153.0" y="202.2" font-family="IBM Plex Sans" font-weight="400" font-size="11.5" fill="#1E2A3B" text-anchor="middle">Concat tokens</text>
-<path d="M 153.0 185.8 L 153.0 177.8" fill="none" stroke="#1E2A3B" stroke-width="1.2" marker-end="url(#ah_1E2A3B)"/>
-<rect x="79.6" y="100.9" width="146.8" height="75.9" rx="10.0" fill="#E4EAF4" stroke="#1D3E72" stroke-width="1.0"/>
-<rect x="86.6" y="143.9" width="132.8" height="24.0" rx="6.0" fill="#1D3E72" stroke="#1D3E72" stroke-width="1.0"/>
-<text x="153.0" y="159.3" font-family="IBM Plex Sans" font-weight="400" font-size="11.5" fill="#FFFFFF" text-anchor="middle">Bidirectional attention</text>
-<path d="M 153.0 142.9 L 153.0 134.9" fill="none" stroke="#1E2A3B" stroke-width="1.2" marker-end="url(#ah_1E2A3B)"/>
-<rect x="109.9" y="109.9" width="86.2" height="24.0" rx="6.0" fill="#FFFFFF" stroke="#1E2A3B" stroke-width="1.0"/>
-<text x="153.0" y="125.3" font-family="IBM Plex Sans" font-weight="400" font-size="11.5" fill="#1E2A3B" text-anchor="middle">Feed forward</text>
-<rect x="75.6" y="153.8" width="8.0" height="18.0" rx="0.0" fill="#E4EAF4"/>
-<path d="M 78.6 170.8 l 5 -6 l -8 -4 l 5 -6" fill="none" stroke="#1E2A3B" stroke-width="1.4"/>
-<text x="69.6" y="164.8" font-family="Saira SemiCondensed" font-weight="500" font-size="12.5" fill="#B95A08" text-anchor="end">24 ×</text>
-<path d="M 153.0 99.9 L 153.0 91.9" fill="none" stroke="#1E2A3B" stroke-width="1.2" marker-end="url(#ah_1E2A3B)"/>
-<rect x="111.9" y="67.0" width="82.2" height="24.0" rx="6.0" fill="#FFFFFF" stroke="#1E2A3B" stroke-width="1.0"/>
-<text x="153.0" y="82.4" font-family="IBM Plex Sans" font-weight="400" font-size="11.5" fill="#1E2A3B" text-anchor="middle">Joint latents</text>
-<path d="M 153.0 66.0 L 82.5 48.0" fill="none" stroke="#1E2A3B" stroke-width="1.2" marker-end="url(#ah_1E2A3B)"/>
-<path d="M 153.0 66.0 L 223.5 48.0" fill="none" stroke="#1E2A3B" stroke-width="1.2" marker-end="url(#ah_1E2A3B)"/>
-<rect x="19.0" y="23.0" width="127.0" height="24.0" rx="6.0" fill="#FFFFFF" stroke="#1E2A3B" stroke-width="1.0"/>
-<text x="82.5" y="38.4" font-family="IBM Plex Sans" font-weight="400" font-size="11.5" fill="#1E2A3B" text-anchor="middle">Video head (skipped)</text>
-<rect x="160.0" y="23.0" width="127.1" height="24.0" rx="6.0" fill="#FDE8D4" stroke="#F58F2D" stroke-width="1.0"/>
-<text x="223.5" y="38.4" font-family="IBM Plex Sans" font-weight="400" font-size="11.5" fill="#1E2A3B" text-anchor="middle">Action diffusion head</text>
-<path d="M 153.0 265.7 L 153.0 245.7" fill="none" stroke="#1E2A3B" stroke-width="1.2" marker-end="url(#ah_1E2A3B)"/>
-<path d="M 223.5 22.0 L 223.5 2.0" fill="none" stroke="#1E2A3B" stroke-width="1.2" marker-end="url(#ah_1E2A3B)"/>
+<defs><marker id="ah_1E2A3B" markerWidth="7" markerHeight="7" refX="5.5" refY="3.5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0 L7,3.5 L0,7 z" fill="#1E2A3B"/></marker><marker id="ah_B95A08" markerWidth="7" markerHeight="7" refX="5.5" refY="3.5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0 L7,3.5 L0,7 z" fill="#B95A08"/></marker></defs>
+<desc>UVA (Unified Video Action) — MAR-B (released code): 12 encoder + 12 decoder blocks; 16 action steps as on the robot (paper)</desc>
+<rect x="0.0" y="0.0" width="214.0" height="276.0" rx="0.0" fill="#FFFFFF"/>
+<rect x="10.0" y="14.0" width="192.5" height="244.4" rx="20.0" fill="#EEF1F5" stroke="#5E6B80" stroke-width="1.0"/>
+<rect x="48.2" y="225.4" width="117.4" height="24.0" rx="6.0" fill="#DCF2F1" stroke="#00A8A4" stroke-width="1.0"/>
+<text x="107.0" y="240.9" font-family="IBM Plex Sans" font-weight="400" font-size="11.5" fill="#1E2A3B" text-anchor="middle">kl-f16 VAE encoder</text>
+<path d="M 107.0 224.4 L 107.0 216.4" fill="none" stroke="#1E2A3B" stroke-width="1.2" marker-end="url(#ah_1E2A3B)"/>
+<rect x="61.2" y="191.5" width="91.5" height="24.0" rx="6.0" fill="#FFFFFF" stroke="#1E2A3B" stroke-width="1.0"/>
+<text x="107.0" y="206.9" font-family="IBM Plex Sans" font-weight="400" font-size="11.5" fill="#1E2A3B" text-anchor="middle">Concat tokens</text>
+<path d="M 107.0 190.5 L 107.0 182.5" fill="none" stroke="#1E2A3B" stroke-width="1.2" marker-end="url(#ah_1E2A3B)"/>
+<rect x="50.3" y="139.6" width="113.3" height="42.0" rx="10.0" fill="#E4EAF4" stroke="#1D3E72" stroke-width="1.0"/>
+<rect x="57.3" y="148.6" width="99.3" height="24.0" rx="6.0" fill="#FFFFFF" stroke="#1E2A3B" stroke-width="1.0"/>
+<text x="107.0" y="164.0" font-family="IBM Plex Sans" font-weight="400" font-size="11.5" fill="#1E2A3B" text-anchor="middle">Attention + FFN</text>
+<rect x="46.3" y="158.5" width="8.0" height="18.0" rx="0.0" fill="#E4EAF4"/>
+<path d="M 49.3 175.5 l 5 -6 l -8 -4 l 5 -6" fill="none" stroke="#1E2A3B" stroke-width="1.4"/>
+<text x="40.3" y="169.5" font-family="Saira SemiCondensed" font-weight="500" font-size="12.5" fill="#B95A08" text-anchor="end">12 ×</text>
+<path d="M 107.0 138.6 L 107.0 130.6" fill="none" stroke="#1E2A3B" stroke-width="1.2" marker-end="url(#ah_1E2A3B)"/>
+<rect x="50.3" y="87.6" width="113.3" height="42.0" rx="10.0" fill="#E4EAF4" stroke="#1D3E72" stroke-width="1.0"/>
+<rect x="57.3" y="96.6" width="99.3" height="24.0" rx="6.0" fill="#FFFFFF" stroke="#1E2A3B" stroke-width="1.0"/>
+<text x="107.0" y="112.0" font-family="IBM Plex Sans" font-weight="400" font-size="11.5" fill="#1E2A3B" text-anchor="middle">Attention + FFN</text>
+<rect x="46.3" y="106.6" width="8.0" height="18.0" rx="0.0" fill="#E4EAF4"/>
+<path d="M 49.3 123.6 l 5 -6 l -8 -4 l 5 -6" fill="none" stroke="#1E2A3B" stroke-width="1.4"/>
+<text x="40.3" y="117.6" font-family="Saira SemiCondensed" font-weight="500" font-size="12.5" fill="#B95A08" text-anchor="end">12 ×</text>
+<path d="M 107.0 86.6 L 107.0 78.6" fill="none" stroke="#1E2A3B" stroke-width="1.2" marker-end="url(#ah_1E2A3B)"/>
+<rect x="36.4" y="23.0" width="141.1" height="54.6" rx="10.0" fill="#E7EAEF" stroke="#5E6B80" stroke-width="1.0"/>
+<text x="165.5" y="37.5" font-family="IBM Plex Sans" font-weight="400" font-size="10.5" fill="#B95A08" text-anchor="end">16 steps</text>
+<rect x="43.4" y="44.7" width="127.1" height="24.0" rx="6.0" fill="#FDE8D4" stroke="#F58F2D" stroke-width="1.0"/>
+<text x="107.0" y="60.1" font-family="IBM Plex Sans" font-weight="400" font-size="11.5" fill="#1E2A3B" text-anchor="middle">Action diffusion head</text>
+<path d="M 177.5 33.8 L 187.5 33.8 L 187.5 63.6 L 179.5 63.6" fill="none" stroke="#B95A08" stroke-width="1.2" stroke-dasharray="4 3" marker-end="url(#ah_B95A08)"/>
+<path d="M 107.0 270.4 L 107.0 250.4" fill="none" stroke="#1E2A3B" stroke-width="1.2" marker-end="url(#ah_1E2A3B)"/>
+<path d="M 107.0 22.0 L 107.0 2.0" fill="none" stroke="#1E2A3B" stroke-width="1.2" marker-end="url(#ah_1E2A3B)"/>
 </svg>

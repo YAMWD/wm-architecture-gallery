@@ -6,24 +6,25 @@ MODEL = {
     "family": "object",
     "role": "Object-centric model",
     "status": "ICML 2025 (PMLR 267); arXiv v1 Oct 2024",
-    "params": "12M (all components)",
+    "params": "12M (paper; released checkpoint ≈11.9M)",
     "params_num": 12e6,
     "open": "code + weights",
-    "links": {"arXiv": "https://arxiv.org/abs/2410.08822", "page": "https://slot-latent-dynamics.github.io/"},
+    "links": {"code": "https://github.com/maltemosbach/sold", "arXiv": "https://arxiv.org/abs/2410.08822", "page": "https://slot-latent-dynamics.github.io/"},
     "tagline": "Dreamer-style RL that imagines in object slots",
-    "summary": "Dreamer-style model-based RL on object slots instead of one holistic latent. A SAVi encoder (pretrained, then "
-               "fine-tuned) turns each frame into 2-10 slots of 128-d; an OCVP-Seq dynamics transformer predicts the next "
+    "summary": "Dreamer-style model-based RL on object slots instead of one holistic latent. A SAVi encoder (pretrained; fine-tuned in "
+               "the paper, not in the released Reach-Red run) turns each frame into 2-10 slots of 128-d (7 in Reach-Red); an OCVP-Seq dynamics transformer predicts the next "
                "slot set from the slot history and the actions; three separate Slot Aggregation Transformers (reward, value, "
                "actor), each with per-step output tokens and its own MLP head, read the slot history, and the actor-critic "
                "trains on 15-step imagined slot rollouts. Each imagined step runs the dynamics model and the actor's SAT in "
                "sequence, with cost set by the slot count rather than the image resolution.",
     "facts": [
-        ("Representation", "N = 2-10 object slots of 128-d per frame from SAVi (learned slot init, 3 Slot Attention iterations on "
+        ("Representation", "N = 2-10 object slots of 128-d per frame from SAVi (paper range; released Reach-Red checkpoint: 7, from its SAT mask 50 × 8) (learned slot init, 3 Slot Attention iterations on "
                            "the first frame, 1 afterwards); slots projected to 256-d tokens; frame size not stated in the text"),
         ("Core", "Dynamics: OCVP-Seq transformer encoder, 4 layers, d 256, 8 heads, FFN 512; in code each layer is a "
                  "relational and a temporal pre-LayerNorm sub-layer, each with its own ReLU FFN. One Slot Aggregation "
-                 "Transformer (SAT) each for reward, value and actor: 4 causal layers, d 256, 8 heads, FFN 512, RMSNorm "
-                 "(SiLU FFN in code); 12M parameters in total"),
+                 "Transformer (SAT) each for reward, value and actor: 4 causal layers (paper D.3 and released checkpoint, "
+                 "blocks 0-3; the unweighted train_sold.yaml default says 3), d 256, 8 heads, FFN 512, RMSNorm, SiLU FFN; "
+                 "4 [reg] tokens in the paper, 0 in the release; 12M parameters (paper), ≈11.9M in the checkpoint [D]"),
         ("Attention", "Dynamics (OCVP-Seq order, as in code): relational attention (the N slots plus the action token of one "
                       "step) then temporal attention (each token over its own history). SAT: causal over time with ALiBi "
                       "recency bias; 1 [out] + 4 [reg] tokens per step (paper; the released config uses 0 [reg]); no "
@@ -46,28 +47,12 @@ MODEL = {
                 "arXiv 2410.08822 App. D Table 2 and D.1-D.4 (SAVi, dynamics, SAT configs; 12M params; one A100 40 GB; horizon 15, λ 0.95)",
                 "arXiv 2410.08822 App. F (4-D action vector); ICML 2025, PMLR 267 (mosbach25a)",
                 "github.com/maltemosbach/sold: modeling/sold/dynamics.py, slot_aggregation_transformer.py, prediction.py; README (checkpoints)"],
-    "diagram": {
-        "encoder": {"text": "Frame → SAVi (Slot Attention)", "sub": "2–10 slots of 128-d per frame, projected to d 256",
-                    "tag": "trained jointly", "short": "SAVi slots, 2–10 × 128-d"},
-        "tokens": {"groups": [("slot", 6, "N slots per frame"), ("action", 1, "action (4-D)")],
-                   "note": "per step; history of S seed + imagined steps"},
-        "core": {"title": "OCVP dynamics ×4 · d 256 · 8 heads",
-                 "rows": [("attn", "Relational attn: slots within a step"),
-                          ("attn", "Temporal attn: each slot over time"),
-                          ("action", "Actions input with the slot history"),
-                          ("mlp", "MLP (FFN 512)")],
-                 "notes": ["+ Slot Aggregation Transformer ×4 (causal, ALiBi, [out] + 4 [reg] tokens per step) for the heads"]},
-        "sampling": {"kind": "regress", "text": "Next slot set, regression", "sub": "1 pass per step; 15-step imagination, no teacher forcing",
-                     "short": "Next slots, 1 pass per step"},
-        "heads": ["reward", "value", "policy"],
-        "decoder": {"text": "SAVi spatial-broadcast decoder → frame", "sub": "per-slot RGB + alpha, for the loss; actor reads slots",
-                    "short": "SAVi decoder → frame (loss only)"},
-        "loop": "AR rollout",
-    },
+    "figure_variant": "Released checkpoint (Reach-Red): 4 dynamics + 4 SAT layers, 0 registers",
     "flow": {
         "below": [{"text": "Frame + action a_t (4-D)"}],
         "stack": [
             {"box": "SAVi slot encoder", "id": "enc", "style": "teal", "basis": "stated"},
+            {"box": "Slot state", "id": "slots", "minor": True, "basis": "stated"},
             {"fanout": [
                 [
                     {"box": "Project slots to tokens", "id": "dproj", "minor": True, "basis": "code"},
@@ -80,7 +65,8 @@ MODEL = {
                                       {"box": "Temporal attention", "id": "tattn", "style": "dark", "basis": "stated"}]},
                         {"residual": [{"box": "Norm", "minor": True, "basis": "code"}, {"box": "MLP", "id": "mlp2", "minor": True, "basis": "code"}]},
                     ], "repeat": "4 ×", "id": "dyn", "basis": "code"},
-                    {"box": "Next slot set", "id": "pred", "basis": "stated"},
+                    {"box": "Linear + slot residual", "short": "Next slot set", "id": "pred",
+                     "side": "Current slots", "basis": "code", "side_basis": "code"},
                 ],
                 [
                     {"box": "Project slots to tokens", "id": "proj", "minor": True, "basis": "code"},
@@ -101,14 +87,15 @@ MODEL = {
                             [{"box": "Actor SAT [out]", "basis": "code"}, {"box": "Actor head", "basis": "stated"}]]}]},
         ],
         "annotations": [
-            {"at": "enc", "text": "*2–10* slots per frame, *128*-d each", "side": "left", "key": True},
+            {"at": "enc", "text": "*7* slots (Reach-Red; paper *2–10*) · *128*-d", "side": "left", "key": True},
             {"at": "dyn", "text": "*8* heads · width *256*", "side": "left", "key": True},
             {"at": "pred", "text": "*1* pass per step · imagination of *15* steps", "side": "left", "key": True},
-            {"at": "sat", "text": "*12M* parameters in all", "side": "right", "key": True},
-            {"at": "sattn", "text": "*1* [out] + *4* [reg] per step (paper)", "side": "right"},
+            {"at": "sat", "text": "*4* dynamics + *4* SAT layers · *12M* total", "side": "right", "key": True},
+            {"at": "sattn", "text": "*1* [out] · *0* [reg] (release; paper *4*)", "side": "right"},
             {"at": "heads", "text": "Latency not disclosed", "side": "right"},
         ],
-        "feedback": "next step",
+        "feedback": "predicted slots",
+        "feedback_from": "pred",
+        "feedback_to": "slots",
     },
-    "audit": {"date": "2026-10-23", "checked": 56, "stated": 35, "code": 19, "derived": 2, "assumed": 0, "fixed": 10},
 }

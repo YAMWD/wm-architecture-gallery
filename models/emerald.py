@@ -34,23 +34,7 @@ MODEL = {
     "sources": ["arXiv 2507.04075 Sec. 3 (architecture, MaskGIT schedule), Figs. 3-4, Sec. 4.2 Table 2, Sec. 4.4 Table 4, App. Tables 6-10",
                 "github.com/burchim/EMERALD @665948d: nnet/models/emerald.py (module_pre_norm = False), "
                 "nnet/modules/modules/attention_module.py and feed_forward_module.py (post-norm), nnet/modules/emerald/tssm.py, mask_network.py"],
-    "diagram": {
-        "encoder": {"text": "Frame 64x64 → CNN categorical VAE", "sub": "4×4 grid × 32 groups × 32 classes",
-                    "tag": "trained jointly", "short": "CNN VAE, 4×4×32 categoricals"},
-        "tokens": {"groups": [("latent", 1, "1 fused token: grid + a_t")],
-                   "note": "per step (4×4 grid → 512-d); context 64 steps"},
-        "core": {"title": "Temporal ×4 · d 512 + MaskGIT ×2 · d 256",
-                 "rows": [("action", "Action mixer: z_t and a_t → one token"),
-                          ("attn", "Causal temporal self-attention"),
-                          ("mlp", "MLP"),
-                          ("moe", "Spatial MaskGIT ×2: 16 tokens, d 256")],
-                 "notes": ["cached K, V over 64 steps; relative positions; 8 heads"]},
-        "sampling": {"kind": "parallel", "text": "MaskGIT, 4×4 grid, S = 3 passes", "sub": "per imagined step; cosine mask schedule",
-                     "short": "MaskGIT, 3 passes per step"},
-        "heads": ["reward", "continue"],
-        "decoder": {"none": "actor-critic in latent space; the CNN decoder only trains the VAE"},
-        "loop": "AR rollout",
-    },
+    "figure_variant": "Released 30M: 4 temporal blocks + 2 spatial MaskGIT blocks",
     "flow": {
         "below": [{"text": "Frame 64×64 + action"}],
         "stack": [
@@ -91,5 +75,4 @@ MODEL = {
             {"at": "sample", "text": "*3* passes instead of *512* serial decodes", "side": "left", "key": True},
         ],
     },
-    "audit": {"date": "2026-10-23", "checked": 56, "stated": 41, "code": 15, "derived": 0, "assumed": 0, "fixed": 17},
 }

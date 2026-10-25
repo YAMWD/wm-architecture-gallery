@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-10-25: follow-up fixes to the recheck
+- An independent check of the recheck confirmed most edits and found four wrong ones, now fixed: SOLD keeps 4 slot-aggregation layers (paper and released checkpoint), LingBot-VA keeps its per-chunk real-observation cache write and loop, the long-context SSM model keeps its frame-by-frame rollout loop, and Genie's block count stays the paper's L.
+- Restored source-backed content the recheck had removed, among them Cosmos 3's video, audio and action input lane, NWM's CEM planning note, LingBot-World-Fast's >200 GB per minute and WorldPlay's block-causal attention.
+- Figures, annotations and facts now describe one configuration per card; numbers from another setting carry its name. Thirty cards changed; their source reviews and hashes were updated, and all integrity checks pass.
+
+## 2026-10-25: primary-source architecture recheck
+- Compared all 49 original publications/official technical pages and pinned released code for 42 models. Added per-model configurations, findings, disagreements and evidence limits in docs/architecture_audit.md and its hashed JSON ledger. Seven models lack matching official implementation evidence in the consulted sources.
+- Corrected LingBot-VA's released shared transformer versus the paper's separate towers, incompatible variant/sampler combinations in Cosmos-Predict1, Cosmos-Predict2.5 and NWM, and configuration differences in SOLD, SlotFormer, TransDreamer, UniZero and UVA. Added omitted norms, projections and residual gates where the original code establishes them.
+- Rollout feedback now connects named tensor endpoints. Removed incorrect action-to-image-encoder loops and the duplicated action-module residual in Matrix-Game 2/3. Cached reasoner/video work stays outside denoising loops.
+- Removed all 49 stale alternate diagram specifications and historical audit counters; default rendering uses the canonical flow. Source checks show current evidence and limits in the card and figure viewer. Build/integrity checks reject stale reviews and exports.
+- Removed the documentation instruction to guess a standard pre-norm block when details are undisclosed. Earlier audit totals and verification claims below are historical and are superseded by this review.
+
 ## 2026-10-23 (version 6): only what a source states
 - Diagrams now draw only what a source states. The 38 elements that no source states were removed: guessed norms, feed-forward layers and residual lines in AAPT, comma.ai, GAIA-1, GAIA-2 and Genie, invented steps (a KV-cache write, a codebook lookup, a denoising update), the SwiGLU inset in Dreamer 4, and the decoder and sampling loop of the long-context SSM model.
 - A block whose remaining layers are undisclosed shows one plain "Rest of block not stated" box, and its facts name the missing parts.

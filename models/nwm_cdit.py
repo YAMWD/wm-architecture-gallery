@@ -15,9 +15,9 @@ MODEL = {
                "3-DoF navigation action. Its Conditional Diffusion Transformer runs self-attention only over the tokens of "
                "the frame being denoised and reads the 4 context frames through cross-attention, so cost is linear in the "
                "context length (about 4x fewer FLOPs than a DiT over all frames). Planning is model-predictive control with "
-               "the cross-entropy method, or ranking 32 trajectories from an external policy. The default 250 denoising "
-               "steps make a 4 s trajectory cost 30.3 s on an RTX 6000 Ada; distillation to 6 steps and time skipping bring "
-               "it to 0.4 s (authors).",
+               "the cross-entropy method, or ranking 32 trajectories from an external policy. With the released 250-step "
+               "DDPM sampler, one 4 s trajectory takes 30.3 s on an RTX 6000 Ada (authors); the paper's unreleased 6-step "
+               "distilled model with time skipping: 0.4 s.",
     "facts": [
         ("Representation", "Stable Diffusion VAE (sd-vae-ft-ema) latents of 224×224 frames (4:3 centre crop, then resize): "
                            "4×28×28 latent, 2×2 patches → 196 tokens per frame (code) [D]; rollouts at 4 FPS"),
@@ -30,8 +30,9 @@ MODEL = {
         ("Actions", "Navigation action a = (u ∈ R² translation, yaw φ): each scalar → sine-cosine features → 2-layer MLP to d/3 "
                     "dims, concatenated into ψ_a; time shift k (up to ±16 s) and diffusion timestep t each embedded to R^d the same "
                     "way; ξ = ψ_a + ψ_k + ψ_t drives AdaLN; actions omitted for unlabeled Ego4D training"),
-        ("Prediction", "DDPM with the DiT noise schedule and learned covariance (VLB loss); 250 denoising steps by default, distilled "
-                       "to 6 (FastVideo DiT distillation); 'Time Skip' composes adjacent action pairs to simulate 8 instead of 16 states for 4 s"),
+        ("Prediction", "The figure follows the released DDPM model: noise prediction with learned variance (VLB loss), 250 "
+                       "denoising steps. The paper separately reports 6-step FastVideo distillation, whose sampler and weights "
+                       "are not released; 'Time Skip' composes adjacent action pairs to simulate 8 instead of 16 states for 4 s"),
         ("Decoder", "SD VAE decoder → pixels, used for LPIPS goal scoring during planning and for visualization"),
         ("Memory", "4 context frames re-encoded as cross-attention keys and values at every step; no KV cache discussed; loses context "
                    "on out-of-distribution data (mode collapse noted by the authors)"),
@@ -39,33 +40,16 @@ MODEL = {
                   "6-step distillation → 0.1 s with 4-bit quantization (estimated, not measured) (authors, Table 8); ≈7.4-8.3 ms per pass "
                   "in the three measured configurations, ≈2.1 ms implied by the 4-bit estimate [D]; trained on 64 H100s "
                   "(8 machines × 8 GPUs)"),
-        ("Key detail", "All of the ≈76x speedup comes from fewer passes (4,000 → 48: 250 → 6 steps, 16 → 8 states), none from "
-                       "cheaper passes; ranking 32 trajectories costs 32 × 8 × 6 = 1,536 passes per decision, run as 48 sequential "
-                       "batch-32 passes [D]"),
+        ("Key detail", "Released sampler: 16 states × 250 steps = 4,000 sequential passes per 4 s trajectory; ranking 32 "
+                       "trajectories runs them as 4,000 batch-32 passes [D]. Paper's distilled + Time Skip setting: 8 × 6 = 48 "
+                       "passes, so all of its ≈76x speedup comes from fewer passes, none from cheaper ones [D]"),
     ],
     "evidence": "read",
     "sources": ["NWM paper, arXiv 2412.03572: Sec. 3.1-3.3 (CDiT block, action encoding, AdaLN, complexity), 4.1 (implementation: "
                 "CDiT-XL 1B, 4 context frames, SD VAE, 64 H100), Fig. 2, App. 8.2 and Table 8 (runtime)",
                 "Official code github.com/facebookresearch/nwm: models.py (CDiT, XL/2 config), misc.py (224 crop), "
                 "config/wm_debug_bs_32.yaml, diffusion/ (DDPM sampler)"],
-    "diagram": {
-        "encoder": {"text": "Frame → Stable Diffusion VAE", "sub": "224×224 frames, 196 tokens per frame (code)", "tag": "frozen",
-                    "short": "SD VAE latents"},
-        "tokens": {"groups": [("latent", 8, "target frame latents")],
-                   "note": "4 context frames via cross-attention"},
-        "core": {"title": "CDiT-XL (1B), 28 blocks, d = 1152",
-                 "rows": [("attn", "Self-attn within target frame only"),
-                          ("xattn", "Cross-attention to 4 context frames"),
-                          ("action", "Action, time shift, timestep → AdaLN"),
-                          ("mlp", "MLP")],
-                 "notes": ["cost O(m·n²·d), linear in context frames m; no KV cache",
-                           "3-DoF action: forward/lateral translation + yaw"]},
-        "sampling": {"kind": "diffusion", "text": "DDPM, 250 steps, distilled to 6", "sub": "per frame; ≈7.4-8.3 ms per pass on an RTX 6000 Ada [D]",
-                     "short": "250 steps → 6 distilled"},
-        "decoder": {"text": "SD VAE decoder → frame", "sub": "for LPIPS goal scoring and visualization", "tag": "frozen",
-                    "short": "SD VAE decoder → frame"},
-        "loop": "CEM rollout",
-    },
+    "figure_variant": "Released CDiT-XL/2: 28x1152, 250-step DDPM",
     "flow": {
         "below": [{"text": "Frame + navigation action"}],
         "stack": [
@@ -76,17 +60,21 @@ MODEL = {
                 {"group": [
                     {"residual": [{"box": "AdaLN scale, shift, gate", "short": "AdaLN", "id": "ada", "side": "Action + k + t",
                                    "basis": "stated", "side_basis": "stated"},
-                                  {"box": "Target self-attention", "id": "attn", "style": "dark", "basis": "stated"}]},
+                                  {"box": "Target self-attention", "id": "attn", "style": "dark", "basis": "stated"},
+                                  {"box": "Scale by gate", "minor": True, "basis": "code"}]},
                     {"residual": [{"box": "AdaLN", "minor": True, "basis": "stated"},
                                   {"box": "Cross-attention", "id": "xattn", "side": "Past frames (K, V)",
-                                   "basis": "stated", "side_basis": "stated"}]},
-                    {"residual": [{"box": "AdaLN", "minor": True, "basis": "stated"}, {"box": "MLP", "id": "mlp", "basis": "stated"}]},
-                ], "repeat": "N ×", "id": "block"},
+                                   "basis": "stated", "side_basis": "stated"},
+                                  {"box": "Scale by gate", "minor": True, "basis": "code"}]},
+                    {"residual": [{"box": "AdaLN", "minor": True, "basis": "stated"},
+                                  {"box": "MLP", "id": "mlp", "basis": "stated"},
+                                  {"box": "Scale by gate", "minor": True, "basis": "code"}]},
+                ], "repeat": "28 ×", "id": "block", "basis": "code"},
                 {"box": "Noise + covariance", "id": "eps", "minor": True, "basis": "code"},
                 {"box": "DDPM update", "id": "upd", "minor": True, "basis": "code"},
-            ], "loop": "250 → 6 steps", "tint": "grey", "id": "denoise"},
+            ], "loop": "250 DDPM steps", "tint": "grey", "id": "denoise", "basis": "code"},
         ],
-        "above": [{"box": "SD VAE decoder", "id": "dec", "style": "teal", "basis": "stated"}, {"text": "Next frame (LPIPS goal scoring)"}],
+        "above": [{"box": "SD VAE decoder", "id": "dec", "style": "teal", "basis": "stated"}, {"text": "Next frame → LPIPS cost for CEM"}],
         "insets": [{"for": "ada", "label": "conditioning", "stack": [{"box": "Sine-cosine features", "basis": "stated"}, {"box": "2-layer MLP", "basis": "stated"},
                                                                        {"box": "Sum a, k, t → ξ", "basis": "stated"}]}],
         "annotations": [
@@ -94,9 +82,10 @@ MODEL = {
             {"at": "xattn", "text": "*4* context frames", "side": "left", "key": True},
             {"at": "block", "text": "*1B* parameters, *28* blocks, d = 1152", "side": "right", "key": True},
             {"at": "upd", "text": "≈*7.4–8.3* ms per pass, RTX 6000 Ada", "side": "right"},
-            {"at": "dec", "text": "*30.3* s → *0.4* s per *4* s rollout", "side": "right", "key": True},
+            {"at": "dec", "text": "Base: *30.3* s per *4* s rollout", "side": "right", "key": True},
         ],
-        "feedback": "CEM planning rollout",
+        "feedback": "context frames",
+        "feedback_from": "dec",
+        "feedback_to": "vae",
     },
-    "audit": {"date": "2026-10-23", "checked": 47, "stated": 33, "code": 10, "derived": 4, "assumed": 0, "fixed": 10},
 }

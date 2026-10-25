@@ -15,9 +15,10 @@ MODEL = {
                "frames, 5.8 s at 16 fps) with full self-attention, unifying Text2World, Image2World and Video2World by "
                "replacing conditioning frames in the sequence and flagging them with a mask token. The Cosmos-Reason1 VLM "
                "replaces T5 as the text encoder. It is a clip generator, not an interactive model: no action input in the "
-               "base model (an action-conditioned robot variant exists), no KV cache, and 4-step distillation (rCM in the "
-               "paper; the released 2B Text2World checkpoint is configured as DMD2). The 2B model card reports 228.8 s per "
-               "720p Video2World clip on H100 SXM.",
+               "base model (an action-conditioned robot variant exists), no KV cache. The figure draws the released 2B base "
+               "Video2World sampler: 35 FlowUniPC steps with CFG 7, two DiT passes per step (70 per clip); the 2B model "
+               "card reports 228.8 s per 720p Video2World clip on H100 SXM. Not drawn: a 4-step distilled checkpoint (rCM "
+               "in the paper; the released one is Text2World only and configured as DMD2).",
     "facts": [
         ("Representation", "Wan2.1 causal VAE (4x8x8) + 1x2x2 patchify; at 1280x704 each latent frame is 88x160, patchified to a 44x80 "
                            "grid of 3,520 tokens; 84,480 tokens per 93-frame clip of 24 latent frames [D]"),
@@ -50,43 +51,31 @@ MODEL = {
                 "github.com/nvidia-cosmos/cosmos-predict2.5 @a2c298b: configs/video2world/defaults/net.py, networks/minimal_v4_dit.py, "
                 "cosmos_predict2/config.py, distill/configs/experiment/experiments_dmd2_predict2p5.py, docs/inference.md, docs/distillation.md",
                 "Hugging Face model cards nvidia/Cosmos-Predict2.5-2B and -14B (parameters, VRAM, inference time)"],
-    "diagram": {
-        "encoder": {"text": "Frames → Wan2.1 VAE (4x8x8) + 1x2x2 patchify", "sub": "3,520 latents per 44x80 latent frame at 1280x704 [D]",
-                    "tag": "frozen", "short": "Wan2.1 VAE → 3,520 latents"},
-        "tokens": {"groups": [("latent", 24, "84,480 latents per clip")],
-                   "note": "24 latent frames per 93-frame clip"},
-        "core": {"title": "Cosmos DiT ×32 · d 2048 · 16 heads (2B)",
-                 "rows": [("attn", "Full self-attention over the clip"),
-                          ("xattn", "Cross-attn to Cosmos-Reason1 text"),
-                          ("note", "no action input in the base model"),
-                          ("mlp", "MLP (FFN 8192), AdaLN-LoRA")],
-                 "notes": ["14B: ×36 · d 5120 · 40 heads · FFN 20480",
-                           "conditioning frames replaced in the sequence, flagged by a mask token"]},
-        "sampling": {"kind": "diffusion", "text": "Flow matching, rCM-distilled to 4 steps", "sub": "per 93-frame clip; teacher steps not located",
-                     "short": "rCM, 4 steps per clip"},
-        "decoder": {"text": "Wan2.1 VAE decoder → 93 frames at 1280x704", "tag": "frozen", "short": "Wan2.1 VAE decoder → 93 frames"},
-    },
+    "figure_variant": "Released 2B base Video2World: 28 blocks, 35 FlowUniPC steps, CFG 7 (2 passes/step)",
     "flow": {
         "below": [{"text": "Text + 1 or 5 frames, no action"}],
         "stack": [
             {"box": "Wan2.1 VAE encoder", "id": "vae", "style": "teal", "basis": "stated"},
-            {"box": "Patchify + mask token", "id": "patch", "minor": True, "basis": "stated"},
             {"group": [
                 {"box": "Noisy clip latents", "id": "noisy", "style": "soft", "minor": True, "basis": "stated"},
+                {"box": "Patchify + mask token", "id": "patch", "minor": True, "basis": "stated"},
                 {"group": [
                     {"residual": [{"box": "AdaLN-LoRA", "minor": True, "side": "Timestep emb.", "basis": "stated",
                                    "side_basis": "stated"},
                                   {"box": "Full self-attention", "id": "attn", "style": "dark", "side": "3D RoPE",
-                                   "basis": "code", "side_basis": "code"}]},
+                                   "basis": "code", "side_basis": "code"},
+                                  {"box": "Scale by gate", "minor": True, "basis": "code"}]},
                     {"residual": [{"box": "AdaLN-LoRA", "minor": True, "basis": "stated"},
                                   {"box": "Cross-attention", "id": "xattn", "side": "VLM text features", "basis": "stated",
-                                   "side_basis": "stated"}]},
+                                   "side_basis": "stated"},
+                                  {"box": "Scale by gate", "minor": True, "basis": "code"}]},
                     {"residual": [{"box": "AdaLN-LoRA", "minor": True, "basis": "stated"},
-                                  {"box": "Feed forward", "id": "ffn", "basis": "stated"}]},
+                                  {"box": "Feed forward", "id": "ffn", "basis": "stated"},
+                                  {"box": "Scale by gate", "minor": True, "basis": "code"}]},
                 ], "repeat": "28 ×", "id": "block", "basis": "code"},
                 {"box": "Predicted velocity", "id": "vel", "minor": True, "basis": "stated"},
                 {"box": "Update latents", "id": "upd", "minor": True, "basis": "code"},
-            ], "loop": "4 distilled steps", "tint": "grey", "id": "denoise", "basis": "code"},
+            ], "loop": "35 steps × 2 (CFG 7)", "loop_short": "35 steps", "tint": "grey", "id": "denoise", "basis": "code"},
         ],
         "above": [{"box": "Wan2.1 VAE decoder", "id": "dec", "style": "teal", "basis": "stated"},
                   {"text": "93 frames at 1280×704 (5.8 s)"}],
@@ -101,5 +90,4 @@ MODEL = {
             {"at": "dec", "text": "2B: *228.8* s per *720p* clip, H100 SXM", "side": "right", "key": True},
         ],
     },
-    "audit": {"date": "2026-10-22", "checked": 48, "stated": 29, "code": 16, "derived": 3, "assumed": 0, "fixed": 15},
 }

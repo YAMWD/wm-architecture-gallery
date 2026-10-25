@@ -26,7 +26,8 @@ MODEL = {
         ("Attention", "Block-causal chunks of 3 latent frames: the chunk's 2,640 queries attend to a rolling KV window (clean anchor + "
                       "≤6 previous chunks = ≤19 latent frames, released config), 1 chunk-local context frame, 3 frames of patch memory "
                       "(≤1 token per target cell) and itself: ≤26 latent frames ≈ 22,880 K/V tokens per chunk [D]; causal training window "
-                      "1 anchor + 7 chunks = 22 positions; the paper's ≈2.3x sequence bound is for the bidirectional base model's 21-frame sample"),
+                      "1 anchor + 7 chunks = 22 positions; after the last step a clean t = 0 cache-fill pass writes the chunk's K/V into "
+                      "the window, oldest chunks trimmed (code); decoded frames feed the patch memory; the paper's ≈2.3x sequence bound is for the bidirectional base model's 21-frame sample"),
         ("Actions", "Camera pose via tiled PRoPE in every block: after RoPE, queries × Pᵀ, keys and values × P⁻¹, outputs × P, tiled over all "
                     "head channels, no new parameters; translations recentred on the first target frame and log-compressed"),
         ("Prediction", "Perceptual flow matching causal adaptation (10k steps), then curriculum self-rollout DMD (1,000 outer steps, 5:1 update "
@@ -50,24 +51,7 @@ MODEL = {
                 "HF Wan-AI/Wan2.2-TI2V-5B config.json (30 layers, dim 3072, 24 heads, ffn 14336, 48 latent channels); Wan2.2 README (VAE 4x16x16)",
                 "Official code github.com/Riemann-Dynamics/Matrix-Game-3.5 (model_configs.py, wan_video_dit.py, causal_rollout.py rolling KV window, "
                 "configs/infer_distilled_6blocks.yaml); weights HF RiemannDynamics/Matrix-Game-3.5-Base and -Distilled"],
-    "diagram": {
-        "encoder": {"text": "Frames → Wan2.2 VAE (4x16x16) + patchify", "sub": "880 tokens per 44x80 latent frame (22x40 after 2x2 patchify) at 1280x704 [D]",
-                    "tag": "frozen", "short": "Wan2.2 VAE → 880 tokens"},
-        "tokens": {"groups": [("latent", 24, "2,640 noisy latents"), ("latent", 24, "≤19 cached + 1 context + 3 memory frames")],
-                   "note": "≤ ≈22,880 K/V tokens per chunk, bounded [D]"},
-        "core": {"title": "Wan2.2 DiT ×30 · d 3072 · 24 heads",
-                 "rows": [("attn", "Block-causal attention, pose-aware"),
-                          ("action", "Camera pose: tiled PRoPE on Q, K, V"),
-                          ("xattn", "Cross-attention to text (umT5)"),
-                          ("mlp", "MLP (FFN 14336)")],
-                 "notes": ["memory tokens re-projected from 3D, ≤1 per target cell; retrieval every chunk, dynamic filter once per segment",
-                           "rolling KV cache: anchor + ≤6 previous chunks (released config)"]},
-        "sampling": {"kind": "diffusion", "text": "PFM + self-rollout DMD, 3 denoising steps", "sub": "per chunk of 12 frames (3 latent frames); INT8 DiT",
-                     "short": "3 steps per 12-frame chunk"},
-        "decoder": {"text": "MG-LightVAE (75% pruned) → 12 frames at 1280x704", "sub": "VAE decode is the stated latency bottleneck",
-                    "short": "MG-LightVAE → 12 frames"},
-        "loop": "AR rollout",
-    },
+    "figure_variant": "Released 5B distilled causal rollout with reprojected patch memory",
     "flow": {
         "below": [{"text": "Previous frames + camera + text"}],
         "stack": [
@@ -78,17 +62,22 @@ MODEL = {
                 {"box": "Pose-aware sequence", "id": "seq", "style": "soft", "basis": "stated"},
                 {"group": [
                     {"residual": [{"box": "AdaLN (scale, shift)", "minor": True, "side": "Timestep emb.", "basis": "code", "side_basis": "code"},
-                                  {"box": "Block-causal attention", "id": "attn", "style": "dark", "side": "RoPE + tiled PRoPE", "basis": "stated", "side_basis": "stated"}]},
-                    {"residual": [{"box": "Cross-attention", "id": "xattn", "side": "umT5 text", "basis": "stated", "side_basis": "code"}]},
-                    {"residual": [{"box": "AdaLN (scale, shift)", "minor": True, "basis": "code"}, {"box": "Feed forward", "id": "ffn", "basis": "code"}]},
+                                  {"box": "Block-causal attention", "id": "attn", "style": "dark", "side": "RoPE + tiled PRoPE", "basis": "stated", "side_basis": "stated"},
+                                  {"box": "Scale by gate", "minor": True, "basis": "code"}]},
+                    {"residual": [{"box": "LayerNorm", "minor": True, "basis": "code"},
+                                  {"box": "Cross-attention", "id": "xattn", "side": "umT5 text", "basis": "stated", "side_basis": "code"}]},
+                    {"residual": [{"box": "AdaLN (scale, shift)", "minor": True, "basis": "code"},
+                                  {"box": "Feed forward", "id": "ffn", "basis": "code"},
+                                  {"box": "Scale by gate", "minor": True, "basis": "code"}]},
                 ], "repeat": "30 ×", "id": "block"},
                 {"box": "Predicted velocity", "id": "vel", "minor": True, "basis": "stated"},
                 {"box": "Update latents", "id": "upd", "minor": True, "basis": "code"},
             ], "loop": "3 steps (DMD)", "tint": "grey", "id": "denoise"},
+            {"box": "Write chunk to KV cache", "id": "kv", "minor": True, "basis": "code"},
         ],
         "above": [{"box": "MG-LightVAE decoder", "id": "dec", "style": "teal", "basis": "stated"}, {"text": "12 frames at 1280×704"}],
         "insets": [{"for": "ffn", "stack": [{"box": "Linear", "basis": "code"}, {"box": "GELU", "basis": "code"}, {"box": "Linear", "basis": "code"}]},
-                   {"for": "attn", "label": "tiled PRoPE", "stack": [
+                   {"for": "block", "label": "tiled PRoPE", "stack": [
                        {"fanout": [[{"box": "RoPE on q", "basis": "stated"}, {"box": "q × P-transpose", "basis": "stated"}],
                                    [{"box": "RoPE on k (not v)", "basis": "stated"}, {"box": "k, v × P-inverse", "basis": "stated"}]]},
                        {"box": "Attention", "basis": "stated"}, {"box": "out × P", "basis": "stated"}]}],
@@ -96,11 +85,11 @@ MODEL = {
             {"at": "vae", "text": "≈*2,640* target tokens per chunk", "side": "left", "key": True},
             {"at": "mem", "text": "≤*1* memory token per target cell", "side": "left"},
             {"at": "seq", "text": "K/V up to ≈*22,880* tokens per chunk", "side": "left", "key": True},
-            {"at": "attn", "text": "*24* heads · width *3,072*", "side": "left"},
-            {"at": "block", "text": "*30* layers · *5B* parameters", "side": "right", "key": True},
+            {"at": "attn", "text": "*30* layers · *24* heads · width *3,072*", "side": "left", "key": True},
             {"at": "dec", "text": "Up to *20* fps at *1280×704*", "side": "right", "key": True},
         ],
-        "feedback": "next chunk",
+        "feedback": "rolling K/V",
+        "feedback_from": "kv",
+        "feedback_to": "attn",
     },
-    "audit": {"date": "2026-10-23", "checked": 56, "stated": 29, "code": 20, "derived": 7, "assumed": 0, "fixed": 11},
 }

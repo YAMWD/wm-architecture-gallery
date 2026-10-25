@@ -17,7 +17,8 @@ MODEL = {
                "with DMD plus an adversarial head to 4 steps. In the released checkpoint, camera poses enter as Plücker-style ray "
                "maps through scale-and-shift adapters in every block (≈18.5B parameters in all); the paper's W/A/S/D-key variant is "
                "the Base (Act) model. By default it keeps the full KV cache of the whole rollout, so memory is emergent from context, "
-               "but the cache grows by about 3.4 GB per 12-frame chunk and throughput falls from 8.9 to 3.6 FPS over a minute "
+               "but the cache grows by about 3.4 GB per 12-frame chunk, past 200 GB in a minute (WorldKV; ≈3.83 GB in BF16 by "
+               "our count [D]), and throughput falls from 8.9 to 3.6 FPS over a minute "
                "(WorldKV, 4×B200). The company claims 16 fps at 480p on one GPU node; the release script uses 8 GPUs.",
     "facts": [
         ("Representation", "Wan 3D causal VAE, stride 4x8x8 → 60x104 latent frame at 480x832; patch (1,2,2) → 1,560 tokens (30x52 grid) "
@@ -36,7 +37,8 @@ MODEL = {
         ("Decoder", "Wan VAE decoder at 480x832, 12 frames per chunk (9 for the first); the release decodes all chunks in one call "
                     "after the rollout loop (README lists 480P & 720P)"),
         ("Memory", "No memory module: 'an emergent ability derived from the context window'; full KV ≈3.4 GB per 3-latent-frame "
-                   "chunk and >200 GB per minute (WorldKV; ≈3.8 GB per chunk by my count [D])"),
+                   "chunk and >200 GB per minute (WorldKV Sec. 4.3; ≈3.83 GB per chunk in BF16 by our count: 4,680 tokens x 40 layers x "
+                   "K,V x 5,120 x 2 B [D])"),
         ("Speed", "16 fps at 480p with <1 s latency on one GPU node (company claim; release script uses 8 GPUs with Ulysses "
                   "sequence parallelism, GPU type not stated); WorldKV on 4×B200: 8.87 → 3.61 FPS over a one-minute rollout with "
                   "full KV, WorldKV Table 1 at the last chunk of a rollout: 3.83 FPS vs 8.10 with a sliding window (4×H200: 2.36 vs 5.05)"),
@@ -49,24 +51,8 @@ MODEL = {
                 "lingbot-world code: wan/configs/wan_i2v_A14B.py (40 layers, dim 5120, 40 heads, ffn 13824, 70 steps); "
                 "wan/image2video_fast.py (timesteps_index, local_attn_size -1, sink_size 0, chunk_size 3); run_fast.sh (8 GPUs, ulysses 8); wan/modules/model_fast.py (camera scale and shift)",
                 "HF robbyant/lingbot-world-fast model card (16 fps, <1 s latency, Apache-2.0), config.json and safetensors index (18.54B, F32)",
-                "WorldKV arXiv 2605.22718 Sec. 1, Table 1, Fig. 2"],
-    "diagram": {
-        "encoder": {"text": "Frames → Wan 3D causal VAE (4x8x8)", "sub": "1,560 latents per 30x52 latent frame at 480p",
-                    "short": "Wan VAE → 1,560 latents"},
-        "tokens": {"groups": [("latent", 24, "4,680 latents per chunk")],
-                   "note": "full KV cache, grows all rollout"},
-        "core": {"title": "Wan2.2 DiT ×40 · d 5120 · 40 heads",
-                 "rows": [("attn", "Block-causal self-attention, 3D RoPE"),
-                          ("xattn", "Cross-attention to text (umT5)"),
-                          ("action", "Plücker camera + WASD keys → AdaLN"),
-                          ("mlp", "MLP (FFN 13824)")],
-                 "notes": ["full KV cache by default (no window, no sink): ≈3.4 GB per chunk",
-                           "dense 14B: the high-noise expert of Wan2.2 A14B"]},
-        "sampling": {"kind": "diffusion", "text": "DMD + adversarial distillation, 4 denoising steps",
-                     "sub": "per chunk of 12 frames (3 latent frames)", "short": "4 steps per 12-frame chunk"},
-        "decoder": {"text": "Wan VAE decoder → 12 frames at 480x832", "short": "Wan VAE decoder → 12 frames"},
-        "loop": "AR rollout",
-    },
+                "WorldKV arXiv 2605.22718 Sec. 1, 4.3 (3.4 GB per chunk, >200 GB per minute), Table 1, Fig. 2"],
+    "figure_variant": "Released dense LingBot-World-Fast: 40x5120, 4 steps",
     "flow": {
         "below": [{"text": "Image + camera poses + text"}],
         "stack": [
@@ -78,13 +64,16 @@ MODEL = {
                     {"residual": [{"box": "AdaLN (scale, shift)", "minor": True, "side": "Timestep emb.",
                                    "basis": "code", "side_basis": "code"},
                                   {"box": "Block-causal attention", "id": "attn", "style": "dark", "side": "3D RoPE",
-                                   "basis": "stated", "side_basis": "code"}]},
+                                   "basis": "stated", "side_basis": "code"},
+                                  {"box": "Scale by gate", "minor": True, "basis": "code"}]},
                     {"box": "Camera scale & shift", "id": "act", "style": "orange", "side": "Camera Plücker",
                      "basis": "code", "side_basis": "code"},
-                    {"residual": [{"box": "Cross-attention", "id": "xattn", "side": "umT5 text",
+                    {"residual": [{"box": "LayerNorm", "minor": True, "basis": "code"},
+                                  {"box": "Cross-attention", "id": "xattn", "side": "umT5 text",
                                    "basis": "stated", "side_basis": "code"}]},
                     {"residual": [{"box": "AdaLN (scale, shift)", "minor": True, "basis": "code"},
-                                  {"box": "Feed forward", "id": "ffn", "basis": "stated"}]},
+                                  {"box": "Feed forward", "id": "ffn", "basis": "stated"},
+                                  {"box": "Scale by gate", "minor": True, "basis": "code"}]},
                 ], "repeat": "40 ×", "id": "block"},
                 {"box": "Predicted velocity", "id": "vel", "minor": True, "basis": "code"},
                 {"box": "Update latents", "id": "upd", "minor": True, "basis": "code"},
@@ -99,10 +88,11 @@ MODEL = {
             {"at": "attn", "text": "*40* heads, full KV of the whole rollout", "side": "left", "key": True},
             {"at": "block", "text": "*40* layers, width *5,120*, ≈*18.5B*", "side": "right", "key": True},
             {"at": "upd", "text": "*4* steps instead of *70*", "side": "right"},
-            {"at": "kv", "text": "≈*3.4 GB* KV per chunk, >*200 GB*/minute", "side": "right"},
+            {"at": "kv", "text": "*3.4 GB* KV per chunk, >*200 GB* per minute", "side": "right"},
             {"at": "dec", "text": "*16* fps at *480p*, <*1* s latency", "side": "right", "key": True},
         ],
-        "feedback": "next chunk",
+        "feedback": "cached chunk K/V",
+        "feedback_from": "kv",
+        "feedback_to": "attn",
     },
-    "audit": {"date": "2026-10-23", "checked": 51, "stated": 14, "code": 32, "derived": 5, "assumed": 0, "fixed": 15},
 }

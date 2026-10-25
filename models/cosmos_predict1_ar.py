@@ -13,9 +13,10 @@ MODEL = {
     "tagline": "Llama-style GPT over discrete video tokens",
     "summary": "NVIDIA's autoregressive world foundation models: Llama3-style GPTs trained from scratch to predict the "
                "next video token, with no language pretraining. A discrete video tokenizer (8x16x16, FSQ, vocabulary "
-               "64,000) gives 2,560 tokens per latent frame at 640x1024, and the 4B and 12B models attend causally over "
-               "12,800 tokens (33 video frames) with 3D RoPE. The Video2World 5B/13B variants add T5 cross-attention, and "
-               "Medusa heads cut the number of forward passes by up to 4.6x (4B). Generating 32 frames takes 31 s on one H100 for the 4B.",
+               "64,000) gives 2,560 tokens per latent frame at 640x1024, and the 4B and 12B base models attend causally "
+               "over 12,800 tokens (33 video frames) with 3D RoPE; the figure draws the released 4B base, which generates "
+               "32 frames in 31 s on one H100. Not drawn: the Video2World 5B/13B variants add T5 cross-attention, and the "
+               "paper's Medusa heads (not in the released code) cut forward passes by up to 4.6x for 4B.",
     "facts": [
         ("Representation", "Cosmos-Tokenize1-DV8x16x16 discrete tokens, FSQ levels (8,8,8,5,5,5) = vocabulary 64,000; at 640x1024 one latent frame (8 video frames; the first holds only frame 1) is 40x64 = 2,560 tokens [D]"),
         ("Core", "Llama3-style decoder with SwiGLU and QK-norm: 4B = 16 layers, d 4096, FFN 14,336, 32 heads, 8 KV heads; 12B = 40 layers, d 5120; the 5B/13B Video2World models add cross-attention layers; RMSNorm (eps 1e-5) before each sub-layer plus a final RMSNorm (official code; the paper names no norm)"),
@@ -30,35 +31,20 @@ MODEL = {
     "evidence": "read",
     "sources": ["Cosmos technical report arXiv 2501.03575 Sec. 4 (tokenizer), Sec. 5.2.2-5.2.4 (architecture table, Medusa, Tables 15-17), post-training section (ActionCond)",
                 "Official code nvidia-cosmos/cosmos-predict1 (commit 724daa1): cosmos_predict1/autoregressive/networks/transformer.py, modules/attention.py, configs/base/model_config.py, inference/world_generation_pipeline.py, utils/sampling.py"],
-    "diagram": {
-        "encoder": {"text": "Video 640x1024 → Cosmos-Tokenize1 DV8×16×16", "sub": "2,560 FSQ tokens per latent frame (8 video frames), vocab 64,000",
-                    "tag": "frozen", "short": "FSQ tokenizer, 2,560 tokens/frame"},
-        "tokens": {"groups": [("frame", 24, "2,560 video tokens")],
-                   "note": "per latent frame; 5 latent frames = 12,800 tokens"},
-        "core": {"title": "Llama3-style ×16 · d 4096 · 32 heads (4B)",
-                 "rows": [("attn", "Causal self-attention, 3D RoPE, 8 KV heads"),
-                          ("xattn", "T5 cross-attention (Video2World 5B/13B)"),
-                          ("mlp", "SwiGLU MLP (14,336)")],
-                 "notes": ["12B: 40 layers, d 5120", "context 12,800 tokens; 3D absolute PE per block"]},
-        "sampling": {"kind": "ar", "text": "Next-token softmax, 64,000 codes", "sub": "2,560 passes per latent frame; Medusa heads: 4.6x fewer passes",
-                     "short": "Next token, 2,560 passes/frame"},
-        "decoder": {"text": "Tokenizer decoder → 640x1024 frames", "sub": "optional 7B diffusion decoder doubles the time", "tag": "frozen"},
-        "loop": "AR rollout",
-    },
+    "figure_variant": "Released 4B base: no text cross-attention; paper's per-block 3D APE is off in its code",
     "flow": {
-        "below": [{"text": "Video 640×1024 (+ text prompt)"}],
+        "below": [{"text": "Video 640×1024 (4B base)"}],
         "stack": [
             {"box": "Cosmos-Tokenize1 encoder", "short": "Video tokenizer (FSQ)", "id": "tok", "style": "teal", "basis": "stated"},
             {"box": "FSQ quantization", "id": "fsq", "minor": True, "basis": "stated"},
             {"box": "Token embedding", "id": "emb", "minor": True, "basis": "stated"},
             {"group": [
-                {"box": "3D absolute positions", "id": "ape", "minor": True, "basis": "stated"},
-                {"residual": [{"box": "Norm", "minor": True, "basis": "code"},
+                {"residual": [{"box": "RMSNorm", "minor": True, "basis": "code"},
                               {"box": "Masked self-attention", "id": "attn", "style": "dark", "side": "3D RoPE", "basis": "stated", "side_basis": "stated"}]},
-                {"residual": [{"box": "Norm", "minor": True, "basis": "code"}, {"box": "Cross-attention", "id": "xattn", "side": "T5 (Video2World)", "basis": "stated", "side_basis": "stated"}]},
-                {"residual": [{"box": "Norm", "minor": True, "basis": "code"}, {"box": "SwiGLU feed forward", "short": "SwiGLU FFN", "id": "ffn", "basis": "stated"}]},
+                {"residual": [{"box": "RMSNorm", "minor": True, "basis": "code"}, {"box": "SwiGLU feed forward", "short": "SwiGLU FFN", "id": "ffn", "basis": "stated"}]},
             ], "repeat": "16 ×", "id": "block", "basis": "code"},
-            {"box": "Output layer", "id": "out", "side": "Medusa heads", "basis": "stated", "side_basis": "stated"},
+            {"box": "Final RMSNorm", "minor": True, "basis": "code"},
+            {"box": "Output layer", "id": "out", "basis": "stated"},
             {"box": "Sample next token", "id": "sample", "basis": "code"},
         ],
         "above": [{"box": "Tokenizer decoder", "id": "dec", "style": "teal", "basis": "stated"}, {"text": "Frames 640×1024 (33 video frames)"}],
@@ -72,6 +58,7 @@ MODEL = {
             {"at": "dec", "text": "*4B*: *32* frames in *31* s", "side": "left", "key": True},
         ],
         "feedback": "next token",
+        "feedback_from": "sample",
+        "feedback_to": "emb",
     },
-    "audit": {"date": "2026-10-22", "checked": 53, "stated": 27, "code": 17, "derived": 9, "assumed": 0, "fixed": 10},
 }

@@ -9,7 +9,7 @@ MODEL = {
     "params": "1.6B (+~300M ViT-VQGAN)",
     "params_num": 1.6e9,
     "open": "code + weights",
-    "links": {"paper": "https://doi.org/10.1038/s41586-025-08600-3", "weights": "https://huggingface.co/microsoft/wham"},
+    "links": {"code": "https://huggingface.co/microsoft/wham/tree/main", "paper": "https://doi.org/10.1038/s41586-025-08600-3", "weights": "https://huggingface.co/microsoft/wham"},
     "tagline": "Game frames and controller tokens, one at a time",
     "summary": "World and Human Action Model: a nanoGPT-style causal transformer trained from scratch on seven years of "
                "Bleeding Edge gameplay to predict interleaved image and controller-action tokens. The 1.6B model sees "
@@ -32,20 +32,7 @@ MODEL = {
                 "huggingface.co/microsoft/wham: README model card; wham/models/nn/nanoGPT.py; wham/models/wham_token_model/gpt_token_transformer_predictor.py",
                 "Microsoft Research, WHAMM article (4 Apr 2025)",
                 "GAIA-1 (arXiv 2309.17080), for its token and context numbers"],
-    "diagram": {
-        "encoder": {"text": "Frame 300x180 → ViT-VQGAN (~300M)", "sub": "540 tokens per frame, vocab 16,384", "tag": "frozen",
-                    "short": "ViT-VQGAN, 540 tokens/frame"},
-        "tokens": {"groups": [("frame", 24, "540 image tokens"), ("action", 8, "16 controller tokens")],
-                   "note": "per step; 1 s = 10 frames = 5,560 tokens"},
-        "core": {"title": "nanoGPT 1.6B · 24 layers",
-                 "rows": [("attn", "Causal self-attention over all tokens"),
-                          ("mlp", "MLP")],
-                 "notes": ["context 5,560 tokens (1 s); actions predicted too"]},
-        "sampling": {"kind": "ar", "text": "Next-token softmax, 16,384 codes", "sub": "≥ 540 serial passes per frame",
-                     "short": "Next token, 540+ passes per frame"},
-        "decoder": {"text": "ViT-VQGAN decoder → 300x180 frame", "tag": "frozen"},
-        "loop": "AR rollout",
-    },
+    "figure_variant": "Released WHAM-1.6B: 24x2304 GPT, 540 image + 16 action tokens",
     "flow": {
         "below": [{"text": "Frame 300×180 + controller action"}],
         "stack": [
@@ -56,7 +43,7 @@ MODEL = {
             {"group": [
                 {"residual": [{"box": "LayerNorm", "minor": True, "basis": "code"}, {"box": "Masked self-attention", "id": "attn", "style": "dark", "basis": "stated"}]},
                 {"residual": [{"box": "LayerNorm", "minor": True, "basis": "code"}, {"box": "Feed forward", "id": "ffn", "basis": "code"}]},
-            ], "repeat": "N ×", "id": "block"},
+            ], "repeat": "24 ×", "id": "block", "basis": "code"},
             {"box": "Final LayerNorm", "id": "ln", "minor": True, "basis": "code"},
             {"box": "Sample next token", "id": "sample", "basis": "stated"},
         ],
@@ -66,11 +53,12 @@ MODEL = {
             {"at": "enc", "text": "*540* tokens per frame, vocabulary *16,384*", "side": "left", "key": True},
             {"at": "seq", "text": "*16* action tokens: *12* buttons, *4* stick axes", "side": "left"},
             {"at": "attn", "text": "Context of *10* frames = *5,560* tokens", "side": "left"},
-            {"at": "block", "text": "*1.6B* parameters, nanoGPT block", "side": "right", "key": True},
+            {"at": "block", "text": "*24* layers · *1.6B* · width *2,304*", "side": "right", "key": True},
             {"at": "sample", "text": "≥ *540* serial passes per frame", "side": "right", "key": True},
             {"at": "dec", "text": "~*1* fps vs *10+* fps for MaskGIT WHAMM", "side": "right", "key": True},
         ],
-        "feedback": "next step",
+        "feedback": "next token",
+        "feedback_from": "sample",
+        "feedback_to": "emb",
     },
-    "audit": {"date": "2026-10-23", "checked": 44, "stated": 24, "code": 16, "derived": 4, "assumed": 0, "fixed": 5},
 }

@@ -1,6 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="240" height="270" viewBox="0 0 240 270" font-family="IBM Plex Sans">
 <style>@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;700&amp;family=Saira+Semi+Condensed:wght@500;600&amp;display=swap");</style>
 <defs><marker id="ah_1E2A3B" markerWidth="7" markerHeight="7" refX="5.5" refY="3.5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0 L7,3.5 L0,7 z" fill="#1E2A3B"/></marker></defs>
+<desc>WorldVLA — Released Chameleon-based ~7B, 256×256 setting, two-frame input</desc>
 <rect x="0.0" y="0.0" width="241.0" height="271.0" rx="0.0" fill="#FFFFFF"/>
 <rect x="10.0" y="48.0" width="219.5" height="205.8" rx="20.0" fill="#EEF1F5" stroke="#5E6B80" stroke-width="1.0"/>
 <rect x="69.1" y="220.8" width="111.9" height="24.0" rx="6.0" fill="#DCF2F1" stroke="#00A8A4" stroke-width="1.0"/>

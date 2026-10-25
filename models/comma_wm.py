@@ -43,20 +43,7 @@ MODEL = {
                 "arXiv 2504.19077 (Learning to Drive from a World Model, comma.ai), Sec. 4.2-4.3: RF objective, Euler step, latent rollout",
                 "PixArt-α (arXiv 2310.00426), Sec. 2.3: AdaLN-single",
                 "huggingface.co/commaai/worldmodel-4B README (later 4B model; patching and KV-cache comparison only)"],
-    "diagram": {
-        "encoder": {"text": "2 cameras 128x256 → ViT compressor (50M)", "sub": "one 32x16x32 latent per frame at 5 fps", "tag": "frozen",
-                    "short": "ViT compressor → 32x16x32 latent"},
-        "tokens": {"groups": [("latent", 8, "latent 32x16x32 per frame")],
-                   "note": "2 s context + 1 s future at 5 fps"},
-        "core": {"title": "DiT ×48 · d 1600 · 25 heads",
-                 "rows": [("attn", "Block-causal self-attention"),
-                          ("action", "6-DoF pose → AdaLN-single"),
-                          ("mlp", "MLP")],
-                 "notes": ["KV cache; also conditioned on 1 s of future frames (inverse dynamics)"]},
-        "sampling": {"kind": "diffusion", "text": "Rectified flow, 15 Euler steps, CFG 2.0", "sub": "per frame", "short": "15 Euler steps per frame"},
-        "decoder": {"text": "ViT decoder (100M) → 2 views at 128x256", "tag": "frozen", "short": "ViT decoder → 2 views"},
-        "loop": "AR rollout",
-    },
+    "figure_variant": "Official openpilot 0.11 technical post: 2B, 15 Euler steps",
     "flow": {
         "below": [{"text": "2 views 128×256 + 6-DoF pose"}],
         "stack": [
@@ -65,7 +52,7 @@ MODEL = {
             {"group": [
                 {"box": "Noisy latent + context", "id": "noisy", "style": "soft", "minor": True, "basis": "stated"},
                 {"group": [
-                    {"box": "AdaLN-single", "id": "ada", "side": "Pose + noise level",
+                    {"box": "AdaLN-single", "id": "ada", "side": "Pose + σ + index",
                      "basis": "stated", "side_basis": "stated"},
                     {"box": "Block-causal attention", "id": "attn", "style": "dark", "basis": "stated"},
                     {"box": "Rest of block not stated", "id": "rest", "style": "soft", "basis": "stated"},
@@ -83,7 +70,8 @@ MODEL = {
             {"at": "noisy", "text": "Context of *2* s past + *1* s future frames", "side": "right"},
             {"at": "dec", "text": "*12.2* frames/s per GPU at *15* steps", "side": "right", "key": True},
         ],
-        "feedback": "next latent frame",
+        "feedback": "latent context",
+        "feedback_from": "upd",
+        "feedback_to": "noisy",
     },
-    "audit": {"date": "2026-10-23", "checked": 42, "stated": 34, "code": 0, "derived": 3, "assumed": 0, "removed": 5, "fixed": 6},
 }

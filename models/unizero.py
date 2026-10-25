@@ -18,7 +18,9 @@ MODEL = {
     "tagline": "MuZero-style MCTS on a tiny transformer",
     "facts": [
         ("Representation", "Conv encoder → one 768-d latent per step with SimNorm (simplex groups of 8); 64x64 Atari frames; no reconstruction"),
-        ("Core", "2 transformer layers, d 768, 8 heads, GELU, dropout 0.1 (Atari, DMC); d 64 and 4 heads for the long-term memory tasks; post-norm per Table 6 (drawn), pre-norm plus a final LayerNorm in the code; FFN hidden width D per Table 6, 4D = 3072 in the code; parameter count not listed"),
+        ("Core", "2 transformer layers, d 768, 8 heads, GELU, dropout 0.1 (Atari, DMC); d 64 and 4 heads for the long-term memory tasks. "
+                 "The figure follows the released code: pre-norm, final LayerNorm and FFN width 4D = 3072. "
+                 "Table 6 instead specifies post-norm and FFN width D; parameter count not listed"),
         ("Attention", "Causal over interleaved (latent, action) tokens; training context H = 10 steps = 20 tokens; inference context H_infer = 4 steps (memory_length + 16 on long-term tasks)"),
         ("Actions", "A learned action-embedding token per step (lookup table for discrete actions; for continuous ones a linear layer per App. B.2 and the code, a 2-layer MLP per Sec. 3.2.1)"),
         ("Prediction", "Two dependent single-token passes per imagined step (code): the action token yields the next latent (SimNorm) and reward, the predicted latent fed back as a token yields policy and value"),
@@ -31,21 +33,7 @@ MODEL = {
     "sources": ["arXiv 2406.10667 Sec. 3.2-3.3 (tokens, KV cache, MCTS), App. B Tables 6-8 (architecture, hyperparameters), App. B.5 (compute)",
                 "LightZero code (v0.1.0, v0.2.0): lzero/model/unizero_world_models/world_model.py, transformer.py; zoo/atari/config/atari_unizero_config.py",
                 "LightZero README (TMLR 2025 acceptance)"],
-    "diagram": {
-        "encoder": {"text": "Frame 64x64 → conv encoder + SimNorm", "sub": "one 768-d latent per step", "tag": "trained jointly",
-                    "short": "Conv encoder, 768-d latent"},
-        "tokens": {"groups": [("latent", 1, "latent z_t"), ("action", 1, "action")],
-                   "note": "per step; train 10 steps = 20 tokens, infer on the last 4"},
-        "core": {"title": "Transformer ×2 · d 768 · 8 heads",
-                 "rows": [("attn", "Causal self-attention over (z, a) tokens"),
-                          ("mlp", "MLP (GELU)")],
-                 "notes": ["KV cache: last 4 steps, shared by all MCTS nodes"]},
-        "sampling": {"kind": "search", "text": "MCTS, 50 simulations per real step", "sub": "1 transformer pass per simulated step",
-                     "short": "MCTS: 50 one-step calls"},
-        "heads": ["policy", "value", "reward"],
-        "decoder": {"none": "no reconstruction; planning in latent space"},
-        "loop": "MCTS",
-    },
+    "figure_variant": "Released 2x768 pre-norm transformer with final LayerNorm",
     "flow": {
         "below": [{"text": "Frame 64×64 + action"}],
         "stack": [
@@ -54,16 +42,17 @@ MODEL = {
             {"box": "Interleave (z, a) tokens", "short": "Interleave z, a", "id": "seq", "side": "Action emb.", "basis": "stated", "side_basis": "stated"},
             {"box": "Add learned positions", "id": "pos", "minor": True, "basis": "stated"},
             {"group": [
-                {"residual": [{"box": "Masked self-attention", "id": "attn", "style": "dark", "basis": "code"}]},
-                {"box": "LayerNorm", "minor": True, "basis": "stated"},
-                {"residual": [{"box": "Feed forward", "id": "ffn", "basis": "stated"}]},
-                {"box": "LayerNorm", "minor": True, "basis": "stated"},
+                {"residual": [{"box": "LayerNorm", "minor": True, "basis": "code"},
+                              {"box": "Masked self-attention", "id": "attn", "style": "dark", "basis": "code"}]},
+                {"residual": [{"box": "LayerNorm", "minor": True, "basis": "code"},
+                              {"box": "Feed forward", "id": "ffn", "basis": "code"}]},
             ], "repeat": "2 ×", "id": "block"},
+            {"box": "Final LayerNorm", "minor": True, "basis": "code"},
             {"fanout": [[{"box": "Policy + value head", "id": "pol", "terminal": True, "minor": True, "basis": "stated"}],
                         [{"box": "Dynamics head (MLP)", "short": "Dynamics head", "id": "dyn", "minor": True, "basis": "stated"}, {"box": "Next latent + reward", "id": "next", "basis": "stated"}]]},
         ],
         "above": [{"text": "Next latent → MCTS, no decoding"}],
-        "insets": [{"for": "ffn", "stack": [{"box": "Linear", "basis": "stated"}, {"box": "GELU", "basis": "stated"}, {"box": "Linear", "basis": "stated"}]},
+        "insets": [{"for": "ffn", "stack": [{"box": "Linear 768 → 3072", "basis": "code"}, {"box": "GELU (tanh)", "basis": "code"}, {"box": "Linear 3072 → 768", "basis": "code"}]},
                    {"for": "dyn", "label": "MCTS per real step", "stack": [{"box": "Pick an action (UCB)", "basis": "stated"}, {"box": "Two 1-token passes", "basis": "code"},
                                                                           {"box": "Back up the value, ×50", "basis": "stated"}]}],
         "annotations": [
@@ -73,7 +62,8 @@ MODEL = {
             {"at": "next", "text": "*50* MCTS calls per action", "side": "left", "key": True},
             {"at": "block", "text": "*2* layers · width *768*", "side": "right", "key": True},
         ],
-        "feedback": "MCTS",
+        "feedback": "predicted z",
+        "feedback_from": "next",
+        "feedback_to": "seq",
     },
-    "audit": {"date": "2026-10-23", "checked": 47, "stated": 40, "code": 3, "derived": 4, "assumed": 0, "fixed": 8},
 }

@@ -48,22 +48,7 @@ MODEL = {
                 "github.com/facebookresearch/cwm (commit 7930e02): cwm/model/transformer.py, cwm/fastgen/forward.py, "
                 "cwm/fastgen/utils/cache.py (block order, RoPE in every layer, KV allocation)",
                 "huggingface.co/facebook/cwm config.json (layer_types: 17 full-attention layers); KV-cache arithmetic is ours [D]"],
-    "diagram": {
-        "encoder": {"text": "Text and code → Llama 3 tokenizer (128k vocab)",
-                    "sub": "observation = stack-frame locals as JSON; action = the Python line executed",
-                    "short": "Llama 3 tokenizer, 128k vocab"},
-        "tokens": {"groups": [("text", 8, "observation (JSON)"), ("text", 4, "action (code line)")],
-                   "note": "free-length text; context up to 131,072 tokens"},
-        "core": {"title": "Decoder-only LLM ×64 · d 6144 · 48 heads",
-                 "rows": [("attn", "Local window 8,192 (47 layers)"),
-                          ("attn", "Global window 131,072 (17 layers)"),
-                          ("mlp", "SwiGLU FFN 21,504")],
-                 "notes": ["GQA: 48 query heads, 8 KV heads; scaled RoPE", "KV cache ~10 GiB bf16 at 131k context"]},
-        "sampling": {"kind": "ar", "text": "Next-token softmax, 128k vocab", "sub": "1 pass per token; a trace step is many tokens",
-                     "short": "Next token, 1 pass per token"},
-        "decoder": {"none": "output is text: trace frames, code, tool calls"},
-        "loop": "AR rollout",
-    },
+    "figure_variant": "Released dense 32B code world model",
     "flow": {
         "below": [{"text": "Trace: locals JSON + Python line"}],
         "stack": [
@@ -96,6 +81,7 @@ MODEL = {
             {"at": "sample", "text": "*1* pass per token", "side": "left", "key": True},
         ],
         "feedback": "next token",
+        "feedback_from": "sample",
+        "feedback_to": "emb",
     },
-    "audit": {"date": "2026-10-22", "checked": 48, "stated": 30, "code": 14, "derived": 4, "assumed": 0, "fixed": 7},
 }

@@ -32,21 +32,7 @@ MODEL = {
                 "Official code github.com/jrobine/twm: twm/nets.py (post-LN block, token count), twm/config.py",
                 "OpenReview TdBaDGCpjly (ICLR 2023 submission, Sep 2022)",
                 "STORM arXiv 2310.09615 Sec. 2, Table 1 (comparison)"],
-    "diagram": {
-        "encoder": {"text": "Frame 64x64 (stack 4) → CNN VAE", "sub": "32 categoricals × 32 classes per step",
-                    "tag": "trained jointly", "short": "CNN VAE, 32×32 categoricals"},
-        "tokens": {"groups": [("latent", 1, "latent z"), ("action", 1, "action"), ("reward", 1, "reward")],
-                   "note": "per step; history 16 steps = 47 tokens"},
-        "core": {"title": "Transformer-XL ×10 · d 256 · 4 heads",
-                 "rows": [("attn", "Causal self-attention, relative positions"),
-                          ("mlp", "MLP (FFN 1024)")],
-                 "notes": ["XL memory: cached segment outputs reused as context", "h_t read from the action token"]},
-        "sampling": {"kind": "ar", "text": "Next latent: categorical sample from MLP head",
-                     "sub": "1 pass per imagined step", "short": "Next latent, 1 pass per step"},
-        "heads": ["reward", "discount"],
-        "decoder": {"none": "policy acts from z_t; the CNN decoder only trains the VAE"},
-        "loop": "AR rollout",
-    },
+    "figure_variant": "Released TWM: 10x256 Transformer-XL, three tokens per step",
     "flow": {
         "below": [{"text": "Frames 64×64 + action + reward"}],
         "stack": [
@@ -75,7 +61,8 @@ MODEL = {
             {"at": "block", "text": "*10* layers · *10.8M* dynamics, *19M* world model", "side": "right", "key": True},
             {"at": "sample", "text": "*1* pass per step · *39,000* samples/s", "side": "right", "key": True},
         ],
-        "feedback": "next step",
+        "feedback": "next latent z",
+        "feedback_from": "sample",
+        "feedback_to": "seq",
     },
-    "audit": {"date": "2026-10-23", "checked": 47, "stated": 35, "code": 9, "derived": 3, "assumed": 0, "fixed": 8},
 }

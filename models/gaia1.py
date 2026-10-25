@@ -33,21 +33,7 @@ MODEL = {
     ],
     "evidence": "read",
     "sources": ["arXiv 2309.17080 Sec. 2.1-2.4 (tokens, world model, decoder), Sec. 4.1-4.3 (sizes, training), Sec. 5.1-5.2 (sampling, DDIM), Sec. 9 (not real time)"],
-    "diagram": {
-        "encoder": {"text": "Frame 288x512 → image tokenizer (0.3B)", "sub": "576 tokens per frame (18×32), vocab 8,192, DINO-distilled",
-                    "tag": "frozen", "short": "Image tokenizer, 576 tokens/frame"},
-        "tokens": {"groups": [("text", 4, "32 text"), ("frame", 24, "576 image tokens"), ("action", 2, "2 actions")],
-                   "note": "per frame at 6.25 Hz; 26 frames = 15,860 tokens"},
-        "core": {"title": "Transformer 6.5B · layers not disclosed",
-                 "rows": [("attn", "Causal self-attention over all tokens"),
-                          ("mlp", "MLP")],
-                 "notes": ["context 26 frames = 15,860 tokens; FlashAttention v2", "sliding window for longer rollouts"]},
-        "sampling": {"kind": "ar", "text": "Next-token softmax, top-k 50", "sub": "576 serial passes per frame",
-                     "short": "Next token, 576 passes per frame"},
-        "decoder": {"text": "Video diffusion U-Net (2.6B) → 288x512", "sub": "50 DDIM steps per 7-frame window; 6.25 → 25 Hz upsampling; not a transformer",
-                    "tag": "frozen", "short": "Diffusion U-Net, 50 DDIM steps"},
-        "loop": "AR rollout",
-    },
+    "figure_variant": "Paper: 6.5B autoregressive world model and separate video decoder",
     "flow": {
         "below": [{"text": "Frame 288×512 + text + action"}],
         "stack": [
@@ -74,5 +60,4 @@ MODEL = {
             {"at": "dec", "text": "*2.6B* U-Net, *50* DDIM steps per *7* frames", "side": "left", "key": True},
         ],
     },
-    "audit": {"date": "2026-10-23", "checked": 40, "stated": 32, "code": 0, "derived": 3, "assumed": 0, "removed": 5, "fixed": 5},
 }

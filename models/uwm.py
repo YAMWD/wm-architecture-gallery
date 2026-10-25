@@ -45,35 +45,22 @@ MODEL = {
                 "github.com/WEIRDLabUW/unified-world-model: configs/model/uwm.yaml, configs/dataset/droid.yaml, "
                 "models/uwm/uwm.py, models/uwm/obs_encoder.py, models/common/adaln_attention.py, "
                 "models/common/attention.py, README (released checkpoints)"],
-    "diagram": {
-        "encoder": {"text": "Future frames 224x224 → SDXL VAE; current frames → ResNet-18",
-                    "sub": "28x28x4 latents, patch (4,4,2) → 49 tokens per camera", "tag": "pretrained",
-                    "short": "SDXL VAE (future) + ResNet-18 (now)"},
-        "tokens": {"groups": [("action", 4, "16 actions"), ("latent", 12, "49 patches/camera"),
-                              ("register", 3, "8 registers")],
-                   "note": "3 cameras: 171 tokens per chunk [D]"},
-        "core": {"title": "DiT ×12 · d 768 · 12 heads",
-                 "rows": [("attn", "Bidirectional self-attention over actions, image patches and registers"),
-                          ("action", "AdaLN: ResNet-18 features + action and image timesteps"),
-                          ("mlp", "MLP (ratio 4)")],
-                 "notes": ["two independent diffusion timesteps select the mode"]},
-        "sampling": {"kind": "diffusion", "text": "DDIM, 10 steps (100 in training)",
-                     "sub": "per 16-action chunk; policy fixes the image timestep at T", "short": "DDIM, 10 steps per chunk"},
-        "heads": ["action chunk"],
-        "decoder": {"text": "SDXL VAE decoder → 224x224 frames", "sub": "only for dynamics and video modes; the policy never decodes",
-                    "tag": "frozen", "short": "SDXL VAE decoder (not for policy)"},
-    },
+    "figure_variant": "Released three-camera DROID configuration: 12x768, 10 DDIM steps",
     "flow": {
         "below": [{"text": "Frames 224×224 + actions"}],
         "stack": [
             {"box": "SDXL VAE encoder", "id": "vae", "style": "teal", "basis": "stated"},
-            {"box": "Patchify 4×4×2 (3D conv)", "id": "patch", "minor": True, "basis": "stated"},
             {"group": [
+                {"box": "Noisy image latents", "minor": True, "basis": "code"},
+                {"box": "Patchify 4×4×2 (3D conv)", "id": "patch", "minor": True, "basis": "stated"},
                 {"box": "Tokens + registers", "short": "Token sequence", "id": "seq", "style": "soft", "side": "Action MLP enc.", "basis": "stated", "side_basis": "stated"},
                 {"group": [
                     {"residual": [{"box": "AdaLN", "id": "ada", "style": "orange", "side": "ResNet + timesteps", "basis": "stated", "side_basis": "stated"},
-                                  {"box": "Bidirectional attention", "id": "attn", "style": "dark", "basis": "code"}]},
-                    {"residual": [{"box": "AdaLN", "minor": True, "basis": "code"}, {"box": "MLP", "id": "mlp", "basis": "stated"}]},
+                                  {"box": "Bidirectional attention", "id": "attn", "style": "dark", "basis": "code"},
+                                  {"box": "Scale by gate", "minor": True, "basis": "code"}]},
+                    {"residual": [{"box": "AdaLN", "minor": True, "basis": "code"},
+                                  {"box": "MLP", "id": "mlp", "basis": "stated"},
+                                  {"box": "Scale by gate", "minor": True, "basis": "code"}]},
                 ], "repeat": "12 ×", "id": "block"},
                 {"box": "DDIM update", "id": "upd", "minor": True, "basis": "stated"},
             ], "loop": "10 DDIM steps", "tint": "grey", "id": "denoise"},
@@ -90,5 +77,4 @@ MODEL = {
             {"at": "act", "text": "*16* actions per chunk · latency not disclosed", "side": "right", "key": True},
         ],
     },
-    "audit": {"date": "2026-10-23", "checked": 43, "stated": 28, "code": 7, "derived": 8, "assumed": 0, "fixed": 7},
 }
