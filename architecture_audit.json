@@ -1,0 +1,2861 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-25",
+  "source_cache": "/home/yaoz0b/wm_accel/research_notes/Architecture audit/2026-10-25",
+  "scope": "Architecture figures and their configuration-dependent supporting facts; comparison of primary publications and pinned official code, not model execution or performance reproduction.",
+  "common_findings": [
+    "The old audit missed real paper/code disagreements and incompatible variant combinations. Each figure now names one configuration; differences remain explicit rather than being silently reconciled.",
+    "LingBot-VA released video/action forward paths share one transformer; the paper describes separate towers. The pinned checkpoint headers confirm the shared-width action projections and approximately 5.1B parameters.",
+    "Cosmos-Predict1 uses the released 4B base graph. Cosmos-Predict2.5 uses the 35-step base Video2World sampler. NWM uses the released 250-step DDPM. Flash, distilled and base latency/sampler claims are no longer combined in those figures.",
+    "SOLD, SlotFormer, TransDreamer, UniZero and UVA now follow the selected released configuration, with paper differences recorded. Missing final norms, input projections and adaptive residual gates were corrected where code supplies them.",
+    "Rollout arrows now name actual tensor endpoints. Sampled codes, predicted features, latents and cached K/V return to the matching stage; robot actions are not drawn as direct image-encoder inputs.",
+    "All 49 unused legacy diagram specifications and historical verification counters were removed. Default rendering and the website use the same reviewed flow, with current source coverage in each card.",
+    "Undisclosed details stay undisclosed. For seven models no matching official implementation was found in the consulted sources: AAPT, comma.ai, Dreamer 4, GAIA-1, GAIA-2, Genie and the long-context SSM model.",
+    "The source ledger binds each review to the complete card and records immutable code revisions plus source-byte hashes. These are reproducibility/integrity checks, not automated proof of scientific correctness.",
+    "A follow-up independent check of this review found four wrong edits and several removals of source-backed content; they were fixed: SOLD keeps the paper's and checkpoint's 4 slot-aggregation layers, LingBot-VA and the long-context SSM model keep their closed rollout loops, Genie's block count stays the paper's L, and mixed-configuration labels were made consistent with each figure. The former 'verified' evidence level stays retired, because it described a check of an earlier version of the facts."
+  ],
+  "models": {
+    "aapt": {
+      "name": "AAPT",
+      "coverage": "Publication only",
+      "variant": "Paper: 8B, 36-block causal adversarial generator",
+      "architecture": "The VAE packs four frames per latent step. Noise, conditioning and the previous frame are concatenated by channel; projected text tokens join the sequence, and the diffusion timestep is a stated input whose injection point is undisclosed. The 36-block generator uses block-causal attention with a bounded latent-history cache and predicts one clean latent frame in one evaluation.",
+      "checked": [
+        "representation and token geometry",
+        "core operation order, normalization/modulation and residual boundaries where disclosed",
+        "conditioning entry points and attention masks",
+        "sampling repetitions, cache/feedback tensor and output/decoder role"
+      ],
+      "changes": [
+        "Added the text-token join at the actual sequence input. Retained only the disclosed attention and an explicitly undisclosed remainder of the block.",
+        "Added the stated diffusion-timestep input (Sec. 2.1) to the figure inputs and the Core fact; it is not drawn as a side box because its injection point is not disclosed."
+      ],
+      "limitations": [
+        "No matching official generator implementation was found in the consulted sources. Width, heads, patch geometry, internal norms, FFN and residual placement are not disclosed; none are supplied from a conventional DiT."
+      ],
+      "references": [
+        {
+          "kind": "paper",
+          "label": "Original paper",
+          "url": "https://arxiv.org/html/2506.09350",
+          "sha256": "9c63ebe5f8414f6dc7556ad3148183d425269a6c3915acefb0744c7bf7025615",
+          "cached_as": "aapt.paper.html",
+          "version": "2506.09350v2",
+          "view_url": "https://arxiv.org/html/2506.09350v2"
+        }
+      ],
+      "model_sha256": "5e671916356b63a20acaaf536915ada574f5ed1b1811da9d516c676c4549c7d1"
+    },
+    "comma_wm": {
+      "name": "comma.ai world model (openpilot 0.11)",
+      "coverage": "Official page only",
+      "variant": "Official openpilot 0.11 technical post: 2B, 15 Euler steps",
+      "architecture": "A ViT compressor produces a continuous latent per two-camera observation. The 48-layer, width-1600, 25-head DiT uses block-causal attention and AdaLN-single conditioned on pose, noise and frame index. Fifteen guided Euler updates generate the next latent before the ViT decoder.",
+      "checked": [
+        "representation and token geometry",
+        "core operation order, normalization/modulation and residual boundaries where disclosed",
+        "conditioning entry points and attention masks",
+        "sampling repetitions, cache/feedback tensor and output/decoder role"
+      ],
+      "changes": [
+        "Added noise and frame-index conditioning. Routed rollout feedback from the updated latent to latent context, bypassing the image encoder."
+      ],
+      "limitations": [
+        "No matching public world-model implementation was found in the consulted sources. This is an official-page description, not a research-paper/code verification. The post does not disclose the full block or the cache-write schedule."
+      ],
+      "references": [
+        {
+          "kind": "official page",
+          "label": "Original official page",
+          "url": "https://blog.comma.ai/011release/",
+          "sha256": "774ce1f351f7800f6bc787420a7a5f5dd5313a4677106b13f4352524af2b73bc",
+          "cached_as": "comma_wm.paper.html"
+        }
+      ],
+      "model_sha256": "9eb011358b2880030f72c4037a1c96c4e3432b548b8cd223fc73ed1d20d3049d"
+    },
+    "cosmos3": {
+      "name": "Cosmos 3",
+      "coverage": "Publication + released code",
+      "variant": "Nano generation (50 FM steps); reasoner text decoding not drawn",
+      "architecture": "Text and ViT tokens pass once through the reasoner, whose per-layer keys and values are cached. Clean video, audio and action conditioning is encoded by the Wan2.2 VAE, the audio VAE and per-embodiment action projections. In each of the 50 flow-matching steps the noisy DM tokens (plus timestep embedding) are packed with the clean DM tokens and the cached AR context, and pass through 36 generator-tower layers (RMSNorm, own QKV with 3D MRoPE, DM-to-AR+DM attention, own MLP), a final norm and the per-modality out-projections. Video latents go to the Wan2.2 VAE decoder, audio to the audio VAE decoder, and action tokens give the action chunk.",
+      "checked": [
+        "representation and token geometry",
+        "core operation order, normalization/modulation and residual boundaries where disclosed",
+        "conditioning entry points and attention masks",
+        "sampling repetitions, cache/feedback tensor and output/decoder role"
+      ],
+      "changes": [
+        "Moved the reasoner and its cache outside the diffusion loop. Added the generator final norm/projection and removed a misleading post-diffusion text-generation head.",
+        "Restored the clean DM conditioning lane (Wan2.2 VAE, audio VAE, action in-projection), the 'Pack AR + DM tokens' step with the 74,000-token training-context annotation, and audio output; moved all DM out-projections into the loop.",
+        "Replaced the DROID 4-step annotation and policy output text with Nano-consistent ones, and stated in the variant and facts that reasoner text decoding is not drawn."
+      ],
+      "limitations": [
+        "The figure is the Nano 50-step generation path; the reasoner's next-token text decoding is not drawn. The DROID action policy is a separately post-trained checkpoint (4 steps, 32 actions, video decoding skipped) described only in the facts. Super and Edge configurations are outside this figure."
+      ],
+      "references": [
+        {
+          "kind": "report",
+          "label": "Original report",
+          "url": "https://research.nvidia.com/labs/cosmos-lab/cosmos3/technical-report.pdf",
+          "sha256": "d8f554d76b37d8c2ba504c628d7814176d7b0383c6c3bfa9f8389decda228d6e",
+          "cached_as": "cosmos3.paper.pdf"
+        },
+        {
+          "kind": "code",
+          "label": "cosmos_framework/model/vfm/mot/cosmos3_vfm_network.py",
+          "url": "https://raw.githubusercontent.com/NVIDIA/cosmos-framework/300faa14daab3910be9d303c31708a0a1d6e4371/cosmos_framework/model/vfm/mot/cosmos3_vfm_network.py",
+          "revision": "300faa14daab3910be9d303c31708a0a1d6e4371",
+          "sha256": "396f20e39bc51d679069790156b92f5e6cae4659bf603d671e5ba73b129ccd6c",
+          "cached_as": "code/cosmos3/cosmos_framework/model/vfm/mot/cosmos3_vfm_network.py",
+          "view_url": "https://github.com/NVIDIA/cosmos-framework/blob/300faa14daab3910be9d303c31708a0a1d6e4371/cosmos_framework/model/vfm/mot/cosmos3_vfm_network.py"
+        },
+        {
+          "kind": "code",
+          "label": "cosmos_framework/model/vfm/mot/unified_mot.py",
+          "url": "https://raw.githubusercontent.com/NVIDIA/cosmos-framework/300faa14daab3910be9d303c31708a0a1d6e4371/cosmos_framework/model/vfm/mot/unified_mot.py",
+          "revision": "300faa14daab3910be9d303c31708a0a1d6e4371",
+          "sha256": "ce5c3a9998dee6773de13d4479d28cc764098f6eeb7bdbe91781ed54b6b14486",
+          "cached_as": "code/cosmos3/cosmos_framework/model/vfm/mot/unified_mot.py",
+          "view_url": "https://github.com/NVIDIA/cosmos-framework/blob/300faa14daab3910be9d303c31708a0a1d6e4371/cosmos_framework/model/vfm/mot/unified_mot.py"
+        },
+        {
+          "kind": "code",
+          "label": "cosmos_framework/model/vfm/omni_mot_model.py",
+          "url": "https://raw.githubusercontent.com/NVIDIA/cosmos-framework/300faa14daab3910be9d303c31708a0a1d6e4371/cosmos_framework/model/vfm/omni_mot_model.py",
+          "revision": "300faa14daab3910be9d303c31708a0a1d6e4371",
+          "sha256": "f6b91332604f42bc8e13197c347cc91ad44662e9dfe7bc94c642193af9b5f4ef",
+          "cached_as": "code/cosmos3/cosmos_framework/model/vfm/omni_mot_model.py",
+          "view_url": "https://github.com/NVIDIA/cosmos-framework/blob/300faa14daab3910be9d303c31708a0a1d6e4371/cosmos_framework/model/vfm/omni_mot_model.py"
+        }
+      ],
+      "model_sha256": "99eba7f3d445cf8380c28737d8059a33a972881580230f3ea3db320b68905eef"
+    },
+    "cosmos_policy": {
+      "name": "Cosmos Policy",
+      "coverage": "Publication + released code",
+      "variant": "Released LIBERO policy: Predict2-2B, 28 blocks, 5 EDM steps",
+      "architecture": "Images, proprioception, actions, future state and value are represented in a common latent-frame layout. The 28-block backbone uses gated AdaLN residual branches for self-attention, text cross-attention and GELU FFN. The five-step policy produces actions directly; pixel decoding is only for visualization.",
+      "checked": [
+        "representation and token geometry",
+        "core operation order, normalization/modulation and residual boundaries where disclosed",
+        "conditioning entry points and attention masks",
+        "sampling repetitions, cache/feedback tensor and output/decoder role"
+      ],
+      "changes": [
+        "Made all three modulation gates explicit.",
+        "Labelled the 4.9 s best-of-8 search as the separate ALOHA planning-model setup (not drawn) in summary and facts, and labelled the 0.61 s annotation as LIBERO on one H100."
+      ],
+      "limitations": [
+        "The ten-step ALOHA setup and ensemble planning are separate configurations described in the facts. The diagram is the parallel LIBERO policy path."
+      ],
+      "references": [
+        {
+          "kind": "paper",
+          "label": "Original paper",
+          "url": "https://arxiv.org/html/2601.16163",
+          "sha256": "fdbb17ae2985bb84827f9ef3a153fb8b0740babdcbece21a51b5aa4a504f0c0e",
+          "cached_as": "cosmos_policy.paper.html",
+          "version": "2601.16163v1",
+          "view_url": "https://arxiv.org/html/2601.16163v1"
+        },
+        {
+          "kind": "code",
+          "label": "cosmos_policy/_src/predict2/networks/minimal_v4_dit.py",
+          "url": "https://raw.githubusercontent.com/NVlabs/cosmos-policy/18a2accadf4e7a3531e56754102af5a24d2316da/cosmos_policy/_src/predict2/networks/minimal_v4_dit.py",
+          "revision": "18a2accadf4e7a3531e56754102af5a24d2316da",
+          "sha256": "8d517d7e8ff1ed5cd4777cf6551ad0db89358a72f62bc52b6603d4d05cae8be6",
+          "cached_as": "code/cosmos_policy/cosmos_policy/_src/predict2/networks/minimal_v4_dit.py",
+          "view_url": "https://github.com/NVlabs/cosmos-policy/blob/18a2accadf4e7a3531e56754102af5a24d2316da/cosmos_policy/_src/predict2/networks/minimal_v4_dit.py"
+        },
+        {
+          "kind": "code",
+          "label": "cosmos_policy/config/experiment/cosmos_policy_experiment_configs.py",
+          "url": "https://raw.githubusercontent.com/NVlabs/cosmos-policy/18a2accadf4e7a3531e56754102af5a24d2316da/cosmos_policy/config/experiment/cosmos_policy_experiment_configs.py",
+          "revision": "18a2accadf4e7a3531e56754102af5a24d2316da",
+          "sha256": "16b8c0d1e2112ebf09cc5393f3f38f07cbc82b9ee2844ad79f35fd6532a566fb",
+          "cached_as": "code/cosmos_policy/cosmos_policy/config/experiment/cosmos_policy_experiment_configs.py",
+          "view_url": "https://github.com/NVlabs/cosmos-policy/blob/18a2accadf4e7a3531e56754102af5a24d2316da/cosmos_policy/config/experiment/cosmos_policy_experiment_configs.py"
+        },
+        {
+          "kind": "code",
+          "label": "cosmos_policy/models/policy_video2world_model.py",
+          "url": "https://raw.githubusercontent.com/NVlabs/cosmos-policy/18a2accadf4e7a3531e56754102af5a24d2316da/cosmos_policy/models/policy_video2world_model.py",
+          "revision": "18a2accadf4e7a3531e56754102af5a24d2316da",
+          "sha256": "4f5314fdea8f3f05d210f99923ca07e3c05fe9e0756b71f77b201f4b52e460eb",
+          "cached_as": "code/cosmos_policy/cosmos_policy/models/policy_video2world_model.py",
+          "view_url": "https://github.com/NVlabs/cosmos-policy/blob/18a2accadf4e7a3531e56754102af5a24d2316da/cosmos_policy/models/policy_video2world_model.py"
+        }
+      ],
+      "model_sha256": "37a4439e63e83e19564d544c71cc2133b651aa6be819cd67fc31dc0a26a305d6"
+    },
+    "cosmos_predict1_ar": {
+      "name": "Cosmos-Predict1 (autoregressive)",
+      "coverage": "Publication + released code",
+      "variant": "Released 4B base: no text cross-attention; paper's per-block 3D APE is off in its code",
+      "architecture": "FSQ video codes enter a 16-layer Llama-style decoder with pre-RMSNorm, 3D RoPE, grouped-query attention, SwiGLU and a final RMSNorm. The released sampler generates one code at a time and feeds codes back into the embedding, then decodes complete latent frames.",
+      "checked": [
+        "representation and token geometry",
+        "core operation order, normalization/modulation and residual boundaries where disclosed",
+        "conditioning entry points and attention masks",
+        "sampling repetitions, cache/feedback tensor and output/decoder role"
+      ],
+      "changes": [
+        "Replaced the incompatible 4B/12B/text-conditioned mixture with the 16-layer 4B base. Removed text cross-attention, absolute-position conditioning and the unreleased Medusa branch.",
+        "Stated the paper/code 3D APE discrepancy in the figure variant and reworded the summary to lead with the drawn 4B base, labelling the Video2World T5 cross-attention and Medusa heads as not drawn."
+      ],
+      "limitations": [
+        "The paper also reports 12B, text-conditioned 5B/13B and Medusa experiments. Those are described separately; their speedups and attention paths do not belong to this released base graph."
+      ],
+      "references": [
+        {
+          "kind": "paper",
+          "label": "Original paper",
+          "url": "https://arxiv.org/html/2501.03575",
+          "sha256": "876fe772fb547737f1b9c7d4fadfc503d1e80c7c181b25611882bc1387f6db92",
+          "cached_as": "cosmos_predict1_ar.paper.html",
+          "version": "2501.03575v3",
+          "view_url": "https://arxiv.org/html/2501.03575v3"
+        },
+        {
+          "kind": "code",
+          "label": "cosmos_predict1/autoregressive/configs/base/model.py",
+          "url": "https://raw.githubusercontent.com/nvidia-cosmos/cosmos-predict1/724daa1b2df5ec96bdf111bb947479d2216b3b08/cosmos_predict1/autoregressive/configs/base/model.py",
+          "revision": "724daa1b2df5ec96bdf111bb947479d2216b3b08",
+          "sha256": "1d207f9f49684e530b66c85d4b178c321c18e0e1b3aa7ed0d73f1823c3465d44",
+          "cached_as": "code/cosmos_predict1_ar/cosmos_predict1/autoregressive/configs/base/model.py",
+          "view_url": "https://github.com/nvidia-cosmos/cosmos-predict1/blob/724daa1b2df5ec96bdf111bb947479d2216b3b08/cosmos_predict1/autoregressive/configs/base/model.py"
+        },
+        {
+          "kind": "code",
+          "label": "cosmos_predict1/autoregressive/configs/base/tokenizer.py",
+          "url": "https://raw.githubusercontent.com/nvidia-cosmos/cosmos-predict1/724daa1b2df5ec96bdf111bb947479d2216b3b08/cosmos_predict1/autoregressive/configs/base/tokenizer.py",
+          "revision": "724daa1b2df5ec96bdf111bb947479d2216b3b08",
+          "sha256": "ebfbda52478c3d32447071aaa944884acefe76288c79ce2ec16a547e6c6719fa",
+          "cached_as": "code/cosmos_predict1_ar/cosmos_predict1/autoregressive/configs/base/tokenizer.py",
+          "view_url": "https://github.com/nvidia-cosmos/cosmos-predict1/blob/724daa1b2df5ec96bdf111bb947479d2216b3b08/cosmos_predict1/autoregressive/configs/base/tokenizer.py"
+        },
+        {
+          "kind": "code",
+          "label": "cosmos_predict1/autoregressive/model.py",
+          "url": "https://raw.githubusercontent.com/nvidia-cosmos/cosmos-predict1/724daa1b2df5ec96bdf111bb947479d2216b3b08/cosmos_predict1/autoregressive/model.py",
+          "revision": "724daa1b2df5ec96bdf111bb947479d2216b3b08",
+          "sha256": "048fb34b657a83dd24f9b636ed228873231b23a9898797665526f9de7ba4a9f6",
+          "cached_as": "code/cosmos_predict1_ar/cosmos_predict1/autoregressive/model.py",
+          "view_url": "https://github.com/nvidia-cosmos/cosmos-predict1/blob/724daa1b2df5ec96bdf111bb947479d2216b3b08/cosmos_predict1/autoregressive/model.py"
+        },
+        {
+          "kind": "code",
+          "label": "cosmos_predict1/autoregressive/networks/transformer.py",
+          "url": "https://raw.githubusercontent.com/nvidia-cosmos/cosmos-predict1/724daa1b2df5ec96bdf111bb947479d2216b3b08/cosmos_predict1/autoregressive/networks/transformer.py",
+          "revision": "724daa1b2df5ec96bdf111bb947479d2216b3b08",
+          "sha256": "8ba879378e204b1dcabaf44d37514fd6005eaf8206a4045294ddebedf92ff157",
+          "cached_as": "code/cosmos_predict1_ar/cosmos_predict1/autoregressive/networks/transformer.py",
+          "view_url": "https://github.com/nvidia-cosmos/cosmos-predict1/blob/724daa1b2df5ec96bdf111bb947479d2216b3b08/cosmos_predict1/autoregressive/networks/transformer.py"
+        }
+      ],
+      "model_sha256": "1f72c576ca6ebd9f76cc549a43e57c6041f9752e3ca3827067d202173dd93c74"
+    },
+    "cosmos_predict25": {
+      "name": "Cosmos-Predict2.5",
+      "coverage": "Publication + released code",
+      "variant": "Released 2B base Video2World: 28 blocks, 35 FlowUniPC steps, CFG 7 (2 passes/step)",
+      "architecture": "Conditioning video is encoded by the Wan VAE. Every denoising call patchifies the current noisy clip and applies 28 gated AdaLN-LoRA self-attention/cross-attention/FFN blocks. The released base sampler performs 35 FlowUniPC steps with text guidance before decoding the clip.",
+      "checked": [
+        "representation and token geometry",
+        "core operation order, normalization/modulation and residual boundaries where disclosed",
+        "conditioning entry points and attention masks",
+        "sampling repetitions, cache/feedback tensor and output/decoder role"
+      ],
+      "changes": [
+        "Used 35 base-model steps rather than mixing the four-step Text2World-only distilled checkpoint with conditioning video and base-model latency. Moved patchification into the denoising loop and exposed residual gates.",
+        "Loop label and variant now show CFG 7 as two DiT passes per step (70 per clip); the summary marks the 4-step Text2World distilled checkpoint as not drawn."
+      ],
+      "limitations": [
+        "Paper Table 3 lists 32 layers, while the released 2B configuration/checkpoint uses 28. The paper calls its distillation rCM; the released four-step checkpoint uses a DMD2/TrigFlow configuration."
+      ],
+      "references": [
+        {
+          "kind": "paper",
+          "label": "Original paper",
+          "url": "https://arxiv.org/html/2511.00062",
+          "sha256": "556994db00778f955a747c756f3c85c1dcf3c33f2a0592356a8f84e45e382086",
+          "cached_as": "cosmos_predict25.paper.html",
+          "version": "2511.00062v2",
+          "view_url": "https://arxiv.org/html/2511.00062v2"
+        },
+        {
+          "kind": "code",
+          "label": "cosmos_predict2/_src/predict2/configs/video2world/experiment/reason_embeddings/model_2B_reason_1p1_rectified_flow.py",
+          "url": "https://raw.githubusercontent.com/nvidia-cosmos/cosmos-predict2.5/a2c298b0a3df3778b973fe65e9e58877b292d8a7/cosmos_predict2/_src/predict2/configs/video2world/experiment/reason_embeddings/model_2B_reason_1p1_rectified_flow.py",
+          "revision": "a2c298b0a3df3778b973fe65e9e58877b292d8a7",
+          "sha256": "24709212b4f92311d8d694f6aa92a75f43f2e924a074e9b0ff790cd9455a23ba",
+          "cached_as": "code/cosmos_predict25/cosmos_predict2/_src/predict2/configs/video2world/experiment/reason_embeddings/model_2B_reason_1p1_rectified_flow.py",
+          "view_url": "https://github.com/nvidia-cosmos/cosmos-predict2.5/blob/a2c298b0a3df3778b973fe65e9e58877b292d8a7/cosmos_predict2/_src/predict2/configs/video2world/experiment/reason_embeddings/model_2B_reason_1p1_rectified_flow.py"
+        },
+        {
+          "kind": "code",
+          "label": "cosmos_predict2/_src/predict2/distill/configs/experiment/experiments_dmd2_predict2p5.py",
+          "url": "https://raw.githubusercontent.com/nvidia-cosmos/cosmos-predict2.5/a2c298b0a3df3778b973fe65e9e58877b292d8a7/cosmos_predict2/_src/predict2/distill/configs/experiment/experiments_dmd2_predict2p5.py",
+          "revision": "a2c298b0a3df3778b973fe65e9e58877b292d8a7",
+          "sha256": "b8ddeab8402fcd0e13110e78c726a635641b0fe8c63e56216635a6088880b92e",
+          "cached_as": "code/cosmos_predict25/cosmos_predict2/_src/predict2/distill/configs/experiment/experiments_dmd2_predict2p5.py",
+          "view_url": "https://github.com/nvidia-cosmos/cosmos-predict2.5/blob/a2c298b0a3df3778b973fe65e9e58877b292d8a7/cosmos_predict2/_src/predict2/distill/configs/experiment/experiments_dmd2_predict2p5.py"
+        },
+        {
+          "kind": "code",
+          "label": "cosmos_predict2/_src/predict2/networks/minimal_v4_dit.py",
+          "url": "https://raw.githubusercontent.com/nvidia-cosmos/cosmos-predict2.5/a2c298b0a3df3778b973fe65e9e58877b292d8a7/cosmos_predict2/_src/predict2/networks/minimal_v4_dit.py",
+          "revision": "a2c298b0a3df3778b973fe65e9e58877b292d8a7",
+          "sha256": "f672511a9c7944d87835cd257923149b0511ce798203c8a73fe488e59b2073b6",
+          "cached_as": "code/cosmos_predict25/cosmos_predict2/_src/predict2/networks/minimal_v4_dit.py",
+          "view_url": "https://github.com/nvidia-cosmos/cosmos-predict2.5/blob/a2c298b0a3df3778b973fe65e9e58877b292d8a7/cosmos_predict2/_src/predict2/networks/minimal_v4_dit.py"
+        }
+      ],
+      "model_sha256": "337f144d379a26ec9f98eadff011e894c4c0076106ed835050da0b49442e18cc"
+    },
+    "cwm": {
+      "name": "CWM (Code World Model)",
+      "coverage": "Publication + released code",
+      "variant": "Released dense 32B code world model",
+      "architecture": "A Llama-tokenized execution trace is processed by 64 pre-RMSNorm decoder blocks with grouped-query attention and SwiGLU. Layers alternate local and global attention windows in a 3:1 pattern; the fanout denotes a layer-type choice, not two attention computations in every layer. Text tokens are generated autoregressively.",
+      "checked": [
+        "representation and token geometry",
+        "core operation order, normalization/modulation and residual boundaries where disclosed",
+        "conditioning entry points and attention masks",
+        "sampling repetitions, cache/feedback tensor and output/decoder role"
+      ],
+      "changes": [
+        "Routed generated tokens back to token embeddings."
+      ],
+      "limitations": [
+        "Trace text, rather than video or physical-state latents, is this model's observation representation. Window limits are from the released configuration."
+      ],
+      "references": [
+        {
+          "kind": "paper",
+          "label": "Original paper",
+          "url": "https://arxiv.org/html/2510.02387",
+          "sha256": "4fe109d6a3f89083a732e00eecc99b9dd0458228c2e18136658513235a887938",
+          "cached_as": "cwm.paper.html",
+          "version": "2510.02387v1",
+          "view_url": "https://arxiv.org/html/2510.02387v1"
+        },
+        {
+          "kind": "code",
+          "label": "MODEL_CARD.md",
+          "url": "https://raw.githubusercontent.com/facebookresearch/cwm/7930e0298bf32aae28cc0e35e18a54c772603364/MODEL_CARD.md",
+          "revision": "7930e0298bf32aae28cc0e35e18a54c772603364",
+          "sha256": "3dd8737fc9483de60801f7ccfdc8cbe3ca6531fa5b9045f57149a9676caa5e3d",
+          "cached_as": "code/cwm/MODEL_CARD.md",
+          "view_url": "https://github.com/facebookresearch/cwm/blob/7930e0298bf32aae28cc0e35e18a54c772603364/MODEL_CARD.md"
+        },
+        {
+          "kind": "code",
+          "label": "cwm/fastgen/forward.py",
+          "url": "https://raw.githubusercontent.com/facebookresearch/cwm/7930e0298bf32aae28cc0e35e18a54c772603364/cwm/fastgen/forward.py",
+          "revision": "7930e0298bf32aae28cc0e35e18a54c772603364",
+          "sha256": "ee7bafb93517f7ee7dd8311a35f1e0d19293b17eee9ba4d092248587d5ffc7a9",
+          "cached_as": "code/cwm/cwm/fastgen/forward.py",
+          "view_url": "https://github.com/facebookresearch/cwm/blob/7930e0298bf32aae28cc0e35e18a54c772603364/cwm/fastgen/forward.py"
+        },
+        {
+          "kind": "code",
+          "label": "cwm/model/transformer.py",
+          "url": "https://raw.githubusercontent.com/facebookresearch/cwm/7930e0298bf32aae28cc0e35e18a54c772603364/cwm/model/transformer.py",
+          "revision": "7930e0298bf32aae28cc0e35e18a54c772603364",
+          "sha256": "a17b69c8dcebfecd5e91d4c1daa6265d369c5924dde02941704316b1d1a906cf",
+          "cached_as": "code/cwm/cwm/model/transformer.py",
+          "view_url": "https://github.com/facebookresearch/cwm/blob/7930e0298bf32aae28cc0e35e18a54c772603364/cwm/model/transformer.py"
+        }
+      ],
+      "model_sha256": "9bb746dd365254bd9fdef52fa1aeff769c16b3a4e180cba5737ef86d973fd7f6"
+    },
+    "delta_iris": {
+      "name": "Δ-IRIS",
+      "coverage": "Publication + released code",
+      "variant": "Released Crafter configuration: 3 layers, 4 delta codes per frame",
+      "architecture": "An action-conditioned delta tokenizer encodes frame changes; an auxiliary CNN supplies the current-frame I-token. The three-layer width-512 causal transformer uses learned positions, pre-LayerNorm residual blocks, GELU and a final LayerNorm. Four dependent delta-code predictions reconstruct the next frame.",
+      "checked": [
+        "representation and token geometry",
+        "core operation order, normalization/modulation and residual boundaries where disclosed",
+        "conditioning entry points and attention masks",
+        "sampling repetitions, cache/feedback tensor and output/decoder role"
+      ],
+      "changes": [
+        "Added the learned position input and final LayerNorm. Feedback names the generated frame-to-I-token route rather than sending arbitrary decoder output into the delta encoder."
+      ],
+      "limitations": [
+        "Crafter uses a 126-token context; the Atari setup has a different 156-token context. The 25M count is for the agent, not just the transformer."
+      ],
+      "references": [
+        {
+          "kind": "paper",
+          "label": "Original paper",
+          "url": "https://arxiv.org/html/2406.19320",
+          "sha256": "bcde04511147c673de7a32d14d3b748c88cf20848051921cfa8cf1e5aab0cb3b",
+          "cached_as": "delta_iris.paper.html",
+          "version": "2406.19320v1",
+          "view_url": "https://arxiv.org/html/2406.19320v1"
+        },
+        {
+          "kind": "code",
+          "label": "config/params/crafter.yaml",
+          "url": "https://raw.githubusercontent.com/vmicheli/delta-iris/f8d417321717a3d7012488785d7cdc66b62455dd/config/params/crafter.yaml",
+          "revision": "f8d417321717a3d7012488785d7cdc66b62455dd",
+          "sha256": "b8d0b4c39699d37b3aa24568f927af1bd1b56251f87e12e26a31753d41145322",
+          "cached_as": "code/delta_iris/config/params/crafter.yaml",
+          "view_url": "https://github.com/vmicheli/delta-iris/blob/f8d417321717a3d7012488785d7cdc66b62455dd/config/params/crafter.yaml"
+        },
+        {
+          "kind": "code",
+          "label": "src/envs/world_model_env.py",
+          "url": "https://raw.githubusercontent.com/vmicheli/delta-iris/f8d417321717a3d7012488785d7cdc66b62455dd/src/envs/world_model_env.py",
+          "revision": "f8d417321717a3d7012488785d7cdc66b62455dd",
+          "sha256": "117e5afdd82514357cf9f985c57f9aec310c3d55a14e4dd7a7286208db3056b9",
+          "cached_as": "code/delta_iris/src/envs/world_model_env.py",
+          "view_url": "https://github.com/vmicheli/delta-iris/blob/f8d417321717a3d7012488785d7cdc66b62455dd/src/envs/world_model_env.py"
+        },
+        {
+          "kind": "code",
+          "label": "src/models/transformer.py",
+          "url": "https://raw.githubusercontent.com/vmicheli/delta-iris/f8d417321717a3d7012488785d7cdc66b62455dd/src/models/transformer.py",
+          "revision": "f8d417321717a3d7012488785d7cdc66b62455dd",
+          "sha256": "c64d355dd45e2a181ffbf391a8f7d8042d97840e94511b5f4890d354925709ad",
+          "cached_as": "code/delta_iris/src/models/transformer.py",
+          "view_url": "https://github.com/vmicheli/delta-iris/blob/f8d417321717a3d7012488785d7cdc66b62455dd/src/models/transformer.py"
+        },
+        {
+          "kind": "code",
+          "label": "src/models/world_model.py",
+          "url": "https://raw.githubusercontent.com/vmicheli/delta-iris/f8d417321717a3d7012488785d7cdc66b62455dd/src/models/world_model.py",
+          "revision": "f8d417321717a3d7012488785d7cdc66b62455dd",
+          "sha256": "f9065b86b7ab590dbde74160740056f7bfbe74e2692ab7ebf11a9ef5edfe33ee",
+          "cached_as": "code/delta_iris/src/models/world_model.py",
+          "view_url": "https://github.com/vmicheli/delta-iris/blob/f8d417321717a3d7012488785d7cdc66b62455dd/src/models/world_model.py"
+        }
+      ],
+      "model_sha256": "e4c4bf56ea634a0c7f5726dab117c618512a1bfa12c2877963b7dea972bbe495"
+    },
+    "dino_wm": {
+      "name": "DINO-WM",
+      "coverage": "Publication + released code",
+      "variant": "Released DINO-WM predictor: 6 layers, DINOv2 patch features",
+      "architecture": "Frozen DINOv2 yields 196 patch embeddings. Action and proprioception embeddings are concatenated to each patch feature; learned positions precede six pre-LayerNorm attention/MLP blocks and a final norm. Frame-causal masking allows within-frame patch attention. Predicted features enter subsequent latent rollout and CEM planning, without a pixel decoder.",
+      "checked": [
+        "representation and token geometry",
+        "core operation order, normalization/modulation and residual boundaries where disclosed",
+        "conditioning entry points and attention masks",
+        "sampling repetitions, cache/feedback tensor and output/decoder role"
+      ],
+      "changes": [
+        "Added the learned positions and final norm. Routed predicted features directly into predictor history.",
+        "The concat annotation and summary now state that the predictor token is 404 wide (384 visual + 10-d action + 10-d proprio), distinguishing it from the 384-wide DINOv2 features."
+      ],
+      "limitations": [
+        "Token width is 404 in the released configuration, including action/proprioception, rather than the 384-dimensional visual feature alone. Parameter totals vary with the configured history length."
+      ],
+      "references": [
+        {
+          "kind": "paper",
+          "label": "Original paper",
+          "url": "https://arxiv.org/html/2411.04983",
+          "sha256": "8de2d5766a0964b165644725849165bcb688c478d776841bdbdb5ddc8f284e84",
+          "cached_as": "dino_wm.paper.html",
+          "version": "2411.04983v2",
+          "view_url": "https://arxiv.org/html/2411.04983v2"
+        },
+        {
+          "kind": "code",
+          "label": "conf/predictor/vit.yaml",
+          "url": "https://raw.githubusercontent.com/gaoyuezhou/dino_wm/0a9492fa12044b852ae9e001cc74604b79c8bb0c/conf/predictor/vit.yaml",
+          "revision": "0a9492fa12044b852ae9e001cc74604b79c8bb0c",
+          "sha256": "026795ef35aef42502ddbe1a3f6a39b92fa542e014f4c6514a932168416bb608",
+          "cached_as": "code/dino_wm/conf/predictor/vit.yaml",
+          "view_url": "https://github.com/gaoyuezhou/dino_wm/blob/0a9492fa12044b852ae9e001cc74604b79c8bb0c/conf/predictor/vit.yaml"
+        },
+        {
+          "kind": "code",
+          "label": "conf/train.yaml",
+          "url": "https://raw.githubusercontent.com/gaoyuezhou/dino_wm/0a9492fa12044b852ae9e001cc74604b79c8bb0c/conf/train.yaml",
+          "revision": "0a9492fa12044b852ae9e001cc74604b79c8bb0c",
+          "sha256": "fd8af156b74770102e31725cb6819fcf953ae1df5e82a8ed43ee94b2a5c1c465",
+          "cached_as": "code/dino_wm/conf/train.yaml",
+          "view_url": "https://github.com/gaoyuezhou/dino_wm/blob/0a9492fa12044b852ae9e001cc74604b79c8bb0c/conf/train.yaml"
+        },
+        {
+          "kind": "code",
+          "label": "models/visual_world_model.py",
+          "url": "https://raw.githubusercontent.com/gaoyuezhou/dino_wm/0a9492fa12044b852ae9e001cc74604b79c8bb0c/models/visual_world_model.py",
+          "revision": "0a9492fa12044b852ae9e001cc74604b79c8bb0c",
+          "sha256": "931d44c0d541d95be8236f65247de9b40ac3843fe047c1a44d4a2482d1bf636f",
+          "cached_as": "code/dino_wm/models/visual_world_model.py",
+          "view_url": "https://github.com/gaoyuezhou/dino_wm/blob/0a9492fa12044b852ae9e001cc74604b79c8bb0c/models/visual_world_model.py"
+        },
+        {
+          "kind": "code",
+          "label": "models/vit.py",
+          "url": "https://raw.githubusercontent.com/gaoyuezhou/dino_wm/0a9492fa12044b852ae9e001cc74604b79c8bb0c/models/vit.py",
+          "revision": "0a9492fa12044b852ae9e001cc74604b79c8bb0c",
+          "sha256": "60c77bdb03f3b2d565bfdb1695c9c193a802236763d33a03e79ed382b51f0670",
+          "cached_as": "code/dino_wm/models/vit.py",
+          "view_url": "https://github.com/gaoyuezhou/dino_wm/blob/0a9492fa12044b852ae9e001cc74604b79c8bb0c/models/vit.py"
+        }
+      ],
+      "model_sha256": "268141df0e77ea28dadb6546f55959d312fea64bf86dfe8f800869f7f141e44d"
+    },
+    "dreamer4": {
+      "name": "Dreamer 4",
+      "coverage": "Publication only",
+      "variant": "Paper: 1.6B dynamics, 3 spatial layers per causal temporal layer",
+      "architecture": "A causal tokenizer provides continuous visual latents. Shortcut dynamics include noisy visual tokens, action/task tokens, learned register tokens and one shortcut token carrying the signal level and step size. The disclosed pre-RMSNorm/RoPE/SwiGLU design repeats three spatial layers and one causal temporal layer. Four shortcut steps generate latents; policy, reward and value heads read task representations.",
+      "checked": [
+        "representation and token geometry",
+        "core operation order, normalization/modulation and residual boundaries where disclosed",
+        "conditioning entry points and attention masks",
+        "sampling repetitions, cache/feedback tensor and output/decoder role"
+      ],
+      "changes": [
+        "Added noisy-token and shortcut/register inputs. Kept latent feedback inside dynamics and removed an unsupported expanded FFN inset.",
+        "Relabelled the shortcut side input from time to signal level + step size, as the paper uses (τ is separate from sequence time; the registers take no input)."
+      ],
+      "limitations": [
+        "No matching official implementation was found in the consulted sources. Layer count, model width, head count and RoPE axes are not disclosed. The figure leaves the repeat count symbolic and does not borrow those values from another Dreamer."
+      ],
+      "references": [
+        {
+          "kind": "paper",
+          "label": "Original paper",
+          "url": "https://arxiv.org/html/2509.24527",
+          "sha256": "b6bc683edfc2da9ff24f6d9f5cfdb247ed93a8be962596e5631f752899804518",
+          "cached_as": "dreamer4.paper.html",
+          "version": "2509.24527v1",
+          "view_url": "https://arxiv.org/html/2509.24527v1"
+        }
+      ],
+      "model_sha256": "08bd53a926bf0d0848667f4540a3430cbeb1bf27a1f57c186a20acb4e89c04be"
+    },
+    "dreamzero": {
+      "name": "DreamZero",
+      "coverage": "Publication + released code",
+      "variant": "DreamZero-Flash (paper only, no released weights): Wan2.1-I2V-14B, one denoising step",
+      "architecture": "The 40-block Wan backbone jointly denoises video and actions with state/action projections. Gated AdaLN self-attention is chunk-causal; normalized cross-attention reads frozen text/image features. Real observations refresh the video-history cache. Video and action output projections are distinct, and action generation does not pass through the VAE decoder.",
+      "checked": [
+        "representation and token geometry",
+        "core operation order, normalization/modulation and residual boundaries where disclosed",
+        "conditioning entry points and attention masks",
+        "sampling repetitions, cache/feedback tensor and output/decoder role"
+      ],
+      "changes": [
+        "Added self-attention/FFN gates and the released cross-attention norm. Selected the single-step Flash schedule corresponding to the displayed latency and removed an action-to-image-encoder feedback loop.",
+        "Labelled DreamZero-Flash as a paper-only variant (released DROID/AgiBot checkpoints have the Flash flags off and sample 16 steps with velocity caching) in figure_variant, open, summary and the Prediction fact. The 150 ms annotation now names 2x GB200 + NVFP4.",
+        "The closed loop through the robot (Fig. 4) is shown in the input text ('Real views per chunk') and the Memory fact, not as an action-to-cache tensor edge."
+      ],
+      "limitations": [
+        "The figure draws DreamZero-Flash (1 step), which has no released weights; the released checkpoints use the 16-step schedule with velocity caching (about 4 effective DiT passes). The 150 ms latency also requires NVFP4 and CFG split over 2 GB200. Token geometry (880 per latent frame) comes from the released checkpoint configs and assumes Flash shares the backbone, as the paper describes.",
+        "The diagram covers tensor inference; executed robot actions and subsequent real observations form an external control loop."
+      ],
+      "references": [
+        {
+          "kind": "paper",
+          "label": "Original paper",
+          "url": "https://arxiv.org/html/2602.15922",
+          "sha256": "317b803df421b7a69032848e7337e81b070719289a13afeef05065718b9d9198",
+          "cached_as": "dreamzero.paper.html",
+          "version": "2602.15922v1",
+          "view_url": "https://arxiv.org/html/2602.15922v1"
+        },
+        {
+          "kind": "code",
+          "label": "groot/vla/configs/model/dreamzero/action_head/wan_flow_matching_action_tf.yaml",
+          "url": "https://raw.githubusercontent.com/dreamzero0/dreamzero/ab790c198fbce33503358efbbd4187ce9a89adf3/groot/vla/configs/model/dreamzero/action_head/wan_flow_matching_action_tf.yaml",
+          "revision": "ab790c198fbce33503358efbbd4187ce9a89adf3",
+          "sha256": "0b0e2160cdf4204dafc05262e27a062dd86fd24a634f4dfd2880c761f8f76cfb",
+          "cached_as": "code/dreamzero/groot/vla/configs/model/dreamzero/action_head/wan_flow_matching_action_tf.yaml",
+          "view_url": "https://github.com/dreamzero0/dreamzero/blob/ab790c198fbce33503358efbbd4187ce9a89adf3/groot/vla/configs/model/dreamzero/action_head/wan_flow_matching_action_tf.yaml"
+        },
+        {
+          "kind": "code",
+          "label": "groot/vla/model/dreamzero/action_head/wan_flow_matching_action_tf.py",
+          "url": "https://raw.githubusercontent.com/dreamzero0/dreamzero/ab790c198fbce33503358efbbd4187ce9a89adf3/groot/vla/model/dreamzero/action_head/wan_flow_matching_action_tf.py",
+          "revision": "ab790c198fbce33503358efbbd4187ce9a89adf3",
+          "sha256": "7193cd73423472aa252bee73bd80e0d673c89d773ec852e90f50154729b50845",
+          "cached_as": "code/dreamzero/groot/vla/model/dreamzero/action_head/wan_flow_matching_action_tf.py",
+          "view_url": "https://github.com/dreamzero0/dreamzero/blob/ab790c198fbce33503358efbbd4187ce9a89adf3/groot/vla/model/dreamzero/action_head/wan_flow_matching_action_tf.py"
+        },
+        {
+          "kind": "code",
+          "label": "groot/vla/model/dreamzero/modules/wan_video_dit_action_casual_chunk.py",
+          "url": "https://raw.githubusercontent.com/dreamzero0/dreamzero/ab790c198fbce33503358efbbd4187ce9a89adf3/groot/vla/model/dreamzero/modules/wan_video_dit_action_casual_chunk.py",
+          "revision": "ab790c198fbce33503358efbbd4187ce9a89adf3",
+          "sha256": "efc5120f73cbce2e00b67d78e8bf71a561e943a909791f039b435abc27ccd605",
+          "cached_as": "code/dreamzero/groot/vla/model/dreamzero/modules/wan_video_dit_action_casual_chunk.py",
+          "view_url": "https://github.com/dreamzero0/dreamzero/blob/ab790c198fbce33503358efbbd4187ce9a89adf3/groot/vla/model/dreamzero/modules/wan_video_dit_action_casual_chunk.py"
+        }
+      ],
+      "model_sha256": "7b4a5a0a4ddaff783da8fdb87147552b42131e4f87eae2c4166faeb1e52e69af"
+    },
+    "emerald": {
+      "name": "EMERALD",
+      "coverage": "Publication + released code",
+      "variant": "Released 30M: 4 temporal blocks + 2 spatial MaskGIT blocks",
+      "architecture": "A CNN categorical VAE produces a 4x4 latent grid. A temporal action-conditioned transformer computes the history state, then a separate spatial MaskGIT transformer generates the next grid in three passes. Both released transformers use post-LayerNorm residual blocks with ReLU FFNs. Reward and continuation depend on latent/state features.",
+      "checked": [
+        "representation and token geometry",
+        "core operation order, normalization/modulation and residual boundaries where disclosed",
+        "conditioning entry points and attention masks",
+        "sampling repetitions, cache/feedback tensor and output/decoder role"
+      ],
+      "changes": [],
+      "limitations": [
+        "The temporal and spatial stacks have different widths, 512 and 256. The three-pass loop applies only to the spatial predictor, not the temporal history model."
+      ],
+      "references": [
+        {
+          "kind": "paper",
+          "label": "Original paper",
+          "url": "https://arxiv.org/html/2507.04075",
+          "sha256": "7b56bc3691cab90034756a6f0ed7ac44100077b70d833f2d5a4e7ffba48ee4cc",
+          "cached_as": "emerald.paper.html",
+          "version": "2507.04075v2",
+          "view_url": "https://arxiv.org/html/2507.04075v2"
+        },
+        {
+          "kind": "code",
+          "label": "nnet/models/emerald.py",
+          "url": "https://raw.githubusercontent.com/burchim/EMERALD/665948d8cd619ccc960abe54ffdfc785ce95f18b/nnet/models/emerald.py",
+          "revision": "665948d8cd619ccc960abe54ffdfc785ce95f18b",
+          "sha256": "62d694870016a5c24f4b740fb02e3221cd088c29c413ae1abda65a3a85a1c8f9",
+          "cached_as": "code/emerald/nnet/models/emerald.py",
+          "view_url": "https://github.com/burchim/EMERALD/blob/665948d8cd619ccc960abe54ffdfc785ce95f18b/nnet/models/emerald.py"
+        },
+        {
+          "kind": "code",
+          "label": "nnet/modules/emerald/mask_network.py",
+          "url": "https://raw.githubusercontent.com/burchim/EMERALD/665948d8cd619ccc960abe54ffdfc785ce95f18b/nnet/modules/emerald/mask_network.py",
+          "revision": "665948d8cd619ccc960abe54ffdfc785ce95f18b",
+          "sha256": "305742a794469a882550840ce2694decaf6f26a543d3e8e168daa9287b1bbc62",
+          "cached_as": "code/emerald/nnet/modules/emerald/mask_network.py",
+          "view_url": "https://github.com/burchim/EMERALD/blob/665948d8cd619ccc960abe54ffdfc785ce95f18b/nnet/modules/emerald/mask_network.py"
+        },
+        {
+          "kind": "code",
+          "label": "nnet/modules/emerald/tssm.py",
+          "url": "https://raw.githubusercontent.com/burchim/EMERALD/665948d8cd619ccc960abe54ffdfc785ce95f18b/nnet/modules/emerald/tssm.py",
+          "revision": "665948d8cd619ccc960abe54ffdfc785ce95f18b",
+          "sha256": "1e4dc22d20203c36f393785e118d94fdca683b8251bc81ea9f3e557230af5eb2",
+          "cached_as": "code/emerald/nnet/modules/emerald/tssm.py",
+          "view_url": "https://github.com/burchim/EMERALD/blob/665948d8cd619ccc960abe54ffdfc785ce95f18b/nnet/modules/emerald/tssm.py"
+        },
+        {
+          "kind": "code",
+          "label": "nnet/modules/modules/attention_module.py",
+          "url": "https://raw.githubusercontent.com/burchim/EMERALD/665948d8cd619ccc960abe54ffdfc785ce95f18b/nnet/modules/modules/attention_module.py",
+          "revision": "665948d8cd619ccc960abe54ffdfc785ce95f18b",
+          "sha256": "f50690e8291d8f42b6efd111cb44de5ef7c14cc00b4cded3a4a83d36f8f5eed7",
+          "cached_as": "code/emerald/nnet/modules/modules/attention_module.py",
+          "view_url": "https://github.com/burchim/EMERALD/blob/665948d8cd619ccc960abe54ffdfc785ce95f18b/nnet/modules/modules/attention_module.py"
+        }
+      ],
+      "model_sha256": "6396bca314e579a9ac89afea6d747babfbd50ee38697954e3d985bb0b480b877"
+    },
+    "fast_wam": {
+      "name": "Fast-WAM",
+      "coverage": "Publication + released code",
+      "variant": "Released Fast-WAM policy: cached first-frame video K/V, 10 action steps",
+      "architecture": "The Wan2.2-5B video branch processes the clean first observation once. Its per-layer keys/values condition a width-1024 action expert over ten denoising steps. Each expert block has gated adaptive self-attention/FFN residuals and normalized T5 cross-attention. The structured attention mask excludes future video from action queries.",
+      "checked": [
+        "representation and token geometry",
+        "core operation order, normalization/modulation and residual boundaries where disclosed",
+        "conditioning entry points and attention masks",
+        "sampling repetitions, cache/feedback tensor and output/decoder role"
+      ],
+      "changes": [
+        "Expanded the actual action-expert block, added gates and its velocity head, and kept the video pass outside the action loop. Added the official code link.",
+        "Drew the video-DiT inset with the same code-level DiTBlock residuals (AdaLN at timestep 0, gates, LayerNorm cross-attention) as the action block, and cited wan_video_dit.py and action_dit.py in the Core fact and sources."
+      ],
+      "limitations": [
+        "The paper specifies logit-normal training noise; released training code uses shift-warped uniform noise. The slower imagine-then-execute IDM variant is not this path. Proprioception is included in the text/context representation."
+      ],
+      "references": [
+        {
+          "kind": "paper",
+          "label": "Original paper",
+          "url": "https://arxiv.org/html/2603.16666",
+          "sha256": "2d4a5c713a51b34c3b0b1b3cfa2eb66205019e9f0b0802a327a6b750454adb0d",
+          "cached_as": "fast_wam.paper.html",
+          "version": "2603.16666v2",
+          "view_url": "https://arxiv.org/html/2603.16666v2"
+        },
+        {
+          "kind": "code",
+          "label": "configs/model/fastwam.yaml",
+          "url": "https://raw.githubusercontent.com/yuantianyuan01/FastWAM/7faa71108368fbb3b6885649f112af607427a2d4/configs/model/fastwam.yaml",
+          "revision": "7faa71108368fbb3b6885649f112af607427a2d4",
+          "sha256": "0c9378106366d35f99ea3a82ef30afdfbab9a1d330af3e6de6c94c4490d24868",
+          "cached_as": "code/fast_wam/configs/model/fastwam.yaml",
+          "view_url": "https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/configs/model/fastwam.yaml"
+        },
+        {
+          "kind": "code",
+          "label": "src/fastwam/models/wan22/fastwam.py",
+          "url": "https://raw.githubusercontent.com/yuantianyuan01/FastWAM/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/fastwam.py",
+          "revision": "7faa71108368fbb3b6885649f112af607427a2d4",
+          "sha256": "154c339efd33fae119fe902d6efb91cde7475e3cfd0e7b50e606278c1c3eac09",
+          "cached_as": "code/fast_wam/src/fastwam/models/wan22/fastwam.py",
+          "view_url": "https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/fastwam.py"
+        },
+        {
+          "kind": "code",
+          "label": "src/fastwam/models/wan22/mot.py",
+          "url": "https://raw.githubusercontent.com/yuantianyuan01/FastWAM/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/mot.py",
+          "revision": "7faa71108368fbb3b6885649f112af607427a2d4",
+          "sha256": "2383e4cfa00efa9cde889493e0b6c861bc7b17d24d731f5ff38d3ebf8ab7f541",
+          "cached_as": "code/fast_wam/src/fastwam/models/wan22/mot.py",
+          "view_url": "https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/mot.py"
+        },
+        {
+          "kind": "code",
+          "label": "src/fastwam/models/wan22/wan_video_dit.py",
+          "url": "https://raw.githubusercontent.com/yuantianyuan01/FastWAM/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/wan_video_dit.py",
+          "revision": "7faa71108368fbb3b6885649f112af607427a2d4",
+          "sha256": "578712e83fac2815d3e3a3fd9134178028082deba361433122fe3c5764982dd6",
+          "cached_as": "code/fast_wam/src/fastwam/models/wan22/wan_video_dit.py",
+          "view_url": "https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/wan_video_dit.py"
+        }
+      ],
+      "model_sha256": "c8343f9ba7a18cd51d634964e351df4ace334c76d5443c6234f103db7fa045e6"
+    },
+    "gaia1": {
+      "name": "GAIA-1",
+      "coverage": "Publication only",
+      "variant": "Paper: 6.5B autoregressive world model and separate video decoder",
+      "architecture": "A DINO-distilled image tokenizer provides 576 discrete codes per frame. Text, image and action tokens are interleaved with space-time positions, then processed causally. Image codes are sampled serially. The separate video diffusion decoder produces pixels; it is not the autoregressive world-model transformer.",
+      "checked": [
+        "representation and token geometry",
+        "core operation order, normalization/modulation and residual boundaries where disclosed",
+        "conditioning entry points and attention masks",
+        "sampling repetitions, cache/feedback tensor and output/decoder role"
+      ],
+      "changes": [],
+      "limitations": [
+        "No matching official implementation was found in the consulted sources. The report does not specify transformer layer/head counts, internal norms/FFN/residual boundaries or a KV-cache policy. Those details remain undisclosed."
+      ],
+      "references": [
+        {
+          "kind": "paper",
+          "label": "Original paper",
+          "url": "https://arxiv.org/html/2309.17080",
+          "sha256": "51eab0939f50c04f5970cbc6d24a3168f9af184f87734513abca65cff5c51d37",
+          "cached_as": "gaia1.paper.html",
+          "version": "2309.17080v1",
+          "view_url": "https://arxiv.org/html/2309.17080v1"
+        }
+      ],
+      "model_sha256": "957160cea5c5dac63f4fde260b932f2ecb7e3322128f0e22f801f7ca65df45ad"
+    },
+    "gaia2": {
+      "name": "GAIA-2",
+      "coverage": "Publication only",
+      "variant": "Paper: 8.4B, 22 factorized space-time blocks, 50 flow steps",
+      "architecture": "The video tokenizer compresses multi-camera footage. Each disclosed block adds positions/camera information, performs spatial/camera attention, temporal attention, cross-attention to agent metadata, then adaptive normalization and an MLP. Fifty flow updates generate a latent window; rollout appends latents and slides context.",
+      "checked": [
+        "representation and token geometry",
+        "core operation order, normalization/modulation and residual boundaries where disclosed",
+        "conditioning entry points and attention masks",
+        "sampling repetitions, cache/feedback tensor and output/decoder role"
+      ],
+      "changes": [
+        "Routed rollout feedback between the latent update and latent context."
+      ],
+      "limitations": [
+        "No matching official implementation was found in the consulted sources. The report does not locate every normalization or disclose residual wiring, so the figure adds neither. No KV cache is claimed."
+      ],
+      "references": [
+        {
+          "kind": "paper",
+          "label": "Original paper",
+          "url": "https://arxiv.org/html/2503.20523",
+          "sha256": "d0986e8ad6a6a4ded80a29ea556782e27be065b6c3ad07c1d07880eab9029661",
+          "cached_as": "gaia2.paper.html",
+          "version": "2503.20523v1",
+          "view_url": "https://arxiv.org/html/2503.20523v1"
+        }
+      ],
+      "model_sha256": "4a6ed4ba54b1ff326f30aa36386c793e4464e5fb276ba42583cb40b87ba83bdd"
+    },
+    "ge_act": {
+      "name": "Genie Envisioner (GE-Act)",
+      "coverage": "Publication + released code",
+      "variant": "Released GE-Base video cache + GE-Act 160M action decoder",
+      "architecture": "A 28-block LTX-derived video model uses per-view attention, selected cross-view attention and text cross-attention. View/timestep modulation gates self-attention and FFN branches. GE-Act caches the video model's per-block states and cross-attends to them during five action steps, enabling asynchronous video and action rates.",
+      "checked": [
+        "representation and token geometry",
+        "core operation order, normalization/modulation and residual boundaries where disclosed",
+        "conditioning entry points and attention masks",
+        "sampling repetitions, cache/feedback tensor and output/decoder role"
+      ],
+      "changes": [
+        "Added both video/action modulation gates. Removed a misleading action-output-to-video-encoder loop and added the official code link.",
+        "The closed loop (Sec. 3.1) is now stated in the input text ('Live views') and in the Prediction fact, with no action-to-encoder tensor edge."
+      ],
+      "limitations": [
+        "The paper names 2D RoPE; released code computes 3D latent-frame/height/width RoPE. Released sparse memory contains three earlier observations plus the current frame. The external robot feedback loop is not a direct tensor edge."
+      ],
+      "references": [
+        {
+          "kind": "paper",
+          "label": "Original paper",
+          "url": "https://arxiv.org/html/2508.05635",
+          "sha256": "0c207466a1cc6a2a4accf553524e23bf80785c42cdf5b9678997e5ae37a98849",
+          "cached_as": "ge_act.paper.html",
+          "version": "2508.05635v3",
+          "view_url": "https://arxiv.org/html/2508.05635v3"
+        },
+        {
+          "kind": "code",
+          "label": "configs/ltx_model/policy_model.yaml",
+          "url": "https://raw.githubusercontent.com/AgibotTech/Genie-Envisioner-V1/d41358f7548f2cd9fc4b79fcdf7d86d15a8d7b1e/configs/ltx_model/policy_model.yaml",
+          "revision": "d41358f7548f2cd9fc4b79fcdf7d86d15a8d7b1e",
+          "sha256": "8186aa23298f65ecf39858d1d028d4fa4ed0d7fe2147c95a37beb43f79a15c36",
+          "cached_as": "code/ge_act/configs/ltx_model/policy_model.yaml",
+          "view_url": "https://github.com/AgibotTech/Genie-Envisioner-V1/blob/d41358f7548f2cd9fc4b79fcdf7d86d15a8d7b1e/configs/ltx_model/policy_model.yaml"
+        },
+        {
+          "kind": "code",
+          "label": "models/action_patches/patches.py",
+          "url": "https://raw.githubusercontent.com/AgibotTech/Genie-Envisioner-V1/d41358f7548f2cd9fc4b79fcdf7d86d15a8d7b1e/models/action_patches/patches.py",
+          "revision": "d41358f7548f2cd9fc4b79fcdf7d86d15a8d7b1e",
+          "sha256": "e5a391a99a6f456cef750c143976efaa416353ab84ce8c1bd72f0713170de03d",
+          "cached_as": "code/ge_act/models/action_patches/patches.py",
+          "view_url": "https://github.com/AgibotTech/Genie-Envisioner-V1/blob/d41358f7548f2cd9fc4b79fcdf7d86d15a8d7b1e/models/action_patches/patches.py"
+        },
+        {
+          "kind": "code",
+          "label": "models/ltx_models/transformer_ltx_multiview.py",
+          "url": "https://raw.githubusercontent.com/AgibotTech/Genie-Envisioner-V1/d41358f7548f2cd9fc4b79fcdf7d86d15a8d7b1e/models/ltx_models/transformer_ltx_multiview.py",
+          "revision": "d41358f7548f2cd9fc4b79fcdf7d86d15a8d7b1e",
+          "sha256": "c06145b966a047b29f02b082609c100119e20543da66deac2a86eac5d547b121",
+          "cached_as": "code/ge_act/models/ltx_models/transformer_ltx_multiview.py",
+          "view_url": "https://github.com/AgibotTech/Genie-Envisioner-V1/blob/d41358f7548f2cd9fc4b79fcdf7d86d15a8d7b1e/models/ltx_models/transformer_ltx_multiview.py"
+        }
+      ],
+      "model_sha256": "706079214266e435bc51e4bdb806e0a5396085cecf3914afda1dfb10316a4f8f"
+    },
+    "genie": {
+      "name": "Genie",
+      "coverage": "Publication only",
+      "variant": "Paper: 10.1B dynamics (num_layers 48), 25 MaskGIT passes",
+      "architecture": "The ST tokenizer produces frame codes; a learned latent action is added to the masked target frame-token embeddings. The dynamics stack applies spatial attention, causal temporal attention and FFN. Twenty-five MaskGIT passes complete each next frame before tokenizer decoding. The latent-action model supplies eight discrete actions.",
+      "checked": [
+        "representation and token geometry",
+        "core operation order, normalization/modulation and residual boundaries where disclosed",
+        "conditioning entry points and attention masks",
+        "sampling repetitions, cache/feedback tensor and output/decoder role"
+      ],
+      "changes": [
+        "Placed action embedding after construction of the masked target tokens and inside each dynamics evaluation. Set the disclosed 48-layer repeat and causal temporal label.",
+        "Restored the symbolic 'L ×' block repeat: Table 12's num_layers 48 is not said to count ST blocks, and 48 full ST blocks at d 5120 would far exceed 10.1B. The 48 is kept as a labelled num_layers annotation and in the variant."
+      ],
+      "limitations": [
+        "No matching official implementation was found in the consulted sources. Norm/residual internals are not disclosed and are not filled in. Public reproductions are not treated as original code.",
+        "Table 12 gives num_layers 48 but the paper never says whether this counts ST blocks or attention layers; the figure keeps the block repeat symbolic (L)."
+      ],
+      "references": [
+        {
+          "kind": "paper",
+          "label": "Original paper",
+          "url": "https://arxiv.org/html/2402.15391",
+          "sha256": "551643cd1eb3830c46ccb6ef5fc7e0ef3aa0fc70f6b9431d2fc6120f8dcbe788",
+          "cached_as": "genie.paper.html",
+          "version": "2402.15391v1",
+          "view_url": "https://arxiv.org/html/2402.15391v1"
+        }
+      ],
+      "model_sha256": "88a1a42aff64902b2687c69b227649f3d30d403337fcc2d52e317e2282abde7f"
+    },
+    "hunyuan_gamecraft": {
+      "name": "Hunyuan-GameCraft",
+      "coverage": "Publication + released code",
+      "variant": "Released HunyuanVideo GameCraft: 20 double + 40 single blocks, 8 PCM steps",
+      "architecture": "Noisy video and history/mask channels are patchified and combined with camera Pluecker features. Twenty double-stream text/video blocks precede forty single-stream blocks, whose attention and MLP branches run in parallel. Eight consistency-model updates produce a chunk, whose latents become subsequent history.",
+      "checked": [
+        "representation and token geometry",
+        "core operation order, normalization/modulation and residual boundaries where disclosed",
+        "conditioning entry points and attention masks",
+        "sampling repetitions, cache/feedback tensor and output/decoder role"
+      ],
+      "changes": [
+        "Routed chunk-latent feedback directly to latent history."
+      ],
+      "limitations": [
+        "The double-stream boxes encapsulate each modality's normalization, modulation, QKV and output projections; the single-stream residual boundary is expanded. The paper's 13B designation comes from the HunyuanVideo backbone."
+      ],
+      "references": [
+        {
+          "kind": "paper",
+          "label": "Original paper",
+          "url": "https://arxiv.org/html/2506.17201",
+          "sha256": "dd29ec78830abef1feb94439a1153f939eb9a417a70e09fe1c1ca671999a2400",
+          "cached_as": "hunyuan_gamecraft.paper.html",
+          "version": "2506.17201v1",
+          "view_url": "https://arxiv.org/html/2506.17201v1"
+        },
+        {
+          "kind": "code",
+          "label": "hymm_sp/config.py",
+          "url": "https://raw.githubusercontent.com/Tencent-Hunyuan/Hunyuan-GameCraft-1.0/9a35ecf495a1b97b4929524fff442481069ecdc2/hymm_sp/config.py",
+          "revision": "9a35ecf495a1b97b4929524fff442481069ecdc2",
+          "sha256": "1fd7af0619cd93a3b23bedad72d4956d9fabd0aaf9a0be4027f7ff21469186ea",
+          "cached_as": "code/hunyuan_gamecraft/hymm_sp/config.py",
+          "view_url": "https://github.com/Tencent-Hunyuan/Hunyuan-GameCraft-1.0/blob/9a35ecf495a1b97b4929524fff442481069ecdc2/hymm_sp/config.py"
+        },
+        {
+          "kind": "code",
+          "label": "hymm_sp/modules/models.py",
+          "url": "https://raw.githubusercontent.com/Tencent-Hunyuan/Hunyuan-GameCraft-1.0/9a35ecf495a1b97b4929524fff442481069ecdc2/hymm_sp/modules/models.py",
+          "revision": "9a35ecf495a1b97b4929524fff442481069ecdc2",
+          "sha256": "38aa6ad909769f6494c861c6f4b367759c8e6169d0088fd1f557aed3a73f1050",
+          "cached_as": "code/hunyuan_gamecraft/hymm_sp/modules/models.py",
+          "view_url": "https://github.com/Tencent-Hunyuan/Hunyuan-GameCraft-1.0/blob/9a35ecf495a1b97b4929524fff442481069ecdc2/hymm_sp/modules/models.py"
+        },
+        {
+          "kind": "code",
+          "label": "hymm_sp/sample_inference.py",
+          "url": "https://raw.githubusercontent.com/Tencent-Hunyuan/Hunyuan-GameCraft-1.0/9a35ecf495a1b97b4929524fff442481069ecdc2/hymm_sp/sample_inference.py",
+          "revision": "9a35ecf495a1b97b4929524fff442481069ecdc2",
+          "sha256": "ab82efee4cb3f900e48621bbc44fbd165deca7d5d08c430ec7048235218fc5c9",
+          "cached_as": "code/hunyuan_gamecraft/hymm_sp/sample_inference.py",
+          "view_url": "https://github.com/Tencent-Hunyuan/Hunyuan-GameCraft-1.0/blob/9a35ecf495a1b97b4929524fff442481069ecdc2/hymm_sp/sample_inference.py"
+        }
+      ],
+      "model_sha256": "5ee24664ede03a6501710b36e5cfbfde7d100514a79c759b27a503d2ff88dd34"
+    },
+    "iris": {
+      "name": "IRIS",
+      "coverage": "Publication + released code",
+      "variant": "Released Atari IRIS: 10x256 transformer, 16 image codes",
+      "architecture": "A VQ-VAE maps a frame to sixteen codes. Learned positions enter a ten-layer pre-LayerNorm causal decoder with a final LayerNorm. Code, reward and termination heads operate at their assigned sequence positions; sixteen code predictions plus the action-position evaluation advance a frame. Generated codes remain in token context.",
+      "checked": [
+        "representation and token geometry",
+        "core operation order, normalization/modulation and residual boundaries where disclosed",
+        "conditioning entry points and attention masks",
+        "sampling repetitions, cache/feedback tensor and output/decoder role"
+      ],
+      "changes": [
+        "Corrected the world-model/whole-agent parameter distinction and made cache precision arithmetic explicit. Fixed code feedback to token embeddings.",
+        "The params field now gives the drawn world model (≈8.45M) and labels ~30M as the whole-agent total."
+      ],
+      "limitations": [
+        "The roughly 30M agent total includes a frozen LPIPS loss network; the world model is about 8.45M. FP16 cache sizes are arithmetic, not evidence that the released FP32 runtime uses FP16."
+      ],
+      "references": [
+        {
+          "kind": "paper",
+          "label": "Original paper",
+          "url": "https://arxiv.org/html/2209.00588",
+          "sha256": "9fe3568304110a06b68d7e5d33c54c57a1fd68446e13c87efd3f1be7eb3a269c",
+          "cached_as": "iris.paper.html",
+          "version": "2209.00588v2",
+          "view_url": "https://arxiv.org/html/2209.00588v2"
+        },
+        {
+          "kind": "code",
+          "label": "config/world_model/default.yaml",
+          "url": "https://raw.githubusercontent.com/eloialonso/iris/24326aaaa283c527f42b89b44cfdecf2665a7a16/config/world_model/default.yaml",
+          "revision": "24326aaaa283c527f42b89b44cfdecf2665a7a16",
+          "sha256": "6e2941762aad3034ebc09fd67a25ad2efc1007e6fccb07e92bd087f842d0161b",
+          "cached_as": "code/iris/config/world_model/default.yaml",
+          "view_url": "https://github.com/eloialonso/iris/blob/24326aaaa283c527f42b89b44cfdecf2665a7a16/config/world_model/default.yaml"
+        },
+        {
+          "kind": "code",
+          "label": "src/envs/world_model_env.py",
+          "url": "https://raw.githubusercontent.com/eloialonso/iris/24326aaaa283c527f42b89b44cfdecf2665a7a16/src/envs/world_model_env.py",
+          "revision": "24326aaaa283c527f42b89b44cfdecf2665a7a16",
+          "sha256": "00224e980fd26e8b1b622f0c96fc91201be0a8066068b03c8afd3d157abe8672",
+          "cached_as": "code/iris/src/envs/world_model_env.py",
+          "view_url": "https://github.com/eloialonso/iris/blob/24326aaaa283c527f42b89b44cfdecf2665a7a16/src/envs/world_model_env.py"
+        },
+        {
+          "kind": "code",
+          "label": "src/models/transformer.py",
+          "url": "https://raw.githubusercontent.com/eloialonso/iris/24326aaaa283c527f42b89b44cfdecf2665a7a16/src/models/transformer.py",
+          "revision": "24326aaaa283c527f42b89b44cfdecf2665a7a16",
+          "sha256": "25a25990613f19bc74d462c184e9cd7a83302b60466936543bb731c53d9e7f40",
+          "cached_as": "code/iris/src/models/transformer.py",
+          "view_url": "https://github.com/eloialonso/iris/blob/24326aaaa283c527f42b89b44cfdecf2665a7a16/src/models/transformer.py"
+        },
+        {
+          "kind": "code",
+          "label": "src/models/world_model.py",
+          "url": "https://raw.githubusercontent.com/eloialonso/iris/24326aaaa283c527f42b89b44cfdecf2665a7a16/src/models/world_model.py",
+          "revision": "24326aaaa283c527f42b89b44cfdecf2665a7a16",
+          "sha256": "7aefe36fa85bc5aa25ef922350a3416d036f48bd33955d15cea869f043fa2578",
+          "cached_as": "code/iris/src/models/world_model.py",
+          "view_url": "https://github.com/eloialonso/iris/blob/24326aaaa283c527f42b89b44cfdecf2665a7a16/src/models/world_model.py"
+        }
+      ],
+      "model_sha256": "9e03b2152f54e316c671793d21f2bc651b41b360586109b7361c31bd95772701"
+    },
+    "ivideogpt": {
+      "name": "iVideoGPT",
+      "coverage": "Publication + released code",
+      "variant": "Released 138M Llama-style predictor with compressive tokenizer",
+      "architecture": "Two context frames retain 256 codes each; predicted frames use sixteen compressed codes conditioned on context features. The twelve-layer width-768 Llama-style transformer has RoPE, RMSNorm, SwiGLU and a final RMSNorm. Slot/action tokens and the next-code head support seventeen calls per predicted frame; a reward head supports control.",
+      "checked": [
+        "representation and token geometry",
+        "core operation order, normalization/modulation and residual boundaries where disclosed",
+        "conditioning entry points and attention masks",
+        "sampling repetitions, cache/feedback tensor and output/decoder role"
+      ],
+      "changes": [
+        "Added the final RMSNorm and routed sampled codes back into the token sequence."
+      ],
+      "limitations": [
+        "The 436M scaling run has a different 24-layer configuration. Context compression belongs to the tokenizer, not to a shrinking transformer KV head."
+      ],
+      "references": [
+        {
+          "kind": "paper",
+          "label": "Original paper",
+          "url": "https://arxiv.org/html/2405.15223",
+          "sha256": "649422435f785c092a678dab8a51253f9fe6c3d31d1c88d3e9f34101d02f607d",
+          "cached_as": "ivideogpt.paper.html",
+          "version": "2405.15223v3",
+          "view_url": "https://arxiv.org/html/2405.15223v3"
+        },
+        {
+          "kind": "code",
+          "label": "dependencies/modeling_llama.py",
+          "url": "https://raw.githubusercontent.com/huggingface/transformers/092f1fdaa4224fdd88c616dc9678e6fcb37bfffd/src/transformers/models/llama/modeling_llama.py",
+          "revision": "092f1fdaa4224fdd88c616dc9678e6fcb37bfffd",
+          "sha256": "0e5daaee19d16c2146a80832743f908594490216e0999b1bc84f3bac7617a645",
+          "cached_as": "code/ivideogpt/dependencies/modeling_llama.py",
+          "view_url": "https://github.com/huggingface/transformers/blob/092f1fdaa4224fdd88c616dc9678e6fcb37bfffd/src/transformers/models/llama/modeling_llama.py"
+        },
+        {
+          "kind": "code",
+          "label": "ivideogpt/transformer/action_model.py",
+          "url": "https://raw.githubusercontent.com/thuml/iVideoGPT/d601d5cac9e96c6aa0c17cb37ed6a7c7ca1fb210/ivideogpt/transformer/action_model.py",
+          "revision": "d601d5cac9e96c6aa0c17cb37ed6a7c7ca1fb210",
+          "sha256": "e275fe8633dd197ea510c06d6878f4c78f1d9d7568d9bc8f12a10574c381aab6",
+          "cached_as": "code/ivideogpt/ivideogpt/transformer/action_model.py",
+          "view_url": "https://github.com/thuml/iVideoGPT/blob/d601d5cac9e96c6aa0c17cb37ed6a7c7ca1fb210/ivideogpt/transformer/action_model.py"
+        },
+        {
+          "kind": "code",
+          "label": "mbrl/video_predictor.py",
+          "url": "https://raw.githubusercontent.com/thuml/iVideoGPT/d601d5cac9e96c6aa0c17cb37ed6a7c7ca1fb210/mbrl/video_predictor.py",
+          "revision": "d601d5cac9e96c6aa0c17cb37ed6a7c7ca1fb210",
+          "sha256": "ede437d63e3503cdc5f0744dfd9a28872b9c5f4baa49d832d53fce1f221be211",
+          "cached_as": "code/ivideogpt/mbrl/video_predictor.py",
+          "view_url": "https://github.com/thuml/iVideoGPT/blob/d601d5cac9e96c6aa0c17cb37ed6a7c7ca1fb210/mbrl/video_predictor.py"
+        },
+        {
+          "kind": "code",
+          "label": "train_gpt.py",
+          "url": "https://raw.githubusercontent.com/thuml/iVideoGPT/d601d5cac9e96c6aa0c17cb37ed6a7c7ca1fb210/train_gpt.py",
+          "revision": "d601d5cac9e96c6aa0c17cb37ed6a7c7ca1fb210",
+          "sha256": "aee87cd9f748774984ee8e2ff0b0dc8f97865cfac49e14329d0f2bd94a486e45",
+          "cached_as": "code/ivideogpt/train_gpt.py",
+          "view_url": "https://github.com/thuml/iVideoGPT/blob/d601d5cac9e96c6aa0c17cb37ed6a7c7ca1fb210/train_gpt.py"
+        }
+      ],
+      "model_sha256": "bb86c0ad8547ad7b8c2329e9a3075864a3824531e52b0c2610e5feb31bf18564"
+    },
+    "jowa": {
+      "name": "JOWA",
+      "coverage": "Publication + released code",
+      "variant": "Released JOWA-150M: 12x768, task-conditioned GPT",
+      "architecture": "VQ codes receive token, position and task embeddings. Twelve pre-LayerNorm causal GPT blocks plus a final LayerNorm produce next-code, reward, termination and Q heads. The released world-model environment samples the next code from the categorical by default (mode only when sampling is disabled); Q-based planning uses the learned world model without turning the Q head into an image decoder.",
+      "checked": [
+        "representation and token geometry",
+        "core operation order, normalization/modulation and residual boundaries where disclosed",
+        "conditioning entry points and attention masks",
+        "sampling repetitions, cache/feedback tensor and output/decoder role"
+      ],
+      "changes": [
+        "Added the final LayerNorm and fixed token feedback.",
+        "Replaced the 'argmax' code-selection box with sampling, matching the released world_model_env default (should_sample=True; mode only otherwise)."
+      ],
+      "limitations": [
+        "The 70M and 40M models use different layer/width counts. The figure is specifically the 150M variant."
+      ],
+      "references": [
+        {
+          "kind": "paper",
+          "label": "Original paper",
+          "url": "https://arxiv.org/html/2410.00564",
+          "sha256": "5d8e6bb94e29550bc8ea2b36da5510e0f2400bcb0fbe5d460681588a28118753",
+          "cached_as": "jowa.paper.html",
+          "version": "2410.00564v4",
+          "view_url": "https://arxiv.org/html/2410.00564v4"
+        },
+        {
+          "kind": "code",
+          "label": "config/transformer/JOWA_150M.yaml",
+          "url": "https://raw.githubusercontent.com/CJReinforce/JOWA/8cb02c5e6768a948c566a9012ac8a4fc420c6970/config/transformer/JOWA_150M.yaml",
+          "revision": "8cb02c5e6768a948c566a9012ac8a4fc420c6970",
+          "sha256": "c435dc28e73d833d6d764492d67c0dbc751f8bb1dce4e5645a2df2b046368732",
+          "cached_as": "code/jowa/config/transformer/JOWA_150M.yaml",
+          "view_url": "https://github.com/CJReinforce/JOWA/blob/8cb02c5e6768a948c566a9012ac8a4fc420c6970/config/transformer/JOWA_150M.yaml"
+        },
+        {
+          "kind": "code",
+          "label": "src/envs/world_model_env.py",
+          "url": "https://raw.githubusercontent.com/CJReinforce/JOWA/8cb02c5e6768a948c566a9012ac8a4fc420c6970/src/envs/world_model_env.py",
+          "revision": "8cb02c5e6768a948c566a9012ac8a4fc420c6970",
+          "sha256": "b2426a41056ccd843fc94405f1ea494501570c9f5298d51110af1a57ff0d55db",
+          "cached_as": "code/jowa/src/envs/world_model_env.py",
+          "view_url": "https://github.com/CJReinforce/JOWA/blob/8cb02c5e6768a948c566a9012ac8a4fc420c6970/src/envs/world_model_env.py"
+        },
+        {
+          "kind": "code",
+          "label": "src/models/jowa_model.py",
+          "url": "https://raw.githubusercontent.com/CJReinforce/JOWA/8cb02c5e6768a948c566a9012ac8a4fc420c6970/src/models/jowa_model.py",
+          "revision": "8cb02c5e6768a948c566a9012ac8a4fc420c6970",
+          "sha256": "d4a42de9c879b9b8bf2e775d667e674937444e2a063650708730a825d72214af",
+          "cached_as": "code/jowa/src/models/jowa_model.py",
+          "view_url": "https://github.com/CJReinforce/JOWA/blob/8cb02c5e6768a948c566a9012ac8a4fc420c6970/src/models/jowa_model.py"
+        },
+        {
+          "kind": "code",
+          "label": "src/models/transformer.py",
+          "url": "https://raw.githubusercontent.com/CJReinforce/JOWA/8cb02c5e6768a948c566a9012ac8a4fc420c6970/src/models/transformer.py",
+          "revision": "8cb02c5e6768a948c566a9012ac8a4fc420c6970",
+          "sha256": "6739e711de557c6c5118c6850f077e07d0b9c2a9c481101516cb9105475eb967",
+          "cached_as": "code/jowa/src/models/transformer.py",
+          "view_url": "https://github.com/CJReinforce/JOWA/blob/8cb02c5e6768a948c566a9012ac8a4fc420c6970/src/models/transformer.py"
+        }
+      ],
+      "model_sha256": "d787885ce252679668374b389e47ad0bcf661abe5ef7e8597057dce47a320be8"
+    },
+    "lc_ssm": {
+      "name": "Long-Context SSM World Model",
+      "coverage": "Publication only",
+      "variant": "Paper: 200M block-wise SSM/local-attention denoiser",
+      "architecture": "Spatial-major latent tokens pass through an AdaLN-conditioned Mamba scan, frame-local attention, and FFN, each with its own gated residual. Recurrent state is maintained per spatial scan block and frame-local attention keeps a KV cache of the previous k = 10 frames. Frames are generated autoregressively one at a time: each denoised latent frame re-enters the token sequence as clean context. The original block figure, rather than a generic transformer template, determines this order.",
+      "checked": [
+        "representation and token geometry",
+        "core operation order, normalization/modulation and residual boundaries where disclosed",
+        "conditioning entry points and attention masks",
+        "sampling repetitions, cache/feedback tensor and output/decoder role"
+      ],
+      "changes": [
+        "Removed an invented serial KV/state-output operation and an unsupported final-frame decoder path. The endpoint now identifies a denoiser output with an unspecified sampler.",
+        "Restored the stated one-frame-at-a-time autoregressive loop in latent space (denoised frame back to the token sequence as clean context) and the 'next frame; decoder not described' output. Moved the 10-frame KV cache annotation to frame-local attention and kept the per-scan-block SSM state on the scan."
+      ],
+      "limitations": [
+        "No matching official implementation was found in the consulted sources. Layer count, width, detailed VAE and sampling algorithm are undisclosed; no complete deployed frame-generation pipeline can be verified. A spatial scan block is not a transformer layer."
+      ],
+      "references": [
+        {
+          "kind": "paper",
+          "label": "Original paper",
+          "url": "https://arxiv.org/html/2505.20171",
+          "sha256": "bbbe048b50bec483afa977c1b89c95c14d3d3aa9193d6b3a1edc86b752fe7e76",
+          "cached_as": "lc_ssm.paper.html",
+          "version": "2505.20171v1",
+          "view_url": "https://arxiv.org/html/2505.20171v1"
+        }
+      ],
+      "model_sha256": "86fff49782e24e5e930ae3b56b6848e907c360843abc69bbaa6c4a0bd0b0489e"
+    },
+    "lewm": {
+      "name": "LeWorldModel (LeWM)",
+      "coverage": "Publication + released code",
+      "variant": "Released LeWM: ViT-Tiny encoder + 6-layer predictor",
+      "architecture": "A projected ViT-Tiny CLS embedding gives one token per frame. Action-conditioned, zero-initialized AdaLN and internal LayerNorms precede causal attention/MLP operations, whose outputs are gated before addition. Six predictor layers, a final LayerNorm and a projector predict the next embedding. Planning uses embeddings without decoding pixels.",
+      "checked": [
+        "representation and token geometry",
+        "core operation order, normalization/modulation and residual boundaries where disclosed",
+        "conditioning entry points and attention masks",
+        "sampling repetitions, cache/feedback tensor and output/decoder role"
+      ],
+      "changes": [
+        "Added the internal attention/FFN norms, gates and final norm. Routed predicted embeddings directly to predictor history.",
+        "Dropped the unsourced word 'small' from the figure variant."
+      ],
+      "limitations": [
+        "The paper's 15M and released roughly 18M totals differ. The released TwoRoom configuration uses three history tokens, while the paper describes one. Sixteen 64-wide attention heads do not imply the residual token width is 1024; it remains 192."
+      ],
+      "references": [
+        {
+          "kind": "paper",
+          "label": "Original paper",
+          "url": "https://arxiv.org/html/2603.19312",
+          "sha256": "49feca90079f39674b3fe7f23de7cb6e76562c4d4ff5efd0a96743ca668e70b3",
+          "cached_as": "lewm.paper.html",
+          "version": "2603.19312v3",
+          "view_url": "https://arxiv.org/html/2603.19312v3"
+        },
+        {
+          "kind": "code",
+          "label": "config/train/model/lewm.yaml",
+          "url": "https://raw.githubusercontent.com/lucas-maes/le-wm/8edfeb336732b5f3ce7b8b210d0ba370a09e2cac/config/train/model/lewm.yaml",
+          "revision": "8edfeb336732b5f3ce7b8b210d0ba370a09e2cac",
+          "sha256": "7be97eaa2c83f809b9ea7a6da5a7d3f3c70502c27537383f54db32335e21e42b",
+          "cached_as": "code/lewm/config/train/model/lewm.yaml",
+          "view_url": "https://github.com/lucas-maes/le-wm/blob/8edfeb336732b5f3ce7b8b210d0ba370a09e2cac/config/train/model/lewm.yaml"
+        },
+        {
+          "kind": "code",
+          "label": "jepa.py",
+          "url": "https://raw.githubusercontent.com/lucas-maes/le-wm/8edfeb336732b5f3ce7b8b210d0ba370a09e2cac/jepa.py",
+          "revision": "8edfeb336732b5f3ce7b8b210d0ba370a09e2cac",
+          "sha256": "41bad7fd21e0f14aea4c9c3d39a9c87037e787746d953ab62cdc0677e938ce96",
+          "cached_as": "code/lewm/jepa.py",
+          "view_url": "https://github.com/lucas-maes/le-wm/blob/8edfeb336732b5f3ce7b8b210d0ba370a09e2cac/jepa.py"
+        },
+        {
+          "kind": "code",
+          "label": "module.py",
+          "url": "https://raw.githubusercontent.com/lucas-maes/le-wm/8edfeb336732b5f3ce7b8b210d0ba370a09e2cac/module.py",
+          "revision": "8edfeb336732b5f3ce7b8b210d0ba370a09e2cac",
+          "sha256": "0b258a9e8dc24c29fcb1e8c50a09ec78b8ea85aeb79e21dd8adf712396646620",
+          "cached_as": "code/lewm/module.py",
+          "view_url": "https://github.com/lucas-maes/le-wm/blob/8edfeb336732b5f3ce7b8b210d0ba370a09e2cac/module.py"
+        }
+      ],
+      "model_sha256": "aa8bf897315c2ec558a920cb56bd9168a7674f6467b065327dd845b5891db2bb"
+    },
+    "lingbot_va": {
+      "name": "LingBot-VA",
+      "coverage": "Publication + released code",
+      "variant": "Released va_demo_cfg.py: shared 30x3072 DiT, 5 video + 10 action updates",
+      "architecture": "The released video and action modes use one shared 30-block Wan list (width 3072) with separate modality input/output projections and timestep embedders; each block has gated AdaLN self-attention over a chunk-causal KV cache, LayerNorm text cross-attention and a gated AdaLN GELU FFN. Per chunk the demo runs 5 video Euler steps and 10 action Euler steps, each stage ending with a t=0 pass that caches the predicted chunk; after execution, the server VAE-encodes the real frames, embeds the executed state/actions, discards the predicted entries and writes real K/V with two more passes.",
+      "checked": [
+        "representation and token geometry",
+        "core operation order, normalization/modulation and residual boundaries where disclosed",
+        "conditioning entry points and attention masks",
+        "sampling repetitions, cache/feedback tensor and output/decoder role"
+      ],
+      "changes": [
+        "Replaced the paper-only dual-tower graph with the released shared-weight graph. Corrected demo token geometry, 32-action horizon and sampling schedule; removed direct action-to-image feedback. Three freshly downloaded checkpoint headers confirm 841 tensors totaling 5,089,465,566 parameters.",
+        "Replaced the 'clean cache pass' wording with t=0 passes that cache predicted chunks, and restored the per-chunk real-observation cache write (2 passes, update_cache=2) as a main-flow box with an 'executed actions' feedback route; the VAE no longer feeds the noisy-latent path. Restored the per-chunk pass count, the shared-backbone-only release qualifier and the paper's 5.3B/12.5 Hz/noisy-history facts as labelled contrasts."
+      ],
+      "limitations": [
+        "The paper specifies separate 3072-wide video and 768-wide action towers (5.3B), 192 video tokens and a three-step partial-video schedule. The demo instead uses one 3072-wide backbone, 128 tokens per latent frame, five video steps and ten action steps. Paper latency is not assigned to this configuration.",
+        "The real-observation cache write runs only in server mode when the client sends compute_kv_cache; the offline generate() demo never receives real frames and keeps the predicted cache entries."
+      ],
+      "references": [
+        {
+          "kind": "paper",
+          "label": "Original paper",
+          "url": "https://arxiv.org/html/2601.21998",
+          "sha256": "b768fe2a0235ecad528bb52efc69fd773ae7cae5eb01fdec5fd964812b94725f",
+          "cached_as": "lingbot_va.paper.html",
+          "version": "2601.21998v2",
+          "view_url": "https://arxiv.org/html/2601.21998v2"
+        },
+        {
+          "kind": "code",
+          "label": "hf_transformer_config.json",
+          "url": "https://huggingface.co/robbyant/lingbot-va-base/resolve/68b7bc1b35da6ddc67ea94c4ceb58d768fbb3f9c/transformer/config.json",
+          "revision": "68b7bc1b35da6ddc67ea94c4ceb58d768fbb3f9c",
+          "sha256": "3b9d4f5ac414feb7095da6e8236b175e84d4b506f340bcac818500183ae87815",
+          "cached_as": "code/lingbot_va/hf_transformer_config.json",
+          "view_url": "https://huggingface.co/robbyant/lingbot-va-base/blob/68b7bc1b35da6ddc67ea94c4ceb58d768fbb3f9c/transformer/config.json"
+        },
+        {
+          "kind": "code",
+          "label": "wan_va/configs/shared_config.py",
+          "url": "https://raw.githubusercontent.com/robbyant/lingbot-va/7c6ffa9bfc4b83582cafc860fab4c82cc7deeeeb/wan_va/configs/shared_config.py",
+          "revision": "7c6ffa9bfc4b83582cafc860fab4c82cc7deeeeb",
+          "sha256": "e7989a7c793e10ca81e1dc731aa66d55c4cdb8632f9c06a55371a567c18aa570",
+          "cached_as": "code/lingbot_va/wan_va/configs/shared_config.py",
+          "view_url": "https://github.com/robbyant/lingbot-va/blob/7c6ffa9bfc4b83582cafc860fab4c82cc7deeeeb/wan_va/configs/shared_config.py"
+        },
+        {
+          "kind": "code",
+          "label": "wan_va/configs/va_demo_cfg.py",
+          "url": "https://raw.githubusercontent.com/robbyant/lingbot-va/7c6ffa9bfc4b83582cafc860fab4c82cc7deeeeb/wan_va/configs/va_demo_cfg.py",
+          "revision": "7c6ffa9bfc4b83582cafc860fab4c82cc7deeeeb",
+          "sha256": "65707ff4c57e13c9ac66e87e3e7c2477618e26a7e80cb4a0300b238e7e2bd44c",
+          "cached_as": "code/lingbot_va/wan_va/configs/va_demo_cfg.py",
+          "view_url": "https://github.com/robbyant/lingbot-va/blob/7c6ffa9bfc4b83582cafc860fab4c82cc7deeeeb/wan_va/configs/va_demo_cfg.py"
+        },
+        {
+          "kind": "code",
+          "label": "wan_va/modules/model.py",
+          "url": "https://raw.githubusercontent.com/robbyant/lingbot-va/7c6ffa9bfc4b83582cafc860fab4c82cc7deeeeb/wan_va/modules/model.py",
+          "revision": "7c6ffa9bfc4b83582cafc860fab4c82cc7deeeeb",
+          "sha256": "f65fdca5f28b327bfc89ca082a7b55eee3fb4ab1ffc469c642a075920e6f4487",
+          "cached_as": "code/lingbot_va/wan_va/modules/model.py",
+          "view_url": "https://github.com/robbyant/lingbot-va/blob/7c6ffa9bfc4b83582cafc860fab4c82cc7deeeeb/wan_va/modules/model.py"
+        },
+        {
+          "kind": "code",
+          "label": "wan_va/modules/utils.py",
+          "url": "https://raw.githubusercontent.com/robbyant/lingbot-va/7c6ffa9bfc4b83582cafc860fab4c82cc7deeeeb/wan_va/modules/utils.py",
+          "revision": "7c6ffa9bfc4b83582cafc860fab4c82cc7deeeeb",
+          "sha256": "563499ae1aa9fdbe990963c8c133423241f1a63d3f59743b778a1eb4c47757f4",
+          "cached_as": "code/lingbot_va/wan_va/modules/utils.py",
+          "view_url": "https://github.com/robbyant/lingbot-va/blob/7c6ffa9bfc4b83582cafc860fab4c82cc7deeeeb/wan_va/modules/utils.py"
+        },
+        {
+          "kind": "code",
+          "label": "wan_va/wan_va_server.py",
+          "url": "https://raw.githubusercontent.com/robbyant/lingbot-va/7c6ffa9bfc4b83582cafc860fab4c82cc7deeeeb/wan_va/wan_va_server.py",
+          "revision": "7c6ffa9bfc4b83582cafc860fab4c82cc7deeeeb",
+          "sha256": "9c2a427611db487fea5cf40f184b713bf2088e533990ee00fdcd020d2668b4bf",
+          "cached_as": "code/lingbot_va/wan_va/wan_va_server.py",
+          "view_url": "https://github.com/robbyant/lingbot-va/blob/7c6ffa9bfc4b83582cafc860fab4c82cc7deeeeb/wan_va/wan_va_server.py"
+        },
+        {
+          "kind": "checkpoint metadata",
+          "label": "checkpoint_header_1.json",
+          "url": "https://huggingface.co/robbyant/lingbot-va-base/resolve/68b7bc1b35da6ddc67ea94c4ceb58d768fbb3f9c/transformer/diffusion_pytorch_model-00001-of-00003.safetensors",
+          "revision": "68b7bc1b35da6ddc67ea94c4ceb58d768fbb3f9c",
+          "sha256": "99e62f06eb74a740a38c4dc1faaf93a5c25a426ee5b42fad5dc0ca2b007ebbcd",
+          "cached_as": "code/lingbot_va/checkpoint_header_1.json",
+          "http_range": "bytes=8-41391",
+          "view_url": "https://huggingface.co/robbyant/lingbot-va-base/blob/68b7bc1b35da6ddc67ea94c4ceb58d768fbb3f9c/transformer/diffusion_pytorch_model-00001-of-00003.safetensors"
+        },
+        {
+          "kind": "checkpoint metadata",
+          "label": "checkpoint_header_2.json",
+          "url": "https://huggingface.co/robbyant/lingbot-va-base/resolve/68b7bc1b35da6ddc67ea94c4ceb58d768fbb3f9c/transformer/diffusion_pytorch_model-00002-of-00003.safetensors",
+          "revision": "68b7bc1b35da6ddc67ea94c4ceb58d768fbb3f9c",
+          "sha256": "207ee8cbf7e05804339c02b023124ddcdbc6183fc427ae7f55453ab4ff569a71",
+          "cached_as": "code/lingbot_va/checkpoint_header_2.json",
+          "http_range": "bytes=8-41167",
+          "view_url": "https://huggingface.co/robbyant/lingbot-va-base/blob/68b7bc1b35da6ddc67ea94c4ceb58d768fbb3f9c/transformer/diffusion_pytorch_model-00002-of-00003.safetensors"
+        },
+        {
+          "kind": "checkpoint metadata",
+          "label": "checkpoint_header_3.json",
+          "url": "https://huggingface.co/robbyant/lingbot-va-base/resolve/68b7bc1b35da6ddc67ea94c4ceb58d768fbb3f9c/transformer/diffusion_pytorch_model-00003-of-00003.safetensors",
+          "revision": "68b7bc1b35da6ddc67ea94c4ceb58d768fbb3f9c",
+          "sha256": "b4672e9a6d860514dc2fbbf71eddc2036ca2c556381b64c0c98707f201aa4c6e",
+          "cached_as": "code/lingbot_va/checkpoint_header_3.json",
+          "http_range": "bytes=8-3703",
+          "view_url": "https://huggingface.co/robbyant/lingbot-va-base/blob/68b7bc1b35da6ddc67ea94c4ceb58d768fbb3f9c/transformer/diffusion_pytorch_model-00003-of-00003.safetensors"
+        }
+      ],
+      "model_sha256": "c7d74415b7b27b60fe6de54353a56568fa4db300e728b7a9967bf4eadaca0ef0"
+    },
+    "lingbot_world_fast": {
+      "name": "LingBot-World-Fast",
+      "coverage": "Publication + released code",
+      "variant": "Released dense LingBot-World-Fast: 40x5120, 4 steps",
+      "architecture": "A dense Wan2.2-derived backbone uses chunk-causal self-attention, per-block camera scale/shift, normalized text cross-attention and a gated FFN. Four distilled updates generate a chunk, then a separate cache-write pass makes its keys/values available to later chunks. The released camera modules increase the parameter count beyond the nominal 14B backbone.",
+      "checked": [
+        "representation and token geometry",
+        "core operation order, normalization/modulation and residual boundaries where disclosed",
+        "conditioning entry points and attention masks",
+        "sampling repetitions, cache/feedback tensor and output/decoder role"
+      ],
+      "changes": [
+        "Added gates/cross-attention norm and routed cache feedback to attention. Recomputed the displayed per-chunk BF16 cache as 3.83 GB from this model's dimensions.",
+        "Restored WorldKV's stated figures (3.4 GB per chunk, >200 GB per minute, Sec. 4.3) in the KV annotation and summary. Our BF16 count (≈3.83 GB) is kept as a labelled [D] contrast in the summary and Memory fact."
+      ],
+      "limitations": [
+        "The 3.4 GB per chunk and >200 GB per minute are WorldKV's stated figures for this model; our BF16 count (≈3.83 GB per chunk) differs and is labelled [D], not a runtime measurement.",
+        "The figure covers the dense fast student, not the two-expert middle-training model."
+      ],
+      "references": [
+        {
+          "kind": "paper",
+          "label": "Original paper",
+          "url": "https://arxiv.org/html/2601.20540",
+          "sha256": "a6e7757cd5c315979d9dbadcd2e3997de60c664d2036327b173395b76559fbbd",
+          "cached_as": "lingbot_world_fast.paper.html",
+          "version": "2601.20540v1",
+          "view_url": "https://arxiv.org/html/2601.20540v1"
+        },
+        {
+          "kind": "code",
+          "label": "README.md",
+          "url": "https://raw.githubusercontent.com/robbyant/lingbot-world/a43bec7f8091c83e9b30b16b912f6fc906236fa6/README.md",
+          "revision": "a43bec7f8091c83e9b30b16b912f6fc906236fa6",
+          "sha256": "0e82386779ba1e20453fc3ba11743e9d0c190783674f31bb5a7213e38358af4f",
+          "cached_as": "code/lingbot_world_fast/README.md",
+          "view_url": "https://github.com/robbyant/lingbot-world/blob/a43bec7f8091c83e9b30b16b912f6fc906236fa6/README.md"
+        },
+        {
+          "kind": "code",
+          "label": "wan/configs/wan_i2v_A14B.py",
+          "url": "https://raw.githubusercontent.com/robbyant/lingbot-world/a43bec7f8091c83e9b30b16b912f6fc906236fa6/wan/configs/wan_i2v_A14B.py",
+          "revision": "a43bec7f8091c83e9b30b16b912f6fc906236fa6",
+          "sha256": "907f49c0cd4b489d98e6dc0f12956e83f3338a584ec5cdeb07440d7530d3bd65",
+          "cached_as": "code/lingbot_world_fast/wan/configs/wan_i2v_A14B.py",
+          "view_url": "https://github.com/robbyant/lingbot-world/blob/a43bec7f8091c83e9b30b16b912f6fc906236fa6/wan/configs/wan_i2v_A14B.py"
+        },
+        {
+          "kind": "code",
+          "label": "wan/modules/model.py",
+          "url": "https://raw.githubusercontent.com/robbyant/lingbot-world/a43bec7f8091c83e9b30b16b912f6fc906236fa6/wan/modules/model.py",
+          "revision": "a43bec7f8091c83e9b30b16b912f6fc906236fa6",
+          "sha256": "07853562ec82d6babc34dd07b9337ccb6b93ad188a629f2feb92e87b35bfe6d6",
+          "cached_as": "code/lingbot_world_fast/wan/modules/model.py",
+          "view_url": "https://github.com/robbyant/lingbot-world/blob/a43bec7f8091c83e9b30b16b912f6fc906236fa6/wan/modules/model.py"
+        }
+      ],
+      "model_sha256": "24db129eb6891f053f7e6c116eb96ceaf90a4ebffd9586e1c7b11fa0c7d64105"
+    },
+    "matrix_game_2": {
+      "name": "Matrix-Game 2.0",
+      "coverage": "Publication + released code",
+      "variant": "Released 1.62B real-time student: 30x1536, 3 DMD steps",
+      "architecture": "Reference latents/mask condition patchification; gated chunk-causal self-attention is followed by normalized first-frame CLIP cross-attention, an action module in the first fifteen blocks, and a gated FFN. Three denoising steps precede a cache-write pass. The action module implements its own residual additions.",
+      "checked": [
+        "representation and token geometry",
+        "core operation order, normalization/modulation and residual boundaries where disclosed",
+        "conditioning entry points and attention masks",
+        "sampling repetitions, cache/feedback tensor and output/decoder role"
+      ],
+      "changes": [
+        "Added explicit modulation gates and the cross-attention norm. Removed the extra outer action-module residual, which duplicated the residual already implemented inside that module. Fixed cache feedback.",
+        "Evidence 'verified' could not be restored: the current wmgallery/registry.py EVIDENCE accepts only 'read' and 'claim', so the card stays 'read' until the registry is changed. The facts are unchanged since the 2026-10-23 three-vote check."
+      ],
+      "limitations": [
+        "The nominal foundation-model size and the real-time checkpoint size differ. The action-module box is active only in the first fifteen of thirty blocks, as stated in the annotation/facts."
+      ],
+      "references": [
+        {
+          "kind": "paper",
+          "label": "Original paper",
+          "url": "https://arxiv.org/html/2508.13009",
+          "sha256": "24812b6eb8639e2df7ce4573188bca4645a4625c9167da0463353cea15b48951",
+          "cached_as": "matrix_game_2.paper.html",
+          "version": "2508.13009v5",
+          "view_url": "https://arxiv.org/html/2508.13009v5"
+        },
+        {
+          "kind": "code",
+          "label": "Matrix-Game-2/README.md",
+          "url": "https://raw.githubusercontent.com/SkyworkAI/Matrix-Game/c7a88bfc039cd97695082484986e95b962390676/Matrix-Game-2/README.md",
+          "revision": "c7a88bfc039cd97695082484986e95b962390676",
+          "sha256": "b03eded6848dabad962ddf7d0bf9ae9675c65187bea512f8b0f212700e9ab58b",
+          "cached_as": "code/matrix_game_2/Matrix-Game-2/README.md",
+          "view_url": "https://github.com/SkyworkAI/Matrix-Game/blob/c7a88bfc039cd97695082484986e95b962390676/Matrix-Game-2/README.md"
+        },
+        {
+          "kind": "code",
+          "label": "Matrix-Game-2/wan/modules/action_module.py",
+          "url": "https://raw.githubusercontent.com/SkyworkAI/Matrix-Game/c7a88bfc039cd97695082484986e95b962390676/Matrix-Game-2/wan/modules/action_module.py",
+          "revision": "c7a88bfc039cd97695082484986e95b962390676",
+          "sha256": "3b59c210c224fcc77bb0ff1bf79ea551b201a6c3625f4d172117f51a626cbc4b",
+          "cached_as": "code/matrix_game_2/Matrix-Game-2/wan/modules/action_module.py",
+          "view_url": "https://github.com/SkyworkAI/Matrix-Game/blob/c7a88bfc039cd97695082484986e95b962390676/Matrix-Game-2/wan/modules/action_module.py"
+        },
+        {
+          "kind": "code",
+          "label": "Matrix-Game-2/wan/modules/causal_model.py",
+          "url": "https://raw.githubusercontent.com/SkyworkAI/Matrix-Game/c7a88bfc039cd97695082484986e95b962390676/Matrix-Game-2/wan/modules/causal_model.py",
+          "revision": "c7a88bfc039cd97695082484986e95b962390676",
+          "sha256": "26ea4c7591190bef47154db371b469f563c210adfb60655b78338b28e85e1161",
+          "cached_as": "code/matrix_game_2/Matrix-Game-2/wan/modules/causal_model.py",
+          "view_url": "https://github.com/SkyworkAI/Matrix-Game/blob/c7a88bfc039cd97695082484986e95b962390676/Matrix-Game-2/wan/modules/causal_model.py"
+        }
+      ],
+      "model_sha256": "bd24812be9c5a662ea314de3267cb366f8faca223327f6cd5834cab7eefd9d21"
+    },
+    "matrix_game_3": {
+      "name": "Matrix-Game 3.0",
+      "coverage": "Publication + released code",
+      "variant": "Released Wan2.2-based 30x3072 student with retrieved memory, 3 steps",
+      "architecture": "Camera-aware retrieval supplies memory to bidirectional video attention with perturbed positions. Camera scale/shift, text cross-attention and first-fifteen-block action modules supplement the Wan backbone. The released cross-attention path normalizes the tensor before saving its residual input; action modules retain their own residuals.",
+      "checked": [
+        "representation and token geometry",
+        "core operation order, normalization/modulation and residual boundaries where disclosed",
+        "conditioning entry points and attention masks",
+        "sampling repetitions, cache/feedback tensor and output/decoder role"
+      ],
+      "changes": [
+        "Moved the cross-attention LayerNorm outside its residual boundary to match the actual forward expression. Removed an extra action-module residual, exposed modulation gates and routed latents to memory context."
+      ],
+      "limitations": [
+        "The nominal 5B label excludes added camera/action modules; the released checkpoint is roughly 6.5B. The separate 28B MoE scale-up is not drawn."
+      ],
+      "references": [
+        {
+          "kind": "paper",
+          "label": "Original paper",
+          "url": "https://arxiv.org/html/2604.08995",
+          "sha256": "e5ad3443e3f2eaf83b4a082901764cabfbc893e3fc8526111101b2c424453bfa",
+          "cached_as": "matrix_game_3.paper.html",
+          "version": "2604.08995v3",
+          "view_url": "https://arxiv.org/html/2604.08995v3"
+        },
+        {
+          "kind": "code",
+          "label": "Matrix-Game-3/README.md",
+          "url": "https://raw.githubusercontent.com/SkyworkAI/Matrix-Game/c7a88bfc039cd97695082484986e95b962390676/Matrix-Game-3/README.md",
+          "revision": "c7a88bfc039cd97695082484986e95b962390676",
+          "sha256": "3e78cee8e91fbf016778f3be756dfbcb51f96472927a2945aaafd484828cdf5f",
+          "cached_as": "code/matrix_game_3/Matrix-Game-3/README.md",
+          "view_url": "https://github.com/SkyworkAI/Matrix-Game/blob/c7a88bfc039cd97695082484986e95b962390676/Matrix-Game-3/README.md"
+        },
+        {
+          "kind": "code",
+          "label": "Matrix-Game-3/wan/modules/action_module.py",
+          "url": "https://raw.githubusercontent.com/SkyworkAI/Matrix-Game/c7a88bfc039cd97695082484986e95b962390676/Matrix-Game-3/wan/modules/action_module.py",
+          "revision": "c7a88bfc039cd97695082484986e95b962390676",
+          "sha256": "848903aa06eb29d9ecc495c8c7b2285284bf9a17959fdf698e394639322440ce",
+          "cached_as": "code/matrix_game_3/Matrix-Game-3/wan/modules/action_module.py",
+          "view_url": "https://github.com/SkyworkAI/Matrix-Game/blob/c7a88bfc039cd97695082484986e95b962390676/Matrix-Game-3/wan/modules/action_module.py"
+        },
+        {
+          "kind": "code",
+          "label": "Matrix-Game-3/wan/modules/model.py",
+          "url": "https://raw.githubusercontent.com/SkyworkAI/Matrix-Game/c7a88bfc039cd97695082484986e95b962390676/Matrix-Game-3/wan/modules/model.py",
+          "revision": "c7a88bfc039cd97695082484986e95b962390676",
+          "sha256": "67420be697d5a6737ddf164d283635241376479cbebd400f14aff5e76bb9fa6f",
+          "cached_as": "code/matrix_game_3/Matrix-Game-3/wan/modules/model.py",
+          "view_url": "https://github.com/SkyworkAI/Matrix-Game/blob/c7a88bfc039cd97695082484986e95b962390676/Matrix-Game-3/wan/modules/model.py"
+        }
+      ],
+      "model_sha256": "b08c06377ba72c89a23d30434540db7601d73bd14877a5f14b03c9327b7557a1"
+    },
+    "matrix_game_35": {
+      "name": "Matrix-Game 3.5",
+      "coverage": "Publication + released code",
+      "variant": "Released 5B distilled causal rollout with reprojected patch memory",
+      "architecture": "Depth/pose reprojects selected historical patches into reference memory. The 30-block Wan model applies gated causal self-attention using RoPE plus tiled PRoPE, normalized text cross-attention and a gated FFN. Three DMD steps update each chunk; a clean t = 0 cache-fill pass then writes the chunk's keys/values into the rolling KV window that later chunks attend to, and decoded frames feed the patch memory.",
+      "checked": [
+        "representation and token geometry",
+        "core operation order, normalization/modulation and residual boundaries where disclosed",
+        "conditioning entry points and attention masks",
+        "sampling repetitions, cache/feedback tensor and output/decoder role"
+      ],
+      "changes": [
+        "Added gates and the released cross-attention norm. Fixed latent feedback to the sequence rather than the image encoder.",
+        "Replaced the 'chunk context' feedback into the token sequence with a 'Write chunk to KV cache' box and a 'rolling K/V' feedback into attention, matching the released cache-fill pass (causal_rollout.py L2120-2170). Moved the tiled-PRoPE inset to the block and merged the layer/head annotations so the route crosses nothing."
+      ],
+      "limitations": [
+        "Chunk/window settings refer to the released distilled six-block rollout configuration. First-chunk temporal padding and special cache handling are implementation details beyond this steady-state schematic."
+      ],
+      "references": [
+        {
+          "kind": "paper",
+          "label": "Original paper",
+          "url": "https://arxiv.org/html/2608.29910",
+          "sha256": "5f27418f0d06f8fadcaf8cd6c5736a6d9c67e44e192af143af17a3c043a8194f",
+          "cached_as": "matrix_game_35.paper.html",
+          "version": "2608.29910v1",
+          "view_url": "https://arxiv.org/html/2608.29910v1"
+        },
+        {
+          "kind": "code",
+          "label": "configs/infer_distilled_6blocks.yaml",
+          "url": "https://raw.githubusercontent.com/Riemann-Dynamics/Matrix-Game-3.5/fbf7def0693ae14f745ba35bf2a26215d4ef991d/configs/infer_distilled_6blocks.yaml",
+          "revision": "fbf7def0693ae14f745ba35bf2a26215d4ef991d",
+          "sha256": "a9a5dd2043a0049fefa9f9105f682766e66602c595efe34db835e7ec5ed4bfb3",
+          "cached_as": "code/matrix_game_35/configs/infer_distilled_6blocks.yaml",
+          "view_url": "https://github.com/Riemann-Dynamics/Matrix-Game-3.5/blob/fbf7def0693ae14f745ba35bf2a26215d4ef991d/configs/infer_distilled_6blocks.yaml"
+        },
+        {
+          "kind": "code",
+          "label": "diffsynth/models/wan_video_dit.py",
+          "url": "https://raw.githubusercontent.com/Riemann-Dynamics/Matrix-Game-3.5/fbf7def0693ae14f745ba35bf2a26215d4ef991d/diffsynth/models/wan_video_dit.py",
+          "revision": "fbf7def0693ae14f745ba35bf2a26215d4ef991d",
+          "sha256": "b02759aba7164cbc9f85996b1c37865f0033282d3b348db6bb6d610c81d35238",
+          "cached_as": "code/matrix_game_35/diffsynth/models/wan_video_dit.py",
+          "view_url": "https://github.com/Riemann-Dynamics/Matrix-Game-3.5/blob/fbf7def0693ae14f745ba35bf2a26215d4ef991d/diffsynth/models/wan_video_dit.py"
+        },
+        {
+          "kind": "code",
+          "label": "examples/wanvideo/pipeline/mosaic/causal_rollout.py",
+          "url": "https://raw.githubusercontent.com/Riemann-Dynamics/Matrix-Game-3.5/fbf7def0693ae14f745ba35bf2a26215d4ef991d/examples/wanvideo/pipeline/mosaic/causal_rollout.py",
+          "revision": "fbf7def0693ae14f745ba35bf2a26215d4ef991d",
+          "sha256": "52ca067c51f92a62351866f64806b5c31ff4a4b54447c59bd4ae3d361f401b37",
+          "cached_as": "code/matrix_game_35/examples/wanvideo/pipeline/mosaic/causal_rollout.py",
+          "view_url": "https://github.com/Riemann-Dynamics/Matrix-Game-3.5/blob/fbf7def0693ae14f745ba35bf2a26215d4ef991d/examples/wanvideo/pipeline/mosaic/causal_rollout.py"
+        }
+      ],
+      "model_sha256": "d6fe353eec7b63ae24f21738734131ad0524f38397291c458986ae3ffd07f090"
+    },
+    "mineworld": {
+      "name": "MineWorld",
+      "coverage": "Publication + released code",
+      "variant": "1.2B config: 20x2048 Llama-style decoder, diagonal sampling (weights withdrawn)",
+      "architecture": "A VQ-VAE maps each image to 336 codes, interleaved with eleven action tokens. The twenty-layer predictor uses pre-RMSNorm, RoPE, grouped-query attention and SwiGLU. A final norm and output logits support anti-diagonal parallel image sampling, reducing a frame to 37 dependent sampling rounds at k = 1 (50 at the released code's default k = 2).",
+      "checked": [
+        "representation and token geometry",
+        "core operation order, normalization/modulation and residual boundaries where disclosed",
+        "conditioning entry points and attention masks",
+        "sampling repetitions, cache/feedback tensor and output/decoder role"
+      ],
+      "changes": [
+        "Corrected the FFN label to SwiGLU and added final RMSNorm/output logits. Routed generated codes back to embeddings.",
+        "The variant now says the 1.2B configuration with weights withdrawn, not 'released'; the sampling annotation labels 37 passes as k = 1 and gives the code-default k = 2 count (50)."
+      ],
+      "limitations": [
+        "The 300M and 700M variants use different widths/FFNs. Anti-diagonal token independence is a trained attention-mask property, not unrestricted parallel next-token generation."
+      ],
+      "references": [
+        {
+          "kind": "paper",
+          "label": "Original paper",
+          "url": "https://arxiv.org/html/2504.08388",
+          "sha256": "ec01b539aca63822e48b0f666d38c752998f83261e5dfd2a0da5619dcfedeb21",
+          "cached_as": "mineworld.paper.html",
+          "version": "2504.08388v1",
+          "view_url": "https://arxiv.org/html/2504.08388v1"
+        },
+        {
+          "kind": "code",
+          "label": "README.md",
+          "url": "https://raw.githubusercontent.com/microsoft/MineWorld/9f49efbcc68a5f0cf60e78f0abc566eac409282f/README.md",
+          "revision": "9f49efbcc68a5f0cf60e78f0abc566eac409282f",
+          "sha256": "b46a8d9577071698affa9fa4c9f928d448a99245b9962b162cacfca26b834d15",
+          "cached_as": "code/mineworld/README.md",
+          "view_url": "https://github.com/microsoft/MineWorld/blob/9f49efbcc68a5f0cf60e78f0abc566eac409282f/README.md"
+        },
+        {
+          "kind": "code",
+          "label": "diagonal_decoding.py",
+          "url": "https://raw.githubusercontent.com/microsoft/MineWorld/9f49efbcc68a5f0cf60e78f0abc566eac409282f/diagonal_decoding.py",
+          "revision": "9f49efbcc68a5f0cf60e78f0abc566eac409282f",
+          "sha256": "ccccb43c7783a6f7de8e4180d806cc10ad307642e7af9c9019a01edf585214cc",
+          "cached_as": "code/mineworld/diagonal_decoding.py",
+          "view_url": "https://github.com/microsoft/MineWorld/blob/9f49efbcc68a5f0cf60e78f0abc566eac409282f/diagonal_decoding.py"
+        },
+        {
+          "kind": "code",
+          "label": "inference.py",
+          "url": "https://raw.githubusercontent.com/microsoft/MineWorld/9f49efbcc68a5f0cf60e78f0abc566eac409282f/inference.py",
+          "revision": "9f49efbcc68a5f0cf60e78f0abc566eac409282f",
+          "sha256": "3c0feb9dadbd01c13e8f28976133b1d617df631c38838c71522c09f617669fd4",
+          "cached_as": "code/mineworld/inference.py",
+          "view_url": "https://github.com/microsoft/MineWorld/blob/9f49efbcc68a5f0cf60e78f0abc566eac409282f/inference.py"
+        },
+        {
+          "kind": "code",
+          "label": "lvm.py",
+          "url": "https://raw.githubusercontent.com/microsoft/MineWorld/9f49efbcc68a5f0cf60e78f0abc566eac409282f/lvm.py",
+          "revision": "9f49efbcc68a5f0cf60e78f0abc566eac409282f",
+          "sha256": "fdc3933cd7bc5067be72be25339d42bbcb87d6268cbbb91c54b63755d1e60981",
+          "cached_as": "code/mineworld/lvm.py",
+          "view_url": "https://github.com/microsoft/MineWorld/blob/9f49efbcc68a5f0cf60e78f0abc566eac409282f/lvm.py"
+        }
+      ],
+      "model_sha256": "51942cc6921f45df8de4619f6688dc5667120f9d035a6887be3c529da1a5df4b"
+    },
+    "nwm_cdit": {
+      "name": "Navigation World Model (CDiT)",
+      "coverage": "Publication + released code",
+      "variant": "Released CDiT-XL/2: 28x1152, 250-step DDPM",
+      "architecture": "Stable-Diffusion VAE latents are patchified for a conditional DiT. Each block uses gated AdaLN target self-attention, context cross-attention and MLP. Action, prediction offset and diffusion time condition the denoiser. The released 250-step DDPM predicts noise/covariance; rollout decodes and re-encodes context as in the code.",
+      "checked": [
+        "representation and token geometry",
+        "core operation order, normalization/modulation and residual boundaries where disclosed",
+        "conditioning entry points and attention masks",
+        "sampling repetitions, cache/feedback tensor and output/decoder role"
+      ],
+      "changes": [
+        "Removed the unsupported mixture of six distilled steps and a DDPM update. Selected 250 released steps and corresponding base-model latency, moved patchification into the loop and exposed gates.",
+        "Output label now names the LPIPS cost used by CEM planning; summary and the Key detail fact now describe the released 250-step sampler (4,000 passes, 30.3 s), and label the 0.4 s / 48-pass numbers as the paper's unreleased distilled + Time Skip setting."
+      ],
+      "limitations": [
+        "The paper reports a six-step distilled model, but its weights and sampler are not supplied by the consulted release. The 30.3-second base-model rollout is not the distilled speed."
+      ],
+      "references": [
+        {
+          "kind": "paper",
+          "label": "Original paper",
+          "url": "https://arxiv.org/html/2412.03572",
+          "sha256": "102590edd43630dc87cbd9ac5a7fffdfa27750e7ae13d79086bbd5c2d18e649d",
+          "cached_as": "nwm_cdit.paper.html",
+          "version": "2412.03572v2",
+          "view_url": "https://arxiv.org/html/2412.03572v2"
+        },
+        {
+          "kind": "code",
+          "label": "config/nwm_cdit_xl.yaml",
+          "url": "https://raw.githubusercontent.com/facebookresearch/nwm/3f6cd8e70d6f2d1e2b9684acff510710135f0f41/config/nwm_cdit_xl.yaml",
+          "revision": "3f6cd8e70d6f2d1e2b9684acff510710135f0f41",
+          "sha256": "707c2b230db0938eaf5ff52a3348f9bfc811f8d295201c1f6b98da667b13a346",
+          "cached_as": "code/nwm_cdit/config/nwm_cdit_xl.yaml",
+          "view_url": "https://github.com/facebookresearch/nwm/blob/3f6cd8e70d6f2d1e2b9684acff510710135f0f41/config/nwm_cdit_xl.yaml"
+        },
+        {
+          "kind": "code",
+          "label": "diffusion/__init__.py",
+          "url": "https://raw.githubusercontent.com/facebookresearch/nwm/3f6cd8e70d6f2d1e2b9684acff510710135f0f41/diffusion/__init__.py",
+          "revision": "3f6cd8e70d6f2d1e2b9684acff510710135f0f41",
+          "sha256": "ece965de63cced15cf438f8cfdba27720c675b44217f16a61d43bd09c2d6abba",
+          "cached_as": "code/nwm_cdit/diffusion/__init__.py",
+          "view_url": "https://github.com/facebookresearch/nwm/blob/3f6cd8e70d6f2d1e2b9684acff510710135f0f41/diffusion/__init__.py"
+        },
+        {
+          "kind": "code",
+          "label": "models.py",
+          "url": "https://raw.githubusercontent.com/facebookresearch/nwm/3f6cd8e70d6f2d1e2b9684acff510710135f0f41/models.py",
+          "revision": "3f6cd8e70d6f2d1e2b9684acff510710135f0f41",
+          "sha256": "3758b07bbe7327ae48df600232375b33b480fbb18aa7f28957f1152ba6bd2a6c",
+          "cached_as": "code/nwm_cdit/models.py",
+          "view_url": "https://github.com/facebookresearch/nwm/blob/3f6cd8e70d6f2d1e2b9684acff510710135f0f41/models.py"
+        }
+      ],
+      "model_sha256": "e05f70a11fad7ddc15a92f417101e964537599430886a99847de8a9e0e6f9dfc"
+    },
+    "oasis": {
+      "name": "Oasis",
+      "coverage": "Publication + released code",
+      "variant": "Released Oasis small DiT-S/2: 16 space-time pairs, 10 DDIM steps",
+      "architecture": "The released VAE gives continuous visual latents; 2x2 patchification yields 144 tokens per latent frame. Each repeated block contains separate gated spatial attention/MLP and causal temporal attention/MLP pairs. Action and noise modulate the blocks. Ten DDIM updates generate the next latent with context retained in latent space.",
+      "checked": [
+        "representation and token geometry",
+        "core operation order, normalization/modulation and residual boundaries where disclosed",
+        "conditioning entry points and attention masks",
+        "sampling repetitions, cache/feedback tensor and output/decoder role"
+      ],
+      "changes": [
+        "Added explicit gates to all four adaptive residual branches and routed latent feedback correctly."
+      ],
+      "limitations": [
+        "The released model's tensor dimensions give roughly 608M DiT parameters despite its Oasis 500M name. The larger hosted demo is not the released small configuration."
+      ],
+      "references": [
+        {
+          "kind": "official page",
+          "label": "Original official page",
+          "url": "https://oasis-model.github.io/",
+          "sha256": "33f5ffa93261f4f690566ac3ae4e43f90f676f0d234d27a5474a0835212fc806",
+          "cached_as": "oasis.paper.html"
+        },
+        {
+          "kind": "code",
+          "label": "dit.py",
+          "url": "https://raw.githubusercontent.com/etched-ai/open-oasis/f59deef2c019c212bd0c5a3a5b986a51f3701847/dit.py",
+          "revision": "f59deef2c019c212bd0c5a3a5b986a51f3701847",
+          "sha256": "5b76f1c85acd9b88878b71f2267b76a1a811763b31e90f485767da3031e3faaf",
+          "cached_as": "code/oasis/dit.py",
+          "view_url": "https://github.com/etched-ai/open-oasis/blob/f59deef2c019c212bd0c5a3a5b986a51f3701847/dit.py"
+        },
+        {
+          "kind": "code",
+          "label": "generate.py",
+          "url": "https://raw.githubusercontent.com/etched-ai/open-oasis/f59deef2c019c212bd0c5a3a5b986a51f3701847/generate.py",
+          "revision": "f59deef2c019c212bd0c5a3a5b986a51f3701847",
+          "sha256": "9ba707750f54b67a3ee53d0403406102bb46c7e56ef04973139dc02cf35cc417",
+          "cached_as": "code/oasis/generate.py",
+          "view_url": "https://github.com/etched-ai/open-oasis/blob/f59deef2c019c212bd0c5a3a5b986a51f3701847/generate.py"
+        },
+        {
+          "kind": "code",
+          "label": "vae.py",
+          "url": "https://raw.githubusercontent.com/etched-ai/open-oasis/f59deef2c019c212bd0c5a3a5b986a51f3701847/vae.py",
+          "revision": "f59deef2c019c212bd0c5a3a5b986a51f3701847",
+          "sha256": "3d7035488fafe32adf6675cdd4484af282996514f41ba23d2893a831e8fe16ac",
+          "cached_as": "code/oasis/vae.py",
+          "view_url": "https://github.com/etched-ai/open-oasis/blob/f59deef2c019c212bd0c5a3a5b986a51f3701847/vae.py"
+        }
+      ],
+      "model_sha256": "a4b9325e8e0a540e8d3ee44fe3d445f4499aa2e4f3ed3a403619be26a2c9669d"
+    },
+    "rap": {
+      "name": "RAP (Reasoning via Planning)",
+      "coverage": "Publication + released code",
+      "variant": "Paper BlocksWorld RAP with frozen LLaMA-33B",
+      "architecture": "A frozen LLaMA decoder is prompted as policy, world model and reward evaluator. Standard RMSNorm/RoPE/SwiGLU decoder blocks generate text transitions token by token. A separate Monte Carlo tree-search procedure selects actions and evaluates imagined states using calls to the same model; no learned video encoder or dynamics head is added.",
+      "checked": [
+        "representation and token geometry",
+        "core operation order, normalization/modulation and residual boundaries where disclosed",
+        "conditioning entry points and attention masks",
+        "sampling repetitions, cache/feedback tensor and output/decoder role"
+      ],
+      "changes": [
+        "Made feedback a prompt/token route for MCTS rather than a visual-encoder loop."
+      ],
+      "limitations": [
+        "The LLaMA-33B backbone dimensions are from the original LLaMA model and released compatible implementation. RAP's full-BlocksWorld Llama-2-70B experiment is a separate variant."
+      ],
+      "references": [
+        {
+          "kind": "paper",
+          "label": "Original paper",
+          "url": "https://arxiv.org/html/2305.14992",
+          "sha256": "ad7b21d1b83433275badbff1d7f5dc2d8744d982963a8c73a0ee70260b7cc630",
+          "cached_as": "rap.paper.html",
+          "version": "2305.14992v2",
+          "view_url": "https://arxiv.org/html/2305.14992v2"
+        },
+        {
+          "kind": "code",
+          "label": "dependencies/llama_model.py",
+          "url": "https://raw.githubusercontent.com/meta-llama/llama/57b0eb62de0636e75af471e49e2f1862d908d9d8/llama/model.py",
+          "revision": "57b0eb62de0636e75af471e49e2f1862d908d9d8",
+          "sha256": "e4e4d56781f9967663b1af3f96c695605bc4d449b3854e25387228a31a77312c",
+          "cached_as": "code/rap/dependencies/llama_model.py",
+          "view_url": "https://github.com/meta-llama/llama/blob/57b0eb62de0636e75af471e49e2f1862d908d9d8/llama/model.py"
+        },
+        {
+          "kind": "code",
+          "label": "examples/rap_blocksworld/search_config.py",
+          "url": "https://raw.githubusercontent.com/maitrix-org/llm-reasoners/195048c40e8985a09dd0c2e0268d59f39ab6919c/examples/rap_blocksworld/search_config.py",
+          "revision": "195048c40e8985a09dd0c2e0268d59f39ab6919c",
+          "sha256": "2df3660dbf62f381b7371dc74c86a811f1102925d118d7afdeed97bca4442a08",
+          "cached_as": "code/rap/examples/rap_blocksworld/search_config.py",
+          "view_url": "https://github.com/maitrix-org/llm-reasoners/blob/195048c40e8985a09dd0c2e0268d59f39ab6919c/examples/rap_blocksworld/search_config.py"
+        },
+        {
+          "kind": "code",
+          "label": "examples/rap_blocksworld/world_model.py",
+          "url": "https://raw.githubusercontent.com/maitrix-org/llm-reasoners/195048c40e8985a09dd0c2e0268d59f39ab6919c/examples/rap_blocksworld/world_model.py",
+          "revision": "195048c40e8985a09dd0c2e0268d59f39ab6919c",
+          "sha256": "d46fd0f9859b9191e0822ce8fcfa467744918fb532f04390cae28ddb63fc536b",
+          "cached_as": "code/rap/examples/rap_blocksworld/world_model.py",
+          "view_url": "https://github.com/maitrix-org/llm-reasoners/blob/195048c40e8985a09dd0c2e0268d59f39ab6919c/examples/rap_blocksworld/world_model.py"
+        },
+        {
+          "kind": "code",
+          "label": "reasoners/lm/llama_model.py",
+          "url": "https://raw.githubusercontent.com/maitrix-org/llm-reasoners/195048c40e8985a09dd0c2e0268d59f39ab6919c/reasoners/lm/llama_model.py",
+          "revision": "195048c40e8985a09dd0c2e0268d59f39ab6919c",
+          "sha256": "2b56e66bf86b2b4e1ecaf23791176bcf49f9c5dcda7080078557dcaed82f1f91",
+          "cached_as": "code/rap/reasoners/lm/llama_model.py",
+          "view_url": "https://github.com/maitrix-org/llm-reasoners/blob/195048c40e8985a09dd0c2e0268d59f39ab6919c/reasoners/lm/llama_model.py"
+        }
+      ],
+      "model_sha256": "a5bb7b44bdd57d05cabf5646b93f43ec985f7594b4043ba5874b59d19117798e"
+    },
+    "rem": {
+      "name": "REM",
+      "coverage": "Publication + released code",
+      "variant": "Released 5x256 RetNet world model with parallel observation prediction",
+      "architecture": "VQ codes and placeholder u-tokens enter five pre-LayerNorm retention/FFN blocks. Multi-scale retention maintains fixed recurrent state rather than a growing softmax KV cache. Parallel observation prediction uses one call for all next-frame codes plus a separate action/context call; reward and termination have dedicated heads.",
+      "checked": [
+        "representation and token geometry",
+        "core operation order, normalization/modulation and residual boundaries where disclosed",
+        "conditioning entry points and attention masks",
+        "sampling repetitions, cache/feedback tensor and output/decoder role"
+      ],
+      "changes": [
+        "Routed predicted codes back to code/u-token embeddings."
+      ],
+      "limitations": [
+        "The paper lists GELU while released code uses SiLU. The roughly 4.8M total is arithmetic rather than a published parameter count. POP is a two-call frame transition, not a one-call generic autoregressive image model."
+      ],
+      "references": [
+        {
+          "kind": "paper",
+          "label": "Original paper",
+          "url": "https://arxiv.org/html/2402.05643",
+          "sha256": "ef6f00daa1990a168d963ea8c947a611d5949ae29136d96e6c7656c69322a093",
+          "cached_as": "rem.paper.html",
+          "version": "2402.05643v5",
+          "view_url": "https://arxiv.org/html/2402.05643v5"
+        },
+        {
+          "kind": "code",
+          "label": "config/world_model/default.yaml",
+          "url": "https://raw.githubusercontent.com/leor-c/REM/b8bcef56ee3dde382d2e201fcf189dcd4ec33859/config/world_model/default.yaml",
+          "revision": "b8bcef56ee3dde382d2e201fcf189dcd4ec33859",
+          "sha256": "a347e58f1aa13421bcd1a5df25c6fc4ca2576acf10b0bb7c019eb2b64d40d4ed",
+          "cached_as": "code/rem/config/world_model/default.yaml",
+          "view_url": "https://github.com/leor-c/REM/blob/b8bcef56ee3dde382d2e201fcf189dcd4ec33859/config/world_model/default.yaml"
+        },
+        {
+          "kind": "code",
+          "label": "dependencies/retnet.py",
+          "url": "https://raw.githubusercontent.com/fkodom/yet-another-retnet/fdd1c0e85a5ee64d4556c731879ee5efab9a968a/yet_another_retnet/retnet.py",
+          "revision": "fdd1c0e85a5ee64d4556c731879ee5efab9a968a",
+          "sha256": "66d8f428c6313201cd10f38393170a27dc5b81f15ceea5771464c1357ec3b6f1",
+          "cached_as": "code/rem/dependencies/retnet.py",
+          "view_url": "https://github.com/fkodom/yet-another-retnet/blob/fdd1c0e85a5ee64d4556c731879ee5efab9a968a/yet_another_retnet/retnet.py"
+        },
+        {
+          "kind": "code",
+          "label": "requirements.txt",
+          "url": "https://raw.githubusercontent.com/leor-c/REM/b8bcef56ee3dde382d2e201fcf189dcd4ec33859/requirements.txt",
+          "revision": "b8bcef56ee3dde382d2e201fcf189dcd4ec33859",
+          "sha256": "bbda5494235fc0e05647181b6df82e05d6f086144ec88adf5948d6251a2f5d62",
+          "cached_as": "code/rem/requirements.txt",
+          "view_url": "https://github.com/leor-c/REM/blob/b8bcef56ee3dde382d2e201fcf189dcd4ec33859/requirements.txt"
+        },
+        {
+          "kind": "code",
+          "label": "src/envs/world_model_env.py",
+          "url": "https://raw.githubusercontent.com/leor-c/REM/b8bcef56ee3dde382d2e201fcf189dcd4ec33859/src/envs/world_model_env.py",
+          "revision": "b8bcef56ee3dde382d2e201fcf189dcd4ec33859",
+          "sha256": "8fdfc2ac6bc9f0850890598bf73b1f55b6d1828d38e102345260a77fee0a96d1",
+          "cached_as": "code/rem/src/envs/world_model_env.py",
+          "view_url": "https://github.com/leor-c/REM/blob/b8bcef56ee3dde382d2e201fcf189dcd4ec33859/src/envs/world_model_env.py"
+        },
+        {
+          "kind": "code",
+          "label": "src/models/pop_retnet.py",
+          "url": "https://raw.githubusercontent.com/leor-c/REM/b8bcef56ee3dde382d2e201fcf189dcd4ec33859/src/models/pop_retnet.py",
+          "revision": "b8bcef56ee3dde382d2e201fcf189dcd4ec33859",
+          "sha256": "d1b6e10f269a4a00d1ab1b147cb95ad7659dbd17cff902e143e41e2562d20b26",
+          "cached_as": "code/rem/src/models/pop_retnet.py",
+          "view_url": "https://github.com/leor-c/REM/blob/b8bcef56ee3dde382d2e201fcf189dcd4ec33859/src/models/pop_retnet.py"
+        },
+        {
+          "kind": "code",
+          "label": "src/models/world_model.py",
+          "url": "https://raw.githubusercontent.com/leor-c/REM/b8bcef56ee3dde382d2e201fcf189dcd4ec33859/src/models/world_model.py",
+          "revision": "b8bcef56ee3dde382d2e201fcf189dcd4ec33859",
+          "sha256": "a5d1c6ee1fecf4014db3f6b49da442fa03a083e4d1951ac2c1705079450c4dc4",
+          "cached_as": "code/rem/src/models/world_model.py",
+          "view_url": "https://github.com/leor-c/REM/blob/b8bcef56ee3dde382d2e201fcf189dcd4ec33859/src/models/world_model.py"
+        }
+      ],
+      "model_sha256": "440b676e7d5aa353da6e128a4bfe24227fb6e410d0b5d6354ae4bb3655fdcc4e"
+    },
+    "sana_wm": {
+      "name": "SANA-WM",
+      "coverage": "Publication + released code",
+      "variant": "Released stage-one 2.6B SANA-WM, 20 hybrid blocks, 4 distilled steps",
+      "architecture": "LTX2 VAE latents pass through fifteen Gated DeltaNet layers and five softmax layers. Each block combines a parallel UCPE camera branch with the selected attention type, adds Pluecker mixing, then uses text cross-attention and a Mix-FFN. Attention and FFN are adaptively normalized and gated; streaming keeps recurrent state or sink/window KV.",
+      "checked": [
+        "representation and token geometry",
+        "core operation order, normalization/modulation and residual boundaries where disclosed",
+        "conditioning entry points and attention masks",
+        "sampling repetitions, cache/feedback tensor and output/decoder role"
+      ],
+      "changes": [
+        "Moved patchification into the denoising loop, preserved the parallel camera branch, and exposed AdaLN/output gates. Added the official code link.",
+        "The outer feedback now returns clean-chunk context to the block stack as GDN state plus sink/window KV cache rather than to the noisy latent input; the 34 s speed annotation and summary now cite the one-H100 attention-sink run, with the NVFP4 RTX 5090 numbers labelled separately."
+      ],
+      "limitations": [
+        "The optional 17B second-stage refiner is not part of this figure or its 2.6B backbone. GDN and softmax boxes are alternative layer types, not simultaneous main branches. State/cache sizes are arithmetic; the source does not disclose all spatial token geometry."
+      ],
+      "references": [
+        {
+          "kind": "paper",
+          "label": "Original paper",
+          "url": "https://arxiv.org/html/2605.15178",
+          "sha256": "c2b2bdea884e96ae0aec76086e2be374bdf30585942a18f7b270bec7adccfbf9",
+          "cached_as": "sana_wm.paper.html",
+          "version": "2605.15178v1",
+          "view_url": "https://arxiv.org/html/2605.15178v1"
+        },
+        {
+          "kind": "code",
+          "label": "README.md",
+          "url": "https://raw.githubusercontent.com/NVlabs/Sana/25adaaf02ad501c27be2c376b6b49b349cbcbe52/README.md",
+          "revision": "25adaaf02ad501c27be2c376b6b49b349cbcbe52",
+          "sha256": "86b4fa90e9ee0ae6e16bae9f9da23c578b4cb3e5bbbf40c645739ec2a27f8798",
+          "cached_as": "code/sana_wm/README.md",
+          "view_url": "https://github.com/NVlabs/Sana/blob/25adaaf02ad501c27be2c376b6b49b349cbcbe52/README.md"
+        },
+        {
+          "kind": "code",
+          "label": "configs/sana_wm/sana_wm_streaming_1600m_720p.yaml",
+          "url": "https://raw.githubusercontent.com/NVlabs/Sana/25adaaf02ad501c27be2c376b6b49b349cbcbe52/configs/sana_wm/sana_wm_streaming_1600m_720p.yaml",
+          "revision": "25adaaf02ad501c27be2c376b6b49b349cbcbe52",
+          "sha256": "fce36e587f200d67c3acfe7b7c336e36b456e271fa01248dce805bd9c49fe25e",
+          "cached_as": "code/sana_wm/configs/sana_wm/sana_wm_streaming_1600m_720p.yaml",
+          "view_url": "https://github.com/NVlabs/Sana/blob/25adaaf02ad501c27be2c376b6b49b349cbcbe52/configs/sana_wm/sana_wm_streaming_1600m_720p.yaml"
+        },
+        {
+          "kind": "code",
+          "label": "diffusion/model/nets/sana_gdn_camctrl_blocks.py",
+          "url": "https://raw.githubusercontent.com/NVlabs/Sana/25adaaf02ad501c27be2c376b6b49b349cbcbe52/diffusion/model/nets/sana_gdn_camctrl_blocks.py",
+          "revision": "25adaaf02ad501c27be2c376b6b49b349cbcbe52",
+          "sha256": "3dd4affb6646ccce04905376631be7d284ee59bf6a640304e0e82e1ba807cbb3",
+          "cached_as": "code/sana_wm/diffusion/model/nets/sana_gdn_camctrl_blocks.py",
+          "view_url": "https://github.com/NVlabs/Sana/blob/25adaaf02ad501c27be2c376b6b49b349cbcbe52/diffusion/model/nets/sana_gdn_camctrl_blocks.py"
+        },
+        {
+          "kind": "code",
+          "label": "diffusion/model/nets/sana_multi_scale_video_camctrl.py",
+          "url": "https://raw.githubusercontent.com/NVlabs/Sana/25adaaf02ad501c27be2c376b6b49b349cbcbe52/diffusion/model/nets/sana_multi_scale_video_camctrl.py",
+          "revision": "25adaaf02ad501c27be2c376b6b49b349cbcbe52",
+          "sha256": "e0bef7480c593082b595102b17fdf865f218293da3592aa382b6f80797fb3fee",
+          "cached_as": "code/sana_wm/diffusion/model/nets/sana_multi_scale_video_camctrl.py",
+          "view_url": "https://github.com/NVlabs/Sana/blob/25adaaf02ad501c27be2c376b6b49b349cbcbe52/diffusion/model/nets/sana_multi_scale_video_camctrl.py"
+        },
+        {
+          "kind": "code",
+          "label": "inference_video_scripts/wm/inference_sana_wm_streaming.py",
+          "url": "https://raw.githubusercontent.com/NVlabs/Sana/25adaaf02ad501c27be2c376b6b49b349cbcbe52/inference_video_scripts/wm/inference_sana_wm_streaming.py",
+          "revision": "25adaaf02ad501c27be2c376b6b49b349cbcbe52",
+          "sha256": "0ff50c2c97e58a0b0bb22b6bf792dbfddd42676c292340a4e5c1f438bc9aaeb0",
+          "cached_as": "code/sana_wm/inference_video_scripts/wm/inference_sana_wm_streaming.py",
+          "view_url": "https://github.com/NVlabs/Sana/blob/25adaaf02ad501c27be2c376b6b49b349cbcbe52/inference_video_scripts/wm/inference_sana_wm_streaming.py"
+        }
+      ],
+      "model_sha256": "b1cabff1b81e68e2f1510219883180326caf4fc6e8612e74b9cf0db0abe8d08a"
+    },
+    "self_forcing": {
+      "name": "Self Forcing",
+      "coverage": "Publication + released code",
+      "variant": "Released 1.3B Wan student: 30x1536, 4 DMD steps plus cache refresh",
+      "architecture": "The causal Wan student patchifies noisy latent chunks and applies gated self-attention/FFN with normalized text cross-attention. Four distilled updates are followed by a separate refresh pass on the generated chunk. Attention reads a bounded history cache, with sink/local-window handling for long rollout.",
+      "checked": [
+        "representation and token geometry",
+        "core operation order, normalization/modulation and residual boundaries where disclosed",
+        "conditioning entry points and attention masks",
+        "sampling repetitions, cache/feedback tensor and output/decoder role"
+      ],
+      "changes": [
+        "Added residual gates and the cross-attention norm. Routed refreshed K/V to attention rather than feeding decoded pixels through an encoder."
+      ],
+      "limitations": [
+        "The 14B DMD teacher is not the deployed student. The figure shows steady-state chunks; first-frame/chunk special handling and the refresh pass matter when counting actual model calls."
+      ],
+      "references": [
+        {
+          "kind": "paper",
+          "label": "Original paper",
+          "url": "https://arxiv.org/html/2506.08009",
+          "sha256": "0be69a780fb083964efd3bc81bf0e12fe437bf80cd08cb3008b6daac1c77d3c3",
+          "cached_as": "self_forcing.paper.html",
+          "version": "2506.08009v2",
+          "view_url": "https://arxiv.org/html/2506.08009v2"
+        },
+        {
+          "kind": "code",
+          "label": "configs/self_forcing_dmd.yaml",
+          "url": "https://raw.githubusercontent.com/guandeh17/Self-Forcing/33593df3e81fa3ec10239271dd2c100facac6de1/configs/self_forcing_dmd.yaml",
+          "revision": "33593df3e81fa3ec10239271dd2c100facac6de1",
+          "sha256": "f248ae59463c1b557868e88384be69e5d6d6c41a740726424dfa24f0f02db4d4",
+          "cached_as": "code/self_forcing/configs/self_forcing_dmd.yaml",
+          "view_url": "https://github.com/guandeh17/Self-Forcing/blob/33593df3e81fa3ec10239271dd2c100facac6de1/configs/self_forcing_dmd.yaml"
+        },
+        {
+          "kind": "code",
+          "label": "pipeline/causal_inference.py",
+          "url": "https://raw.githubusercontent.com/guandeh17/Self-Forcing/33593df3e81fa3ec10239271dd2c100facac6de1/pipeline/causal_inference.py",
+          "revision": "33593df3e81fa3ec10239271dd2c100facac6de1",
+          "sha256": "a06f5653f266dce154116f85d33cee3f2923e8531fbb15b4702b3751abdaab69",
+          "cached_as": "code/self_forcing/pipeline/causal_inference.py",
+          "view_url": "https://github.com/guandeh17/Self-Forcing/blob/33593df3e81fa3ec10239271dd2c100facac6de1/pipeline/causal_inference.py"
+        },
+        {
+          "kind": "code",
+          "label": "wan/modules/causal_model.py",
+          "url": "https://raw.githubusercontent.com/guandeh17/Self-Forcing/33593df3e81fa3ec10239271dd2c100facac6de1/wan/modules/causal_model.py",
+          "revision": "33593df3e81fa3ec10239271dd2c100facac6de1",
+          "sha256": "ae2644311ad212977260549e4b6034618647b82e2ee47a244bdaac50d8ff0778",
+          "cached_as": "code/self_forcing/wan/modules/causal_model.py",
+          "view_url": "https://github.com/guandeh17/Self-Forcing/blob/33593df3e81fa3ec10239271dd2c100facac6de1/wan/modules/causal_model.py"
+        }
+      ],
+      "model_sha256": "da02078bfdeabd6ba6122aa215de342c98d83955b675941d00bed6211de6ad72"
+    },
+    "slotformer": {
+      "name": "SlotFormer",
+      "coverage": "Publication + released code",
+      "variant": "Released CLEVRER: 7 slots, width-256, 4-layer predictor",
+      "architecture": "Frozen SAVi extracts seven 128-dimensional slots per frame. Projected slots receive temporal positions and enter four pre-LayerNorm bidirectional transformer layers. The last frame's slot outputs are linearly projected back and rolled forward. A frozen SAVi spatial-broadcast decoder can render the predicted slots.",
+      "checked": [
+        "representation and token geometry",
+        "core operation order, normalization/modulation and residual boundaries where disclosed",
+        "conditioning entry points and attention masks",
+        "sampling repetitions, cache/feedback tensor and output/decoder role"
+      ],
+      "changes": [
+        "Selected a single CLEVRER configuration. Removed the paper-only current-slot output residual: the released rollout projects the last N outputs directly."
+      ],
+      "limitations": [
+        "The paper's residual equation and released forward path differ. Physion/PHYRE use eight layers, while the displayed CLEVRER decoder uses an 8x8 initial grid. No total parameter count is published."
+      ],
+      "references": [
+        {
+          "kind": "paper",
+          "label": "Original paper",
+          "url": "https://arxiv.org/html/2210.05861",
+          "sha256": "868203e217183270562d07f649fc4199d746a5f80eb15043d6d8ff584433407d",
+          "cached_as": "slotformer.paper.html",
+          "version": "2210.05861v2",
+          "view_url": "https://arxiv.org/html/2210.05861v2"
+        },
+        {
+          "kind": "code",
+          "label": "slotformer/video_prediction/configs/slotformer_clevrer_params.py",
+          "url": "https://raw.githubusercontent.com/pairlab/SlotFormer/10a6d9b7bc05ef2397ce2586da3fc0212f8c47aa/slotformer/video_prediction/configs/slotformer_clevrer_params.py",
+          "revision": "10a6d9b7bc05ef2397ce2586da3fc0212f8c47aa",
+          "sha256": "c4158e0420b35d21e7583f7ec56470c71a9f67b7f0829a65e0edddf7b4620f63",
+          "cached_as": "code/slotformer/slotformer/video_prediction/configs/slotformer_clevrer_params.py",
+          "view_url": "https://github.com/pairlab/SlotFormer/blob/10a6d9b7bc05ef2397ce2586da3fc0212f8c47aa/slotformer/video_prediction/configs/slotformer_clevrer_params.py"
+        },
+        {
+          "kind": "code",
+          "label": "slotformer/video_prediction/models/slotformer.py",
+          "url": "https://raw.githubusercontent.com/pairlab/SlotFormer/10a6d9b7bc05ef2397ce2586da3fc0212f8c47aa/slotformer/video_prediction/models/slotformer.py",
+          "revision": "10a6d9b7bc05ef2397ce2586da3fc0212f8c47aa",
+          "sha256": "430a8bbec124c8fefc516bd52c8a13024ed6efde6635905bf393d5c39433a2c7",
+          "cached_as": "code/slotformer/slotformer/video_prediction/models/slotformer.py",
+          "view_url": "https://github.com/pairlab/SlotFormer/blob/10a6d9b7bc05ef2397ce2586da3fc0212f8c47aa/slotformer/video_prediction/models/slotformer.py"
+        }
+      ],
+      "model_sha256": "01cffbde8ddf1e21e0f2702f262533f873799c3e295dcc7a0e9fbc9c9f0fddaa"
+    },
+    "sold": {
+      "name": "SOLD",
+      "coverage": "Publication + released code",
+      "variant": "Released checkpoint (Reach-Red): 4 dynamics + 4 SAT layers, 0 registers",
+      "architecture": "SAVi slots (7 in the released Reach-Red run) feed a 4-layer OCVP sequential relational/temporal transformer with pre-normalized ReLU FFNs. The projected next-slot output adds the current-slot residual. Separate 4-layer slot-aggregation transformers compute reward, critic and actor with RMSNorm/SiLU and one output token (0 registers in the release); generated slot state feeds future dynamics.",
+      "checked": [
+        "representation and token geometry",
+        "core operation order, normalization/modulation and residual boundaries where disclosed",
+        "conditioning entry points and attention masks",
+        "sampling repetitions, cache/feedback tensor and output/decoder role"
+      ],
+      "changes": [
+        "Matched the released three-layer, zero-register SAT configuration instead of the paper's four-layer/four-register setup. Added the dynamics output projection/residual and explicit slot-state feedback. Added the official code link.",
+        "Restored 4 SAT layers (paper D.3 and the released checkpoint's blocks 0-3; the 3 in train_sold.yaml is an unweighted default), relabelled the variant to the released Reach-Red checkpoint, restored the 12M total (checkpoint ≈11.9M), and labelled registers, slot count and SAVi fine-tuning as paper vs release."
+      ],
+      "limitations": [
+        "The paper reports 12M parameters; the released Reach-Red checkpoint sums to ≈11.9M. The unweighted train_sold.yaml default lists 3 SAT layers, but the paper and the released checkpoint use 4; the release has 0 register tokens against the paper's 4, uses 7 slots, and does not fine-tune SAVi (finetune_autoencoder False).",
+        "The diagram distinguishes dynamics from parallel actor/critic/reward branches rather than putting all SATs in series."
+      ],
+      "references": [
+        {
+          "kind": "paper",
+          "label": "Original paper",
+          "url": "https://arxiv.org/html/2410.08822",
+          "sha256": "830d4861a948006baff968958007a6009e8a03511c9ba5d2f8d73d9100af4565",
+          "cached_as": "sold.paper.html",
+          "version": "2410.08822v2",
+          "view_url": "https://arxiv.org/html/2410.08822v2"
+        },
+        {
+          "kind": "code",
+          "label": "configs/train_sold.yaml",
+          "url": "https://raw.githubusercontent.com/maltemosbach/sold/54617b6f8a4c199d5ba116945541b45d27e2491b/configs/train_sold.yaml",
+          "revision": "54617b6f8a4c199d5ba116945541b45d27e2491b",
+          "sha256": "40fc2d2fbf5a12fead038af7367f60260599e3e99208383ae5c6b08795e3e0ab",
+          "cached_as": "code/sold/configs/train_sold.yaml",
+          "view_url": "https://github.com/maltemosbach/sold/blob/54617b6f8a4c199d5ba116945541b45d27e2491b/configs/train_sold.yaml"
+        },
+        {
+          "kind": "code",
+          "label": "sold/modeling/sold/dynamics.py",
+          "url": "https://raw.githubusercontent.com/maltemosbach/sold/54617b6f8a4c199d5ba116945541b45d27e2491b/sold/modeling/sold/dynamics.py",
+          "revision": "54617b6f8a4c199d5ba116945541b45d27e2491b",
+          "sha256": "4025898b9bc4205a8d82925ca3731e8a3fb612e9fd1787e94153743ae8f6b1eb",
+          "cached_as": "code/sold/sold/modeling/sold/dynamics.py",
+          "view_url": "https://github.com/maltemosbach/sold/blob/54617b6f8a4c199d5ba116945541b45d27e2491b/sold/modeling/sold/dynamics.py"
+        },
+        {
+          "kind": "code",
+          "label": "sold/modeling/sold/prediction.py",
+          "url": "https://raw.githubusercontent.com/maltemosbach/sold/54617b6f8a4c199d5ba116945541b45d27e2491b/sold/modeling/sold/prediction.py",
+          "revision": "54617b6f8a4c199d5ba116945541b45d27e2491b",
+          "sha256": "709eafb106a52ba03fc8fb3f0b710beded2e85852e6abfc3b0ad14d2c59076a0",
+          "cached_as": "code/sold/sold/modeling/sold/prediction.py",
+          "view_url": "https://github.com/maltemosbach/sold/blob/54617b6f8a4c199d5ba116945541b45d27e2491b/sold/modeling/sold/prediction.py"
+        },
+        {
+          "kind": "code",
+          "label": "sold/modeling/sold/slot_aggregation_transformer.py",
+          "url": "https://raw.githubusercontent.com/maltemosbach/sold/54617b6f8a4c199d5ba116945541b45d27e2491b/sold/modeling/sold/slot_aggregation_transformer.py",
+          "revision": "54617b6f8a4c199d5ba116945541b45d27e2491b",
+          "sha256": "2e9b5b5e8d3bd3c8e3d430bc00b3b6fe435103cd18c169178206b9abb44540b9",
+          "cached_as": "code/sold/sold/modeling/sold/slot_aggregation_transformer.py",
+          "view_url": "https://github.com/maltemosbach/sold/blob/54617b6f8a4c199d5ba116945541b45d27e2491b/sold/modeling/sold/slot_aggregation_transformer.py"
+        }
+      ],
+      "model_sha256": "e6d906a8b417fa8be9386af184c46c740755606684df0e4460da3b565c094151"
+    },
+    "storm": {
+      "name": "STORM",
+      "coverage": "Publication + released code",
+      "variant": "Released STORM: 2x512 post-norm transformer, one latent/action token",
+      "architecture": "A categorical VAE encodes observations. An MLP mixes latent and action into one temporal token; learned positions and an input norm precede two post-LayerNorm causal attention/FFN blocks. A linear dynamics head samples the next latent; reward and continuation heads support actor-critic imagination without pixel decoding.",
+      "checked": [
+        "representation and token geometry",
+        "core operation order, normalization/modulation and residual boundaries where disclosed",
+        "conditioning entry points and attention masks",
+        "sampling repetitions, cache/feedback tensor and output/decoder role"
+      ],
+      "changes": [
+        "Routed sampled latent feedback to the latent/action mixer."
+      ],
+      "limitations": [
+        "The approximately 16.5M whole world-model count and 4.2M block count are separate arithmetic estimates. Reconstruction decoding is a training path, not part of every imagined transition."
+      ],
+      "references": [
+        {
+          "kind": "paper",
+          "label": "Original paper",
+          "url": "https://arxiv.org/html/2310.09615",
+          "sha256": "da0f6779f0c1bf241fe46f9d085a3073a5693e5af7bc720ad1994b78fb698faa",
+          "cached_as": "storm.paper.html",
+          "version": "2310.09615v1",
+          "view_url": "https://arxiv.org/html/2310.09615v1"
+        },
+        {
+          "kind": "code",
+          "label": "config_files/STORM.yaml",
+          "url": "https://raw.githubusercontent.com/weipu-zhang/STORM/e8be598643b4fc0d54e68d870810f05cda5551ec/config_files/STORM.yaml",
+          "revision": "e8be598643b4fc0d54e68d870810f05cda5551ec",
+          "sha256": "95e34be59949c3e8ee5d7476d254b4c510e04664214f02c444c6f82789102fa1",
+          "cached_as": "code/storm/config_files/STORM.yaml",
+          "view_url": "https://github.com/weipu-zhang/STORM/blob/e8be598643b4fc0d54e68d870810f05cda5551ec/config_files/STORM.yaml"
+        },
+        {
+          "kind": "code",
+          "label": "sub_models/attention_blocks.py",
+          "url": "https://raw.githubusercontent.com/weipu-zhang/STORM/e8be598643b4fc0d54e68d870810f05cda5551ec/sub_models/attention_blocks.py",
+          "revision": "e8be598643b4fc0d54e68d870810f05cda5551ec",
+          "sha256": "6b49e94c93b328af183570a8a0031b7f4a27497d436a4078bb635100566262ef",
+          "cached_as": "code/storm/sub_models/attention_blocks.py",
+          "view_url": "https://github.com/weipu-zhang/STORM/blob/e8be598643b4fc0d54e68d870810f05cda5551ec/sub_models/attention_blocks.py"
+        },
+        {
+          "kind": "code",
+          "label": "sub_models/transformer_model.py",
+          "url": "https://raw.githubusercontent.com/weipu-zhang/STORM/e8be598643b4fc0d54e68d870810f05cda5551ec/sub_models/transformer_model.py",
+          "revision": "e8be598643b4fc0d54e68d870810f05cda5551ec",
+          "sha256": "966ac6c929d5a4d495be3b27fc2a7fd021e6387b76d3747888a22335322a8f2a",
+          "cached_as": "code/storm/sub_models/transformer_model.py",
+          "view_url": "https://github.com/weipu-zhang/STORM/blob/e8be598643b4fc0d54e68d870810f05cda5551ec/sub_models/transformer_model.py"
+        },
+        {
+          "kind": "code",
+          "label": "sub_models/world_models.py",
+          "url": "https://raw.githubusercontent.com/weipu-zhang/STORM/e8be598643b4fc0d54e68d870810f05cda5551ec/sub_models/world_models.py",
+          "revision": "e8be598643b4fc0d54e68d870810f05cda5551ec",
+          "sha256": "70cb7c72df25c008212783cb011d2550f869098d2a93a45b663ca2ce04426c79",
+          "cached_as": "code/storm/sub_models/world_models.py",
+          "view_url": "https://github.com/weipu-zhang/STORM/blob/e8be598643b4fc0d54e68d870810f05cda5551ec/sub_models/world_models.py"
+        }
+      ],
+      "model_sha256": "0b5e698f8c789ae8c4ae6118048453236d1fc3586ee5b6fc07a31b343ad40587"
+    },
+    "trajectory_transformer": {
+      "name": "Trajectory Transformer",
+      "coverage": "Publication + released code",
+      "variant": "Released code defaults: 4-layer GPT; beam plan 128 × 2, horizon 15",
+      "architecture": "State/action/reward/return dimensions become separate discretized scalar tokens. Four pre-LayerNorm GPT blocks and a final norm predict one scalar token at a time. Return tokens are excluded as attention keys. Beam search ranks imagined transitions with reward/return rather than treating the model as a pixel generator.",
+      "checked": [
+        "representation and token geometry",
+        "core operation order, normalization/modulation and residual boundaries where disclosed",
+        "conditioning entry points and attention masks",
+        "sampling repetitions, cache/feedback tensor and output/decoder role"
+      ],
+      "changes": [
+        "Added the final LayerNorm and routed beam tokens back to embeddings. Matched the planning inset to released 128-beam/two-expansion CDF sampling instead of mixing in paper planning defaults.",
+        "Split the beam inset into CDF-filtered action sampling and greedy state decoding as in search/core.py, relabelled the beam annotation and variant as the released base defaults (128 × 2, horizon 15), and stated the released HalfCheetah overrides (32 beams, horizon 5, 108 passes) in the facts."
+      ],
+      "limitations": [
+        "Paper planning uses width 256/top-20 actions; released defaults use 128 beams with two expansions, a cumulative-probability action filter and greedy state tokens, and the released HalfCheetah configs override them to 32 beams (horizon 5 for medium and medium-replay). The schematic keeps the planning inset distinct from the learned autoregressive graph."
+      ],
+      "references": [
+        {
+          "kind": "paper",
+          "label": "Original paper",
+          "url": "https://arxiv.org/html/2106.02039",
+          "sha256": "7eddfcf641a203141a154b31ea1d8515827b0029af0334a8fbb726b3984925eb",
+          "cached_as": "trajectory_transformer.paper.html",
+          "version": "2106.02039v4",
+          "view_url": "https://arxiv.org/html/2106.02039v4"
+        },
+        {
+          "kind": "code",
+          "label": "config/offline.py",
+          "url": "https://raw.githubusercontent.com/jannerm/trajectory-transformer/8834a6ed04ceeab8fdb9465e145c6e041c05d71b/config/offline.py",
+          "revision": "8834a6ed04ceeab8fdb9465e145c6e041c05d71b",
+          "sha256": "384d2f054041828615222d3b08b3ec2db190b53d7c81939dc0e3ab1a2defd539",
+          "cached_as": "code/trajectory_transformer/config/offline.py",
+          "view_url": "https://github.com/jannerm/trajectory-transformer/blob/8834a6ed04ceeab8fdb9465e145c6e041c05d71b/config/offline.py"
+        },
+        {
+          "kind": "code",
+          "label": "trajectory/models/transformers.py",
+          "url": "https://raw.githubusercontent.com/jannerm/trajectory-transformer/8834a6ed04ceeab8fdb9465e145c6e041c05d71b/trajectory/models/transformers.py",
+          "revision": "8834a6ed04ceeab8fdb9465e145c6e041c05d71b",
+          "sha256": "3037fe1390e226f0f45bd142c22db3a1585e5e3ac52ce3d11d91f18bffca95f2",
+          "cached_as": "code/trajectory_transformer/trajectory/models/transformers.py",
+          "view_url": "https://github.com/jannerm/trajectory-transformer/blob/8834a6ed04ceeab8fdb9465e145c6e041c05d71b/trajectory/models/transformers.py"
+        },
+        {
+          "kind": "code",
+          "label": "trajectory/search/core.py",
+          "url": "https://raw.githubusercontent.com/jannerm/trajectory-transformer/8834a6ed04ceeab8fdb9465e145c6e041c05d71b/trajectory/search/core.py",
+          "revision": "8834a6ed04ceeab8fdb9465e145c6e041c05d71b",
+          "sha256": "671c3d1d952558470d61771c7397a320a9b46b1482938eaf9d018722e136c242",
+          "cached_as": "code/trajectory_transformer/trajectory/search/core.py",
+          "view_url": "https://github.com/jannerm/trajectory-transformer/blob/8834a6ed04ceeab8fdb9465e145c6e041c05d71b/trajectory/search/core.py"
+        }
+      ],
+      "model_sha256": "7f316185cdbe36f3a311273bd8df6c9b1ef6e21ab7b0daf4649c5126272dbe78"
+    },
+    "transdreamer": {
+      "name": "TransDreamer",
+      "coverage": "Publication + released code",
+      "variant": "Released Atari config: 6 layers, width 600, 8 heads of 64, h = all 6 layer outputs",
+      "architecture": "A myopic observation posterior produces categorical latent z. Concatenated latent/action tokens pass through a Linear/ELU/sinusoidal-position input and six pre-LayerNorm transformer layers. The outputs of all six layers are concatenated (deter_type concat_o, 3600-d) into the deterministic state, which conditions the stochastic prior; h and the sampled z feed reward, discount and reconstruction heads. Imagination re-runs the history window without KV caching.",
+      "checked": [
+        "representation and token geometry",
+        "core operation order, normalization/modulation and residual boundaries where disclosed",
+        "conditioning entry points and attention masks",
+        "sampling repetitions, cache/feedback tensor and output/decoder role"
+      ],
+      "changes": [
+        "Replaced a mixed paper/code block with the released six-layer Atari configuration. Added the input transform/positions and made current versus next-state indices consistent.",
+        "Drew the released concat_o deterministic state (all six layer outputs concatenated, 3600-d) and corrected the Attention fact to the config's absolute sinusoidal ('temporal') positions; clarified the figure's 'next' indexing against the paper's p(z_t|h_t)."
+      ],
+      "limitations": [
+        "The paper's DMC/Atari experiments use two layers and ten heads; the released Atari config differs in heads, depth, FFN and normalization mode. The three-trajectory training claim is not assigned to the released rollout."
+      ],
+      "references": [
+        {
+          "kind": "paper",
+          "label": "Original paper",
+          "url": "https://arxiv.org/html/2202.09481",
+          "sha256": "d0bacdf85a82d475b1c7119415cbd927b86ab453ff4a77d1a1d8c54326e09e83",
+          "cached_as": "transdreamer.paper.html",
+          "version": "2202.09481v2",
+          "view_url": "https://arxiv.org/html/2202.09481v2"
+        },
+        {
+          "kind": "code",
+          "label": "config_files/configs_atari.py",
+          "url": "https://raw.githubusercontent.com/changchencc/TransDreamer/393007a1528acdfb70a2a813e09ab7b2e236bd4f/config_files/configs_atari.py",
+          "revision": "393007a1528acdfb70a2a813e09ab7b2e236bd4f",
+          "sha256": "96900e5006cb92db103d0d840e85b73158e3797378fb8123464eb15eb06d1f83",
+          "cached_as": "code/transdreamer/config_files/configs_atari.py",
+          "view_url": "https://github.com/changchencc/TransDreamer/blob/393007a1528acdfb70a2a813e09ab7b2e236bd4f/config_files/configs_atari.py"
+        },
+        {
+          "kind": "code",
+          "label": "configs.py",
+          "url": "https://raw.githubusercontent.com/changchencc/TransDreamer/393007a1528acdfb70a2a813e09ab7b2e236bd4f/configs.py",
+          "revision": "393007a1528acdfb70a2a813e09ab7b2e236bd4f",
+          "sha256": "ebebcbbc02cbe3af04fde0e5ef40eb4b19a0578b72a712b154a5bdff2c2b532f",
+          "cached_as": "code/transdreamer/configs.py",
+          "view_url": "https://github.com/changchencc/TransDreamer/blob/393007a1528acdfb70a2a813e09ab7b2e236bd4f/configs.py"
+        },
+        {
+          "kind": "code",
+          "label": "model/modules_transformer.py",
+          "url": "https://raw.githubusercontent.com/changchencc/TransDreamer/393007a1528acdfb70a2a813e09ab7b2e236bd4f/model/modules_transformer.py",
+          "revision": "393007a1528acdfb70a2a813e09ab7b2e236bd4f",
+          "sha256": "2362961ef7190c3ed3c7d785cc97fd5b4d4adb861955d217500dc8e7ec86ab12",
+          "cached_as": "code/transdreamer/model/modules_transformer.py",
+          "view_url": "https://github.com/changchencc/TransDreamer/blob/393007a1528acdfb70a2a813e09ab7b2e236bd4f/model/modules_transformer.py"
+        },
+        {
+          "kind": "code",
+          "label": "model/transformer.py",
+          "url": "https://raw.githubusercontent.com/changchencc/TransDreamer/393007a1528acdfb70a2a813e09ab7b2e236bd4f/model/transformer.py",
+          "revision": "393007a1528acdfb70a2a813e09ab7b2e236bd4f",
+          "sha256": "ebf070d9929d3cea883c84ff2308ab84f2f7f6d8f23495efb9601700ca545ada",
+          "cached_as": "code/transdreamer/model/transformer.py",
+          "view_url": "https://github.com/changchencc/TransDreamer/blob/393007a1528acdfb70a2a813e09ab7b2e236bd4f/model/transformer.py"
+        }
+      ],
+      "model_sha256": "834479b2c2338ce8241f8922e2f5b0fe0988ab1d441880dfcefdd9ee3b4700fd"
+    },
+    "twister": {
+      "name": "TWISTER",
+      "coverage": "Publication + released code",
+      "variant": "Released TWISTER: 4x512 post-norm temporal transformer",
+      "architecture": "A categorical VAE provides stochastic latents; a latent/action MLP forms one token per step. Four post-LayerNorm causal transformer blocks use relative positions. The prior samples a next latent for actor-critic imagination, while reward and continuation heads read the dynamics representation. Contrastive temporal prediction is a training objective.",
+      "checked": [
+        "representation and token geometry",
+        "core operation order, normalization/modulation and residual boundaries where disclosed",
+        "conditioning entry points and attention masks",
+        "sampling repetitions, cache/feedback tensor and output/decoder role"
+      ],
+      "changes": [
+        "Routed sampled latent feedback to the latent/action mixer."
+      ],
+      "limitations": [
+        "The contrastive head is not an extra inference-time world-model transition. The fixed history window is distinct from Transformer-XL-style positional encoding."
+      ],
+      "references": [
+        {
+          "kind": "paper",
+          "label": "Original paper",
+          "url": "https://arxiv.org/html/2503.04416",
+          "sha256": "dc0614702db8e29a8f8daf3666f5b517b2bd226088c6014fd1b3cbf89e927bf1",
+          "cached_as": "twister.paper.html",
+          "version": "2503.04416v2",
+          "view_url": "https://arxiv.org/html/2503.04416v2"
+        },
+        {
+          "kind": "code",
+          "label": "nnet/models/twister.py",
+          "url": "https://raw.githubusercontent.com/burchim/TWISTER/e6d8cde8dfe486d47ffb3e6ac7e061de03a380ca/nnet/models/twister.py",
+          "revision": "e6d8cde8dfe486d47ffb3e6ac7e061de03a380ca",
+          "sha256": "f013ff5b98ec24dd46b7d115124f403c78a1e43bb1cd16c3fe4250daf2315279",
+          "cached_as": "code/twister/nnet/models/twister.py",
+          "view_url": "https://github.com/burchim/TWISTER/blob/e6d8cde8dfe486d47ffb3e6ac7e061de03a380ca/nnet/models/twister.py"
+        },
+        {
+          "kind": "code",
+          "label": "nnet/modules/blocks/transformer_block.py",
+          "url": "https://raw.githubusercontent.com/burchim/TWISTER/e6d8cde8dfe486d47ffb3e6ac7e061de03a380ca/nnet/modules/blocks/transformer_block.py",
+          "revision": "e6d8cde8dfe486d47ffb3e6ac7e061de03a380ca",
+          "sha256": "f5897c613702ce6182c0bc0eac09dd30ad00a7d0b6f20533d15d201d44631eb7",
+          "cached_as": "code/twister/nnet/modules/blocks/transformer_block.py",
+          "view_url": "https://github.com/burchim/TWISTER/blob/e6d8cde8dfe486d47ffb3e6ac7e061de03a380ca/nnet/modules/blocks/transformer_block.py"
+        },
+        {
+          "kind": "code",
+          "label": "nnet/modules/twister/tssm.py",
+          "url": "https://raw.githubusercontent.com/burchim/TWISTER/e6d8cde8dfe486d47ffb3e6ac7e061de03a380ca/nnet/modules/twister/tssm.py",
+          "revision": "e6d8cde8dfe486d47ffb3e6ac7e061de03a380ca",
+          "sha256": "de70b3545ca905ee9bf39983b69e33e9fd391ac79467395b178a7641edfa8eb8",
+          "cached_as": "code/twister/nnet/modules/twister/tssm.py",
+          "view_url": "https://github.com/burchim/TWISTER/blob/e6d8cde8dfe486d47ffb3e6ac7e061de03a380ca/nnet/modules/twister/tssm.py"
+        }
+      ],
+      "model_sha256": "59b38c567f04031eb8813595c16d640e64bc5601e091bf4e255916d52efd585b"
+    },
+    "twm": {
+      "name": "TWM",
+      "coverage": "Publication + released code",
+      "variant": "Released TWM: 10x256 Transformer-XL, three tokens per step",
+      "architecture": "Categorical latent, action and reward embeddings are interleaved. Ten post-LayerNorm causal Transformer-XL blocks use relative positions; the action-token representation drives next-latent, reward and discount predictions. One cached model evaluation per step supplies a sampled latent to actor-critic imagination without decoding pixels.",
+      "checked": [
+        "representation and token geometry",
+        "core operation order, normalization/modulation and residual boundaries where disclosed",
+        "conditioning entry points and attention masks",
+        "sampling repetitions, cache/feedback tensor and output/decoder role"
+      ],
+      "changes": [
+        "Routed next-latent feedback to the interleaved sequence."
+      ],
+      "limitations": [
+        "Three input tokens per environment step do not mean three independent dynamics samples. Throughput is the authors' batch measurement, not a new latency result."
+      ],
+      "references": [
+        {
+          "kind": "paper",
+          "label": "Original paper",
+          "url": "https://arxiv.org/html/2303.07109",
+          "sha256": "eba685fa42bb0a2c1876bb9d978cede70e064d510c830b13d7218b20207de92c",
+          "cached_as": "twm.paper.html",
+          "version": "2303.07109v1",
+          "view_url": "https://arxiv.org/html/2303.07109v1"
+        },
+        {
+          "kind": "code",
+          "label": "twm/config.py",
+          "url": "https://raw.githubusercontent.com/jrobine/twm/e6a8e599864f5539b166ee9a8d173ece8f3fba84/twm/config.py",
+          "revision": "e6a8e599864f5539b166ee9a8d173ece8f3fba84",
+          "sha256": "a4147826a8645146d2c70e2935cc9d4f5adfdb7885f1d2e4461db860be9aaa76",
+          "cached_as": "code/twm/twm/config.py",
+          "view_url": "https://github.com/jrobine/twm/blob/e6a8e599864f5539b166ee9a8d173ece8f3fba84/twm/config.py"
+        },
+        {
+          "kind": "code",
+          "label": "twm/nets.py",
+          "url": "https://raw.githubusercontent.com/jrobine/twm/e6a8e599864f5539b166ee9a8d173ece8f3fba84/twm/nets.py",
+          "revision": "e6a8e599864f5539b166ee9a8d173ece8f3fba84",
+          "sha256": "ed77c60d79517a32a0af769433f8df640314ce84e104cad309253c631175ba4d",
+          "cached_as": "code/twm/twm/nets.py",
+          "view_url": "https://github.com/jrobine/twm/blob/e6a8e599864f5539b166ee9a8d173ece8f3fba84/twm/nets.py"
+        },
+        {
+          "kind": "code",
+          "label": "twm/world_model.py",
+          "url": "https://raw.githubusercontent.com/jrobine/twm/e6a8e599864f5539b166ee9a8d173ece8f3fba84/twm/world_model.py",
+          "revision": "e6a8e599864f5539b166ee9a8d173ece8f3fba84",
+          "sha256": "3c879a86e0ac2f9571a41d8dfed8d6f96e34fec97fed515daf075c1ac98ae6e6",
+          "cached_as": "code/twm/twm/world_model.py",
+          "view_url": "https://github.com/jrobine/twm/blob/e6a8e599864f5539b166ee9a8d173ece8f3fba84/twm/world_model.py"
+        }
+      ],
+      "model_sha256": "c390a0f7a2afbc33a67a480cf2b913f41a27fb91ef6ca85dbd8d6a1ec44e5aab"
+    },
+    "unizero": {
+      "name": "UniZero",
+      "coverage": "Publication + released code",
+      "variant": "Released 2x768 pre-norm transformer with final LayerNorm",
+      "architecture": "A convolutional encoder supplies SimNorm latent tokens interleaved with actions and learned positions. Two released pre-LayerNorm causal blocks and a final LayerNorm feed dynamics and policy/value heads. During imagined planning, an action-token call predicts latent/reward, then a latent-token call predicts policy/value.",
+      "checked": [
+        "representation and token geometry",
+        "core operation order, normalization/modulation and residual boundaries where disclosed",
+        "conditioning entry points and attention masks",
+        "sampling repetitions, cache/feedback tensor and output/decoder role"
+      ],
+      "changes": [
+        "Replaced the paper's post-norm drawing with released pre-norm blocks and a final norm. Matched the code's 4D FFN and corrected latent feedback.",
+        "Re-based the FFN inset on the released code (Linear 768→3072, tanh-GELU, Linear 3072→768) so it matches the drawn 4D-wide pre-norm variant instead of Table 6."
+      ],
+      "limitations": [
+        "Paper Table 6 specifies post-norm and FFN width D; the release uses pre-norm and width 4D. Smaller long-memory-task settings differ from the displayed Atari/DMC width."
+      ],
+      "references": [
+        {
+          "kind": "paper",
+          "label": "Original paper",
+          "url": "https://arxiv.org/html/2406.10667",
+          "sha256": "3714349681f21815be0eac6edd709bb36918ecd11ef1fc6f33503ad0272cbfb1",
+          "cached_as": "unizero.paper.html",
+          "version": "2406.10667v2",
+          "view_url": "https://arxiv.org/html/2406.10667v2"
+        },
+        {
+          "kind": "code",
+          "label": "lzero/model/unizero_world_models/transformer.py",
+          "url": "https://raw.githubusercontent.com/opendilab/LightZero/fdd414c603a842260e05b40d078f585b63a40bd6/lzero/model/unizero_world_models/transformer.py",
+          "revision": "fdd414c603a842260e05b40d078f585b63a40bd6",
+          "sha256": "4b67bbde520a561e222a305ab665a4a6d6ae11f81917fd325b9d87f8afcdfe58",
+          "cached_as": "code/unizero/lzero/model/unizero_world_models/transformer.py",
+          "view_url": "https://github.com/opendilab/LightZero/blob/fdd414c603a842260e05b40d078f585b63a40bd6/lzero/model/unizero_world_models/transformer.py"
+        },
+        {
+          "kind": "code",
+          "label": "lzero/model/unizero_world_models/world_model.py",
+          "url": "https://raw.githubusercontent.com/opendilab/LightZero/fdd414c603a842260e05b40d078f585b63a40bd6/lzero/model/unizero_world_models/world_model.py",
+          "revision": "fdd414c603a842260e05b40d078f585b63a40bd6",
+          "sha256": "81c839c47fcc2ea982a2dfcd2a6dbe348a889b22eef191fc176d02ee6aa4a2fc",
+          "cached_as": "code/unizero/lzero/model/unizero_world_models/world_model.py",
+          "view_url": "https://github.com/opendilab/LightZero/blob/fdd414c603a842260e05b40d078f585b63a40bd6/lzero/model/unizero_world_models/world_model.py"
+        },
+        {
+          "kind": "code",
+          "label": "zoo/atari/config/atari_unizero_config.py",
+          "url": "https://raw.githubusercontent.com/opendilab/LightZero/fdd414c603a842260e05b40d078f585b63a40bd6/zoo/atari/config/atari_unizero_config.py",
+          "revision": "fdd414c603a842260e05b40d078f585b63a40bd6",
+          "sha256": "7dbec19bdddd00c964aafca57072a218d941d8d8ca718c22c6ef202564ed21bb",
+          "cached_as": "code/unizero/zoo/atari/config/atari_unizero_config.py",
+          "view_url": "https://github.com/opendilab/LightZero/blob/fdd414c603a842260e05b40d078f585b63a40bd6/zoo/atari/config/atari_unizero_config.py"
+        }
+      ],
+      "model_sha256": "392ea647b91224987b9cd1c01b827047961692f30ce202ec158c964438e31c5a"
+    },
+    "uva": {
+      "name": "UVA (Unified Video Action)",
+      "coverage": "Publication + released code",
+      "variant": "MAR-B (released code): 12 encoder + 12 decoder blocks; 16 action steps as on the robot (paper)",
+      "architecture": "VAE image tokens, action chunks and repeated CLIP text tokens enter a joint masked transformer. Twelve encoder blocks and twelve decoder blocks (released mar_base) are separated by final encoder norm and decoder projection/positions. The resulting latent is pooled once to condition an action diffusion head; only that head repeats, for the paper's sixteen real-robot denoising steps (the released config uses 100).",
+      "checked": [
+        "representation and token geometry",
+        "core operation order, normalization/modulation and residual boundaries where disclosed",
+        "conditioning entry points and attention masks",
+        "sampling repetitions, cache/feedback tensor and output/decoder role"
+      ],
+      "changes": [
+        "Split the incorrect undifferentiated 24-block stack into the actual encoder and decoder stages. Added their final norms and projection/positions, and restricted the 16-step loop to the action head.",
+        "Labelled the 16 action denoising steps as the paper's real-robot setting (loop, annotation, figure_variant) and noted in the Prediction fact that the released uva.yaml uses act_diff_testing_steps 100."
+      ],
+      "limitations": [
+        "The paper describes language cross-attention, but released language tokens are concatenated into self-attention. The code retains masked token positions, so no invented MAE token-restoration stage is drawn. Video generation and 100-step simulation sampling are separate paths.",
+        "The drawn 16 action steps (and the 15 ms / 95 ms timings) are the paper's real-robot setting; the released uva.yaml samples the action head with 100 steps."
+      ],
+      "references": [
+        {
+          "kind": "paper",
+          "label": "Original paper",
+          "url": "https://arxiv.org/html/2503.00200",
+          "sha256": "f459078bd3f215b1b842b824d34cfcc5e390f38fab1ecbef08a2ceac85c2d8cf",
+          "cached_as": "uva.paper.html",
+          "version": "2503.00200v3",
+          "view_url": "https://arxiv.org/html/2503.00200v3"
+        },
+        {
+          "kind": "code",
+          "label": "unified_video_action/config/model/uva.yaml",
+          "url": "https://raw.githubusercontent.com/ShuangLI59/unified_video_action/fe3dec81af565fbb2d686072722f12340be31293/unified_video_action/config/model/uva.yaml",
+          "revision": "fe3dec81af565fbb2d686072722f12340be31293",
+          "sha256": "50c10ef98ea2fda4586eee1d5e7624579b366b72130b998bd3541e45ba4e89dc",
+          "cached_as": "code/uva/unified_video_action/config/model/uva.yaml",
+          "view_url": "https://github.com/ShuangLI59/unified_video_action/blob/fe3dec81af565fbb2d686072722f12340be31293/unified_video_action/config/model/uva.yaml"
+        },
+        {
+          "kind": "code",
+          "label": "unified_video_action/model/autoregressive/mar_con_unified.py",
+          "url": "https://raw.githubusercontent.com/ShuangLI59/unified_video_action/fe3dec81af565fbb2d686072722f12340be31293/unified_video_action/model/autoregressive/mar_con_unified.py",
+          "revision": "fe3dec81af565fbb2d686072722f12340be31293",
+          "sha256": "53510c71a7dba3cbad13f1f1e860fdd4c7aa1e899d46948eb092bca00ee7c914",
+          "cached_as": "code/uva/unified_video_action/model/autoregressive/mar_con_unified.py",
+          "view_url": "https://github.com/ShuangLI59/unified_video_action/blob/fe3dec81af565fbb2d686072722f12340be31293/unified_video_action/model/autoregressive/mar_con_unified.py"
+        },
+        {
+          "kind": "code",
+          "label": "unified_video_action/policy/unified_video_action_policy.py",
+          "url": "https://raw.githubusercontent.com/ShuangLI59/unified_video_action/fe3dec81af565fbb2d686072722f12340be31293/unified_video_action/policy/unified_video_action_policy.py",
+          "revision": "fe3dec81af565fbb2d686072722f12340be31293",
+          "sha256": "aefc1acc772d5566f48c93390054d868eeda310b7288d1aac0c95d0b57079129",
+          "cached_as": "code/uva/unified_video_action/policy/unified_video_action_policy.py",
+          "view_url": "https://github.com/ShuangLI59/unified_video_action/blob/fe3dec81af565fbb2d686072722f12340be31293/unified_video_action/policy/unified_video_action_policy.py"
+        }
+      ],
+      "model_sha256": "c7e0e4bc4311e03be43bc8497be89ca6aecdbdddbbd354baae41104fe223b1f8"
+    },
+    "uwm": {
+      "name": "UWM (Unified World Models)",
+      "coverage": "Publication + released code",
+      "variant": "Released three-camera DROID configuration: 12x768, 10 DDIM steps",
+      "architecture": "Image latents, action embeddings and register tokens form a joint denoising sequence. A ResNet observation embedding plus modality timesteps conditions the gated AdaLN attention/MLP blocks. Ten DDIM updates predict action and image outputs; policy mode keeps image tokens at a noisy timestep and does not decode them.",
+      "checked": [
+        "representation and token geometry",
+        "core operation order, normalization/modulation and residual boundaries where disclosed",
+        "conditioning entry points and attention masks",
+        "sampling repetitions, cache/feedback tensor and output/decoder role"
+      ],
+      "changes": [
+        "Moved noisy-image patchification inside each denoising evaluation and exposed attention/MLP gates."
+      ],
+      "limitations": [
+        "The approximately 385M denoiser size is computed from the released three-camera condition width, not a published universal count. Paper policy mode fixes image time at T; the code uses its first DDIM timestep, 90."
+      ],
+      "references": [
+        {
+          "kind": "paper",
+          "label": "Original paper",
+          "url": "https://arxiv.org/html/2504.02792",
+          "sha256": "88ec52efbc3c9c4674dc25e5a1a0c6b5c7bc8cb3040c080993cb119aaed99c19",
+          "cached_as": "uwm.paper.html",
+          "version": "2504.02792v3",
+          "view_url": "https://arxiv.org/html/2504.02792v3"
+        },
+        {
+          "kind": "code",
+          "label": "configs/model/uwm.yaml",
+          "url": "https://raw.githubusercontent.com/WEIRDLabUW/unified-world-model/b7d4067c8859775e5b08f681e76d538015cdd445/configs/model/uwm.yaml",
+          "revision": "b7d4067c8859775e5b08f681e76d538015cdd445",
+          "sha256": "9c2eb19f65ed823c06f3d9c6a1520ff62393ba6dc4b1820e50aea0f4ba62d152",
+          "cached_as": "code/uwm/configs/model/uwm.yaml",
+          "view_url": "https://github.com/WEIRDLabUW/unified-world-model/blob/b7d4067c8859775e5b08f681e76d538015cdd445/configs/model/uwm.yaml"
+        },
+        {
+          "kind": "code",
+          "label": "models/common/adaln_attention.py",
+          "url": "https://raw.githubusercontent.com/WEIRDLabUW/unified-world-model/b7d4067c8859775e5b08f681e76d538015cdd445/models/common/adaln_attention.py",
+          "revision": "b7d4067c8859775e5b08f681e76d538015cdd445",
+          "sha256": "4249637e96f4d0e6a1405ce2e87bb3f83bb5c1c36fdcc603acb5b45d58ac512f",
+          "cached_as": "code/uwm/models/common/adaln_attention.py",
+          "view_url": "https://github.com/WEIRDLabUW/unified-world-model/blob/b7d4067c8859775e5b08f681e76d538015cdd445/models/common/adaln_attention.py"
+        },
+        {
+          "kind": "code",
+          "label": "models/uwm/uwm.py",
+          "url": "https://raw.githubusercontent.com/WEIRDLabUW/unified-world-model/b7d4067c8859775e5b08f681e76d538015cdd445/models/uwm/uwm.py",
+          "revision": "b7d4067c8859775e5b08f681e76d538015cdd445",
+          "sha256": "add93268d82b784cc733c84f8a09e98115c0acc370fc9894bc9373976ef39e26",
+          "cached_as": "code/uwm/models/uwm/uwm.py",
+          "view_url": "https://github.com/WEIRDLabUW/unified-world-model/blob/b7d4067c8859775e5b08f681e76d538015cdd445/models/uwm/uwm.py"
+        }
+      ],
+      "model_sha256": "90b06cef05869a72e19441ae8ed4841c7ee8b14bc338e14deed7a10b2c50aacc"
+    },
+    "vjepa2_ac": {
+      "name": "V-JEPA 2-AC",
+      "coverage": "Publication + released code",
+      "variant": "Released 24x1024 action-conditioned predictor with frozen ViT-g",
+      "architecture": "Frozen V-JEPA 2 yields 256 visual features of width 1408. A projection maps them to predictor width; interleaved state/action tokens give 258 tokens per step. Twenty-four pre-LayerNorm block-causal layers with 3D RoPE and a final norm/projection regress next features. Goal-distance planning rolls out features without a pixel decoder.",
+      "checked": [
+        "representation and token geometry",
+        "core operation order, normalization/modulation and residual boundaries where disclosed",
+        "conditioning entry points and attention masks",
+        "sampling repetitions, cache/feedback tensor and output/decoder role"
+      ],
+      "changes": [
+        "Added the input feature projection and final norm/output projection. Routed predicted features back to the predictor sequence.",
+        "The rollout feedback now returns the predicted 1,408-d features to the input projection box instead of the interleaved 1,024-d sequence, and the Prediction fact notes the layer norm and re-projection applied in the released planning wrapper."
+      ],
+      "limitations": [
+        "The 1B encoder and 300M predictor are distinct components. Planning runtime includes many candidate sequences; it is not the latency of one predictor pass."
+      ],
+      "references": [
+        {
+          "kind": "paper",
+          "label": "Original paper",
+          "url": "https://arxiv.org/html/2506.09985",
+          "sha256": "7aae72a658ea1d1e14b4b61d3825dd79c41c55f80e9ac129a5367b00bbe854da",
+          "cached_as": "vjepa2_ac.paper.html",
+          "version": "2506.09985v1",
+          "view_url": "https://arxiv.org/html/2506.09985v1"
+        },
+        {
+          "kind": "code",
+          "label": "configs/train/vitg16/droid-256px-8f.yaml",
+          "url": "https://raw.githubusercontent.com/facebookresearch/vjepa2/204698b45b3712590f06245fbfba32d3be539812/configs/train/vitg16/droid-256px-8f.yaml",
+          "revision": "204698b45b3712590f06245fbfba32d3be539812",
+          "sha256": "25f8d23f80dd24c2c9c410f3690edd966f4e9725809912d525dc925e030eb101",
+          "cached_as": "code/vjepa2_ac/configs/train/vitg16/droid-256px-8f.yaml",
+          "view_url": "https://github.com/facebookresearch/vjepa2/blob/204698b45b3712590f06245fbfba32d3be539812/configs/train/vitg16/droid-256px-8f.yaml"
+        },
+        {
+          "kind": "code",
+          "label": "src/hub/backbones.py",
+          "url": "https://raw.githubusercontent.com/facebookresearch/vjepa2/204698b45b3712590f06245fbfba32d3be539812/src/hub/backbones.py",
+          "revision": "204698b45b3712590f06245fbfba32d3be539812",
+          "sha256": "391cdde1e9a1da47cb8094bbea5fbbe8acac0135b27e82f1a6ab19c0b39cc692",
+          "cached_as": "code/vjepa2_ac/src/hub/backbones.py",
+          "view_url": "https://github.com/facebookresearch/vjepa2/blob/204698b45b3712590f06245fbfba32d3be539812/src/hub/backbones.py"
+        },
+        {
+          "kind": "code",
+          "label": "src/models/ac_predictor.py",
+          "url": "https://raw.githubusercontent.com/facebookresearch/vjepa2/204698b45b3712590f06245fbfba32d3be539812/src/models/ac_predictor.py",
+          "revision": "204698b45b3712590f06245fbfba32d3be539812",
+          "sha256": "5a520ad92b3f78b231aa153a5bbd9f800f880024974109a04d19aed6a0900643",
+          "cached_as": "code/vjepa2_ac/src/models/ac_predictor.py",
+          "view_url": "https://github.com/facebookresearch/vjepa2/blob/204698b45b3712590f06245fbfba32d3be539812/src/models/ac_predictor.py"
+        },
+        {
+          "kind": "code",
+          "label": "src/models/utils/modules.py",
+          "url": "https://raw.githubusercontent.com/facebookresearch/vjepa2/204698b45b3712590f06245fbfba32d3be539812/src/models/utils/modules.py",
+          "revision": "204698b45b3712590f06245fbfba32d3be539812",
+          "sha256": "b93f6c7e0747deb216419c000c2878f11a9189024a9adeacfd437e172396dff0",
+          "cached_as": "code/vjepa2_ac/src/models/utils/modules.py",
+          "view_url": "https://github.com/facebookresearch/vjepa2/blob/204698b45b3712590f06245fbfba32d3be539812/src/models/utils/modules.py"
+        }
+      ],
+      "model_sha256": "1848391b37b835d483060b63d1bd8ae690423a5b79c9d58f315e41355ff547ee"
+    },
+    "wham": {
+      "name": "WHAM (Muse)",
+      "coverage": "Publication + released code",
+      "variant": "Released WHAM-1.6B: 24x2304 GPT, 540 image + 16 action tokens",
+      "architecture": "A ViT-VQGAN produces 540 frame codes. Controller tokens join the learned-position sequence; 24 pre-LayerNorm nanoGPT blocks with GELU and a final norm predict tokens serially. Image and action modes rebuild their sliding-window cache as implemented. The VQGAN decoder reconstructs generated frame codes.",
+      "checked": [
+        "representation and token geometry",
+        "core operation order, normalization/modulation and residual boundaries where disclosed",
+        "conditioning entry points and attention masks",
+        "sampling repetitions, cache/feedback tensor and output/decoder role"
+      ],
+      "changes": [
+        "Replaced the symbolic block count with the released 24 layers and width/head configuration. Added the official Hugging Face code link and fixed token feedback."
+      ],
+      "limitations": [
+        "WHAMM is a later MaskGIT model, not the autoregressive graph shown here. The smaller WHAM models use a different tokenizer/resolution. No runtime benchmark was executed."
+      ],
+      "references": [
+        {
+          "kind": "paper",
+          "label": "Original paper",
+          "url": "https://www.nature.com/articles/s41586-025-08600-3?error=cookies_not_supported&code=554be077-5f2d-4bbe-b6e8-30f4a956262d",
+          "sha256": "81dc1d3f13b5838a5afbfd665c299c9cda15e1f1f90686956d836a086de3b9ab",
+          "cached_as": "wham.paper.html"
+        },
+        {
+          "kind": "code",
+          "label": "wham/models/nn/nanoGPT.py",
+          "url": "https://huggingface.co/microsoft/wham/resolve/963399322b737416569ab62e269b1d6d02b00e8f/wham/models/nn/nanoGPT.py",
+          "revision": "963399322b737416569ab62e269b1d6d02b00e8f",
+          "sha256": "7e9c3b521905907eba85fb9ff0ad1a8db724635da93f558d6e71876f950d7095",
+          "cached_as": "code/wham/wham/models/nn/nanoGPT.py",
+          "view_url": "https://huggingface.co/microsoft/wham/blob/963399322b737416569ab62e269b1d6d02b00e8f/wham/models/nn/nanoGPT.py"
+        },
+        {
+          "kind": "code",
+          "label": "wham/models/wham_token_model/gpt_token_transformer_predictor.py",
+          "url": "https://huggingface.co/microsoft/wham/resolve/963399322b737416569ab62e269b1d6d02b00e8f/wham/models/wham_token_model/gpt_token_transformer_predictor.py",
+          "revision": "963399322b737416569ab62e269b1d6d02b00e8f",
+          "sha256": "12902020ba6e7b64b92f3369b9df17a1b67c892e3142be7d166cc5bf9d802f65",
+          "cached_as": "code/wham/wham/models/wham_token_model/gpt_token_transformer_predictor.py",
+          "view_url": "https://huggingface.co/microsoft/wham/blob/963399322b737416569ab62e269b1d6d02b00e8f/wham/models/wham_token_model/gpt_token_transformer_predictor.py"
+        }
+      ],
+      "model_sha256": "68ecc9af7c5e059af6cef1ee3c40ba5bb6b5c03ffb347793f982623052dcb8cb"
+    },
+    "worldplay": {
+      "name": "WorldPlay (HY-World 1.5)",
+      "coverage": "Publication + released code",
+      "variant": "Released 480P distilled AR model: HY-1.5 8B, 54 blocks, 4 steps",
+      "architecture": "Camera-aware memory is retrieved and its K/V recomputed before denoising. The 54 double-stream blocks jointly attend video and refined text using parallel RoPE and PRoPE attention, whose projected results are summed. Keyboard/timestep AdaLN gates residual attention and FFN outputs. Four updates generate a latent chunk for later memory.",
+      "checked": [
+        "representation and token geometry",
+        "core operation order, normalization/modulation and residual boundaries where disclosed",
+        "conditioning entry points and attention masks",
+        "sampling repetitions, cache/feedback tensor and output/decoder role"
+      ],
+      "changes": [
+        "Added the parallel RoPE/PRoPE inset and gates, and labelled the text/memory attention input. Routed latent feedback through memory reconstruction.",
+        "The attention box is again named with the paper's term 'Block-causal attention'; the figure variant is now the released 480P distilled AR checkpoint, so token, memory and KV annotations are recomputed for 480×832 (6,240 tokens per chunk, ≈31k context, ≈27.6 GB KV), and the 24 fps / 720p numbers are labelled as the paper setting."
+      ],
+      "limitations": [
+        "The paper drawing includes cross-attention, while the released double-stream block joins text K/V into joint attention instead.",
+        "The roughly 27.6 GB cache (≈63.7 GB at the paper's 720p) is a full BF16 arithmetic estimate for both attention paths at 480×832, not a measured allocation.",
+        "The 24 FPS figure is the company's 720p result on 8 H800s; the released checkpoints are 480P, and the paper does not name the 720p model's backbone size (54 blocks × 2048 come from the released HunyuanVideo-1.5 config)."
+      ],
+      "references": [
+        {
+          "kind": "paper",
+          "label": "Original paper",
+          "url": "https://arxiv.org/html/2512.14614",
+          "sha256": "1b190c2b94d7a1aefac5c2777814b26420bef5637b7daf720eb263e7a17ab24a",
+          "cached_as": "worldplay.paper.html",
+          "version": "2512.14614v2",
+          "view_url": "https://arxiv.org/html/2512.14614v2"
+        },
+        {
+          "kind": "code",
+          "label": "hyvideo/models/transformers/modules/mlp_layers.py",
+          "url": "https://raw.githubusercontent.com/Tencent-Hunyuan/HY-WorldPlay/1588e1336e842b03b0a7860c654ebd7c46bb065e/hyvideo/models/transformers/modules/mlp_layers.py",
+          "revision": "1588e1336e842b03b0a7860c654ebd7c46bb065e",
+          "sha256": "c86151c61adbd67f762eff31f53d0b9933b4273a145ccca29c0cd2f7bfb33701",
+          "cached_as": "code/worldplay/hyvideo/models/transformers/modules/mlp_layers.py",
+          "view_url": "https://github.com/Tencent-Hunyuan/HY-WorldPlay/blob/1588e1336e842b03b0a7860c654ebd7c46bb065e/hyvideo/models/transformers/modules/mlp_layers.py"
+        },
+        {
+          "kind": "code",
+          "label": "hyvideo/models/transformers/worldplay_1_5_transformer.py",
+          "url": "https://raw.githubusercontent.com/Tencent-Hunyuan/HY-WorldPlay/1588e1336e842b03b0a7860c654ebd7c46bb065e/hyvideo/models/transformers/worldplay_1_5_transformer.py",
+          "revision": "1588e1336e842b03b0a7860c654ebd7c46bb065e",
+          "sha256": "93d77acfd7e308949a1bf1a9e0fe59aa5b5c6ec0caab62c87b094d7d065721c8",
+          "cached_as": "code/worldplay/hyvideo/models/transformers/worldplay_1_5_transformer.py",
+          "view_url": "https://github.com/Tencent-Hunyuan/HY-WorldPlay/blob/1588e1336e842b03b0a7860c654ebd7c46bb065e/hyvideo/models/transformers/worldplay_1_5_transformer.py"
+        },
+        {
+          "kind": "code",
+          "label": "hyvideo/pipelines/worldplay_video_pipeline.py",
+          "url": "https://raw.githubusercontent.com/Tencent-Hunyuan/HY-WorldPlay/1588e1336e842b03b0a7860c654ebd7c46bb065e/hyvideo/pipelines/worldplay_video_pipeline.py",
+          "revision": "1588e1336e842b03b0a7860c654ebd7c46bb065e",
+          "sha256": "18e3237b261557e785c42fdfc01b66d2c3b5e420ad34c45dc846f89732cf6586",
+          "cached_as": "code/worldplay/hyvideo/pipelines/worldplay_video_pipeline.py",
+          "view_url": "https://github.com/Tencent-Hunyuan/HY-WorldPlay/blob/1588e1336e842b03b0a7860c654ebd7c46bb065e/hyvideo/pipelines/worldplay_video_pipeline.py"
+        }
+      ],
+      "model_sha256": "92ec53bcd3e3c6e574a8dc462abab764dbccac4398277c20d7af243a1a419d74"
+    },
+    "worldvla": {
+      "name": "WorldVLA",
+      "coverage": "Publication + released code",
+      "variant": "Released Chameleon-based ~7B, 256×256 setting, two-frame input",
+      "architecture": "Text, VQ image codes and quantized actions share one vocabulary. The released 32-layer Chameleon decoder applies pre-normalized causal attention/FFN blocks and a final norm; action chunk masking is a trained attention-mask modification. The released generator is greedy and serial. Image codes may be decoded; action tokens go directly to control.",
+      "checked": [
+        "representation and token geometry",
+        "core operation order, normalization/modulation and residual boundaries where disclosed",
+        "conditioning entry points and attention masks",
+        "sampling repetitions, cache/feedback tensor and output/decoder role"
+      ],
+      "changes": [
+        "Routed generated tokens to token embeddings, preserving the separate image/action output roles.",
+        "The figure is now consistently the 256×256 setting: the per-frame pass count is ≈277 only, and the 512×512 figure (≈1,061) is labelled as that setting in the summary and facts."
+      ],
+      "limitations": [
+        "The paper's claim of parallel action-chunk generation is distinct from the released greedy serial generation path. Token counts differ for 256-code and 1024-code image settings. The figure uses the default two-frame context."
+      ],
+      "references": [
+        {
+          "kind": "paper",
+          "label": "Original paper",
+          "url": "https://arxiv.org/html/2506.21539",
+          "sha256": "50c81e2d6c8471b26695b332a50e3278d431639d8854f47e6c0051c8da4e543b",
+          "cached_as": "worldvla.paper.html",
+          "version": "2506.21539v1",
+          "view_url": "https://arxiv.org/html/2506.21539v1"
+        },
+        {
+          "kind": "code",
+          "label": "worldvla/libero_util/run_libero_eval.py",
+          "url": "https://raw.githubusercontent.com/alibaba-damo-academy/WorldVLA/ebdc36dc5cfdc3288e19a7b117b2ff07b135c8be/worldvla/libero_util/run_libero_eval.py",
+          "revision": "ebdc36dc5cfdc3288e19a7b117b2ff07b135c8be",
+          "sha256": "53eac0a3e6592ed2fe3c95e92fd5f9e1da96f65586398272b2016978a35bcf47",
+          "cached_as": "code/worldvla/worldvla/libero_util/run_libero_eval.py",
+          "view_url": "https://github.com/alibaba-damo-academy/WorldVLA/blob/ebdc36dc5cfdc3288e19a7b117b2ff07b135c8be/worldvla/libero_util/run_libero_eval.py"
+        },
+        {
+          "kind": "code",
+          "label": "worldvla/model/chameleon/modeling_chameleon.py",
+          "url": "https://raw.githubusercontent.com/alibaba-damo-academy/WorldVLA/ebdc36dc5cfdc3288e19a7b117b2ff07b135c8be/worldvla/model/chameleon/modeling_chameleon.py",
+          "revision": "ebdc36dc5cfdc3288e19a7b117b2ff07b135c8be",
+          "sha256": "cc194041282ad2e5b9857bdd341f420304733c5f7f5323341f169544a20fa934",
+          "cached_as": "code/worldvla/worldvla/model/chameleon/modeling_chameleon.py",
+          "view_url": "https://github.com/alibaba-damo-academy/WorldVLA/blob/ebdc36dc5cfdc3288e19a7b117b2ff07b135c8be/worldvla/model/chameleon/modeling_chameleon.py"
+        },
+        {
+          "kind": "code",
+          "label": "worldvla/model/modeling_xllmx_chameleon_ck.py",
+          "url": "https://raw.githubusercontent.com/alibaba-damo-academy/WorldVLA/ebdc36dc5cfdc3288e19a7b117b2ff07b135c8be/worldvla/model/modeling_xllmx_chameleon_ck.py",
+          "revision": "ebdc36dc5cfdc3288e19a7b117b2ff07b135c8be",
+          "sha256": "7fc4bc8beea155a24eed446a6cee21d8f965046f59aa352b1859f2469fa49f29",
+          "cached_as": "code/worldvla/worldvla/model/modeling_xllmx_chameleon_ck.py",
+          "view_url": "https://github.com/alibaba-damo-academy/WorldVLA/blob/ebdc36dc5cfdc3288e19a7b117b2ff07b135c8be/worldvla/model/modeling_xllmx_chameleon_ck.py"
+        }
+      ],
+      "model_sha256": "4aeff8b50ecb73f1a7e5244551f136e5e8a62061dae6250289790fccaccc2f77"
+    }
+  }
+}
