@@ -158,6 +158,9 @@ button{font:inherit;color:inherit}
 .eyebrow{margin:0 0 14px;font-family:var(--mono);font-size:12px;letter-spacing:.22em;text-transform:uppercase;color:var(--accent-ink)}
 .hero h1{margin:0;font-family:var(--display);font-weight:600;font-size:clamp(34px,5.4vw,60px);line-height:1.02;letter-spacing:.005em;color:var(--ink);text-wrap:balance}
 .hero h1 .thin{font-weight:500;color:var(--navy)}
+.by{margin:12px 0 0;font-family:var(--mono);font-size:12px;letter-spacing:.06em;color:var(--muted)}
+.by a{color:var(--accent-ink);text-decoration:none;border-bottom:1px solid var(--line-strong)}
+.by a:hover{color:var(--ink)}
 .lede{margin:16px auto 0;max-width:560px;color:var(--muted);font-size:16px;text-wrap:balance}
 .stats{margin:22px 0 0;display:flex;justify-content:center;flex-wrap:wrap;gap:0;font-family:var(--mono);font-size:12px;letter-spacing:.06em;color:var(--muted)}
 .stats span{padding:0 14px;border-left:1px solid var(--line-strong)}
@@ -479,6 +482,7 @@ def build(out_dir=DEFAULT_OUT, artifact=None):
   <h1>World Model <span class="thin">Architecture</span> Gallery</h1>
   <p class="lede">Every model drawn in one visual language, from input to decoder. Click a diagram to open it.</p>
   <p class="stats"><span><b>{n}</b> models</span><span><b>{len(fams)}</b> families</span><span><b>{years[0]}–{years[-1]}</b></span><span>updated <b>{today}</b></span></p>
+  <p class="by">by <a href="https://github.com/YAMWD" target="_blank" rel="noopener">Zhiyan Yao</a></p>
 </header>
 <div id="sentinel" aria-hidden="true"></div>
 <div class="toolbar" role="search">
@@ -503,11 +507,11 @@ def build(out_dir=DEFAULT_OUT, artifact=None):
     <details><summary>About</summary><div class="fold">
       <p>Architecture diagrams for world models whose dynamics model or generative backbone is a transformer, drawn in one visual language after the <a href="https://sebastianraschka.com/llm-architecture-gallery/" target="_blank" rel="noopener">LLM Architecture Gallery</a>. Numbers marked [D] in the details are our own arithmetic; speeds are the developers' own figures on their own hardware.</p>
       <p>Source review: all 49 original publications or official technical pages; matching released code for 42 models. Seven have no matching official implementation in the consulted sources. See the <a href="architecture_audit.md">per-model findings</a> for configurations, differences and pinned sources.</p>
-      <p>Corrections and new models are welcome as issues or pull requests.</p>
+      <p>Corrections and new models are welcome as <a href="https://github.com/YAMWD/wm-architecture-gallery" target="_blank" rel="noopener">issues or pull requests</a>.</p>
     </div></details>
     <details><summary>Changelog</summary><div class="fold">{read_changelog()}</div></details>
   </div>
-  <p class="copy">Cards and diagrams CC BY 4.0 · IBM Plex and Saira, OFL</p>
+  <p class="copy">Cards and diagrams CC BY 4.0 · IBM Plex and Saira, OFL · <a href="https://github.com/YAMWD" target="_blank" rel="noopener">github.com/YAMWD</a></p>
 </footer>
 </div>
 <div class="viewer" id="viewer" hidden role="dialog" aria-modal="true" aria-labelledby="vtitle">

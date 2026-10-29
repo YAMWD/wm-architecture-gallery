@@ -1,5 +1,8 @@
 # Changelog
 
+## 2026-10-29: author and repository links
+- The page header carries a byline whose name links to github.com/YAMWD; the footer repeats the link, and the About text links issues and pull requests to the repository.
+
 ## 2026-10-25: follow-up fixes to the recheck
 - An independent check of the recheck confirmed most edits and found four wrong ones, now fixed: SOLD keeps 4 slot-aggregation layers (paper and released checkpoint), LingBot-VA keeps its per-chunk real-observation cache write and loop, the long-context SSM model keeps its frame-by-frame rollout loop, and Genie's block count stays the paper's L.
 - Restored source-backed content the recheck had removed, among them Cosmos 3's video, audio and action input lane, NWM's CEM planning note, LingBot-World-Fast's >200 GB per minute and WorldPlay's block-causal attention.
